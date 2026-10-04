@@ -1,0 +1,26 @@
+name: Bug report
+description: Report a reproducible HomeCall problem
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove credentials, receipt URLs, recordings, and private dashboard data."
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Home Assistant, integration, card, browser, and OS
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Include picker mode, card dimensions, and expected versus actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized errors or configuration
+      render: text

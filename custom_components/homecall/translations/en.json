@@ -1,0 +1,125 @@
+{
+  "title": "HomeCall",
+  "config": {
+    "step": {
+      "connection": {
+        "title": "Connection",
+        "menu_options": {
+          "system_address": "Use Home Assistant address",
+          "custom_address": "Own HTTPS address"
+        },
+        "menu_option_descriptions": {
+          "system_address": "Automatically use HA network settings.",
+          "custom_address": "Use another public HTTPS address."
+        }
+      },
+      "devices": {
+        "title": "Devices",
+        "description": "These devices appear in the card.",
+        "menu_options": {
+          "all_devices": "All devices",
+          "custom_devices": "Custom selection",
+          "connection": "Back",
+          "init": "Back"
+        },
+        "menu_option_descriptions": {
+          "all_devices": "Automatically include new devices.",
+          "custom_devices": "Allow only selected devices."
+        }
+      },
+      "custom_devices": {
+        "title": "Devices",
+        "description": "These devices appear in the card.",
+        "data": {
+          "default_targets": "Allowed devices"
+        }
+      },
+      "custom_address": {
+        "title": "Own HTTPS address",
+        "data": {
+          "public_url": "Public HTTPS address"
+        },
+        "data_description": {
+          "public_url": "Nabu Casa or your own public HTTPS address."
+        }
+      },
+      "system_address": {
+        "title": "Home Assistant address",
+        "description": "Detected address: {address}"
+      }
+    },
+    "error": {
+      "invalid_url": "Enter a valid public HTTPS address.",
+      "select_echo": "Select at least one device.",
+      "no_system_url": "No public HTTPS address found in Home Assistant. Use your own address."
+    },
+    "abort": {
+      "already_configured": "HomeCall is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HomeCall",
+        "menu_options": {
+          "connection": "Connection",
+          "devices": "Devices"
+        },
+        "menu_option_descriptions": {
+          "connection": "Public HTTPS address",
+          "devices": "Allow devices in the card"
+        }
+      },
+      "connection": {
+        "title": "Connection",
+        "menu_options": {
+          "system_address": "Use Home Assistant address",
+          "custom_address": "Own HTTPS address"
+        },
+        "menu_option_descriptions": {
+          "system_address": "Automatically use HA network settings.",
+          "custom_address": "Use another public HTTPS address."
+        }
+      },
+      "devices": {
+        "title": "Devices",
+        "description": "These devices appear in the card.",
+        "menu_options": {
+          "all_devices": "All devices",
+          "custom_devices": "Custom selection",
+          "connection": "Back",
+          "init": "Back"
+        },
+        "menu_option_descriptions": {
+          "all_devices": "Automatically include new devices.",
+          "custom_devices": "Allow only selected devices."
+        }
+      },
+      "custom_devices": {
+        "title": "Devices",
+        "description": "These devices appear in the card.",
+        "data": {
+          "default_targets": "Allowed devices"
+        }
+      },
+      "custom_address": {
+        "title": "Own HTTPS address",
+        "data": {
+          "public_url": "Public HTTPS address"
+        },
+        "data_description": {
+          "public_url": "Nabu Casa or your own public HTTPS address."
+        }
+      },
+      "system_address": {
+        "title": "Home Assistant address",
+        "description": "Detected address: {address}"
+      }
+    },
+    "error": {
+      "invalid_url": "Enter a valid public HTTPS address.",
+      "select_echo": "Select at least one device.",
+      "no_system_url": "No public HTTPS address found in Home Assistant. Use your own address."
+    }
+  }
+}

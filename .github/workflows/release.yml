@@ -1,0 +1,24 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check . && ruff format --check . && pytest
+      - name: Verify tag and package the integration
+        run: |
+          python -c 'import json, os; assert os.environ["GITHUB_REF_NAME"] == "v" + json.load(open("custom_components/homecall/manifest.json"))["version"]'
+          git archive --format=zip HEAD:custom_components/homecall > homecall.zip
+      - run: gh release create "$GITHUB_REF_NAME" homecall.zip --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

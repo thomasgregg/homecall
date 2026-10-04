@@ -1,0 +1,19 @@
+{
+  "domain": "homecall",
+  "name": "HomeCall",
+  "version": "1.0.0",
+  "config_flow": true,
+  "documentation": "https://github.com/thomasgregg/homecall",
+  "issue_tracker": "https://github.com/thomasgregg/homecall/issues",
+  "dependencies": [
+    "http",
+    "ffmpeg",
+    "notify",
+    "frontend",
+    "panel_custom",
+    "alexa_devices"
+  ],
+  "codeowners": ["@thomasgregg"],
+  "iot_class": "cloud_push",
+  "integration_type": "service"
+}
