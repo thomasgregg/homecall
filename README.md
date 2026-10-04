@@ -12,6 +12,16 @@ HomeCall turns microphone recordings into short Alexa announcements. It handles 
 
 **Currently, HomeCall supports Alexa/Echo speakers only.** I’m happy to expand support to other speakers and welcome ideas and contributions. [Open an issue](https://github.com/thomasgregg/homecall/issues) to discuss a speaker platform you’d like to help support.
 
+## Contents
+
+- [Why HomeCall](#why-homecall)
+- [Before you start](#before-you-start)
+- [Install](#install)
+- [Use](#use)
+- [How it works](#how-it-works)
+- [Documentation](#documentation)
+- [Development](#development)
+
 ## Why HomeCall
 
 - **Original voice:** send recorded audio rather than synthesized speech.
