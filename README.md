@@ -31,6 +31,10 @@ HomeCall is a community project. It is not affiliated with Amazon or Home Assist
 
 ### HACS
 
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=thomasgregg&repository=homecall&category=integration)
+
+With HACS installed, click the button to open this custom repository in your Home Assistant instance. Add it when prompted, then choose **Download**. Install the integration and card separately.
+
 1. In HACS, open **Custom repositories**.
 2. Add `https://github.com/thomasgregg/homecall` as an **Integration**.
 3. Download HomeCall and restart Home Assistant.
