@@ -232,3 +232,14 @@ test("DLNA page has one Add speaker action and no Alexa explanation", async ({
   ).toBeVisible();
   await expect(page.getByText(/Alexa speakers already/)).toHaveCount(0);
 });
+
+test("integration controls inherit HA theme styles", async ({ page }) => {
+  await fixture(page);
+  const css = await page.locator("homecall-settings").evaluate(el => el.shadowRoot.querySelector("style").textContent);
+  expect(css).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|--app-header-|--mdc-icon-size/iu);
+  for (const name of ["connection", "devices", "dlna"]) {
+    await page.locator(`[data-page="${name}"]`).click();
+    expect(await page.locator("homecall-settings").evaluate(el => el.shadowRoot.querySelectorAll("button,input,select,textarea").length)).toBe(0);
+    await page.locator(".close").evaluate(el => el.click());
+  }
+});

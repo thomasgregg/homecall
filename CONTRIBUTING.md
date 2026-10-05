@@ -25,3 +25,7 @@ Never include real credentials, recordings, delivery URLs, or personal dashboard
 MIT is the project's license. Contributions are provided under that license.
 
 The administrative settings UI has browser regression tests. Run `npm ci`, install matching browsers with `npx playwright install chromium webkit`, then run `npm run test:browser`. Chromium and WebKit fixtures verify the two speaker groups, test confirmation, failure handling and selection preservation. They use native-control stand-ins; real HA styling and audible playback still need device checks.
+
+## Integration UI conventions
+
+Use Home Assistant components for controls: `ha-form` with native selectors, `ha-button`, `ha-checkbox`, `ha-alert`, and HA list components. Let components inherit their default theme colours, typography, icon sizing, and header styles. Use theme variables for supporting text; never hardcode colours or restyle control internals. Custom CSS should handle layout and spacing only. Primary actions use the native brand variant; secondary actions use plain neutral buttons. Check long names and narrow screens before releasing.

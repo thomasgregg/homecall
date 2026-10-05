@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4
+
+- Let native HA headers, icons, and controls inherit default theme styling; remove unused custom row styles.
+- Document UI conventions and guard against hardcoded colours and native control replacements.
+
 ## 1.1.3
 
 - Use the native HA dropdown for speaker selection and an info alert with separated confirmation actions.
