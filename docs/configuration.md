@@ -80,3 +80,5 @@ Set up Google Cast in Home Assistant, then open HomeCall Configure → Google Ca
 The device must reach the local audio address. Under Connection, an explicit LAN IP address and port can avoid `.local` name-resolution problems. A public Alexa address is not required. Direct Cast playback interrupts existing music and does not restore it. Actual Nest playback, groups and startup delays require physical-device testing.
 
 On 5 October 2026, a JBL Charge 5 Wi-Fi played HomeCall’s generated MP3 test chime over direct Cast after Google Cast was enabled in JBL One. During iPhone-started YouTube Music casting, the chime played but music stayed stopped. Reopening the YouTube Music receiver and sending Play did not restore the track. Microphone recordings through Cast, Nest devices, groups and Music Assistant over Cast remain unverified. See the README [protocol compatibility table](../README.md#speaker-compatibility) and [setup recommendations](../README.md#which-setup-should-i-use).
+
+For detailed setup, network troubleshooting, hardware findings and recovery options, see the [Google Cast / Nest guide](google-cast.md).
