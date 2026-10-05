@@ -1,1 +1,1 @@
-Music Assistant announcements and JBL playback verification
+Google Cast support and protocol compatibility guidance

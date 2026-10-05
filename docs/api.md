@@ -78,3 +78,9 @@ The legacy `dlna_candidates` response also includes Sonos and Music Assistant pl
 Speaker tests return `requires_confirmation: true` for DLNA and `false` for Alexa, Sonos and Music Assistant. Optional tests do not add or select a speaker. Settings can include `added_speakers` to preserve the administrative speaker list separately from visibility, and `removed_dlna` to revoke a tested DLNA speaker when saving pending removals.
 
 Sonos delivery calls `media_player.play_media` with `announce: true`. Music Assistant delivery calls `music_assistant.play_announcement` with `url` and `use_pre_announce: false`. Both use the local audio address and leave announcement playback/restoration to the respective integration; they do not use HomeCall's DLNA resume manager. A failed Music Assistant call is reported as rejected, without a fallback to direct playback.
+
+## Google Cast delivery
+
+The legacy `dlna_candidates` field also includes Google Cast media players with `transport: "cast"`. Enabled registry entities must support `PLAY_MEDIA`; unavailable and unknown entities remain discoverable but cannot receive recordings. Cast devices require explicit `default_targets` selection and are excluded from Alexa’s `use_all` setting.
+
+Delivery uses `media_player.play_media` with the token-protected local MP3 URL as `media_content_id` and `audio/mpeg` as `media_content_type`. Cast never uses Alexa’s notify route, Sonos announcement mode or the DLNA resume manager. Optional speaker tests return `requires_confirmation: false` and do not change selection. Existing audio expiry, authentication and fetch receipts apply unchanged. Service acceptance and fetch receipts do not establish audible playback.

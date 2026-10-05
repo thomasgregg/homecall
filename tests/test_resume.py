@@ -208,7 +208,8 @@ async def test_delivery_arms_resume_before_playback(hass, entry, devices, monkey
     from custom_components.homecall.views import deliver
 
     monkeypatch.setattr(
-        "custom_components.homecall.views.dlna_candidates", lambda h: [{"entity_id": ENTITY}]
+        "custom_components.homecall.views.dlna_candidates",
+        lambda h: [{"entity_id": ENTITY, "transport": "dlna"}],
     )
     resume = Mock()
     hass.data[DOMAIN]["resume_manager"] = resume

@@ -25,7 +25,12 @@ def flow(hass, monkeypatch):
 
 async def test_connection_menu(flow):
     result = await flow.async_step_user()
-    assert result["menu_options"] == ["alexa_setup", "dlna_setup", "music_assistant_setup"]
+    assert result["menu_options"] == [
+        "alexa_setup",
+        "dlna_setup",
+        "music_assistant_setup",
+        "cast_setup",
+    ]
     assert (await flow.async_step_alexa_setup())["menu_options"] == [
         "system_address",
         "custom_address",
@@ -153,3 +158,12 @@ async def test_music_assistant_setup_without_public_address(hass):
     assert result["step_id"] == "music_assistant_setup"
     assert flow._values["public_url"] == ""
     assert flow._values["use_all"] is False
+
+
+async def test_cast_setup_without_public_address(flow):
+    result = await flow.async_step_cast_setup()
+    assert result["step_id"] == "cast_setup"
+    assert not flow._values["use_all"]
+    assert flow._values["public_url"] == ""
+    await flow.async_step_cast_setup({})
+    flow._create.assert_awaited_once()

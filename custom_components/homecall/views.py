@@ -283,11 +283,13 @@ async def deliver(hass, entry, entity_id, token, context=None, duration=3):
         if music_assistant:
             domain, service = "music_assistant", "play_announcement"
             data = {"url": url, "use_pre_announce": False}
+        elif candidate and candidate.get("transport") == "cast":
+            data["media_content_type"] = "audio/mpeg"
         elif sonos:
             data["announce"] = True
         manager = hass.data[DOMAIN].get("resume_manager")
         if dlna and manager:
-            if not sonos and not music_assistant and entity_id in settings(entry)["resume_dlna"]:
+            if candidate.get("transport") == "dlna" and entity_id in settings(entry)["resume_dlna"]:
                 manager.prepare(entity_id, url, duration, context)
             else:
                 manager.cancel(entity_id)

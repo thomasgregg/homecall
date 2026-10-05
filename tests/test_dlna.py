@@ -116,6 +116,9 @@ def test_platform_discovery_and_confirmation(hass, entry, monkeypatch):
         ("other_brand", "dlna_dmr", 512, False, "off"),
         ("offline", "dlna_dmr", 0, False, "unavailable"),
         ("cast", "cast", 512, False, "idle"),
+        ("cast_disabled", "cast", 512, True, "idle"),
+        ("cast_unsupported", "cast", 0, False, "idle"),
+        ("cast_unknown", "cast", 0, False, "unknown"),
         ("sonos", "sonos", 512, False, "idle"),
         ("ma", "music_assistant", 512, False, "idle"),
         ("ma_disabled", "music_assistant", 512, True, "idle"),
@@ -137,13 +140,15 @@ def test_platform_discovery_and_confirmation(hass, entry, monkeypatch):
     )
     hass.states = SimpleNamespace(get=states.get)
     assert {t["name"] for t in dlna_candidates(hass)} == {
+        "cast",
+        "cast_unknown",
         "jbl",
         "other_brand",
         "offline",
         "sonos",
         "ma",
     }
-    assert [t["name"] for t in targets(hass)] == ["ma", "sonos"]
+    assert [t["name"] for t in targets(hass)] == ["cast", "cast_unknown", "ma", "sonos"]
     entry.options = {
         "tested_dlna": ["media_player.other_brand"],
         "default_targets": ["media_player.other_brand"],

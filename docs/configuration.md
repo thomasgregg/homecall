@@ -57,7 +57,7 @@ Sonos speakers appear in **Available speakers**. Press **Add**, then select whic
 
 The speaker must reach Home Assistant’s local audio address. Home Assistant must also reach TCP port 1443 on the Sonos speaker for announcements. Older hardware and S1 firmware may not fully support overlays; see [Home Assistant’s Sonos documentation](https://www.home-assistant.io/integrations/sonos/). Discovery, onboarding and service calls are covered by simulated tests; audible Sonos playback and restoration have not been verified on hardware.
 
-All four speaker groups use the same expandable speaker rows, visibility checkboxes, Select all and Save changes. Expand any online speaker to play a sound test. Alexa, Sonos and Music Assistant tests do not add or select speakers and need no confirmation; DLNA onboarding still requires a downloaded test and audible confirmation. Testing produces audible sound and can interrupt playback. Only DLNA offers the HomeCall resume setting.
+All five speaker groups use the same expandable speaker rows, visibility checkboxes, Select all and Save changes. Expand any online speaker to play a sound test. Alexa, Sonos, Music Assistant and Google Cast tests do not add or select speakers and need no confirmation; DLNA onboarding still requires a downloaded test and audible confirmation. Testing produces audible sound and can interrupt playback. Only DLNA offers the HomeCall resume setting.
 
 ### Music Assistant announcements
 
@@ -72,3 +72,11 @@ On 5 October 2026, Music Assistant 2.10.5 with a JBL Charge 5 Wi-Fi using AirPla
 The same physical speaker can appear in both **DLNA speakers** and **Music Assistant speakers** because these are separate HA entities with different delivery methods. For music managed by Music Assistant, select its entity and hide the underlying DLNA/Sonos entry from the card to avoid sending twice. The configuration sections remain separate.
 
 Discovery, selection, sound-test routing and delivery are also covered by simulated backend and browser tests. Service acceptance alone does not confirm audible playback or restoration.
+
+## Google Cast speakers
+
+Set up Google Cast in Home Assistant, then open HomeCall Configure → Google Cast speakers. Add discovered devices, set card visibility and save. Optional sound tests use the same delivery path as recordings. Google Cast devices must be explicitly selected; Alexa’s automatic all-speaker setting never includes them.
+
+The device must reach the local audio address. Under Connection, an explicit LAN IP address and port can avoid `.local` name-resolution problems. A public Alexa address is not required. Direct Cast playback interrupts existing music and does not restore it. Actual Nest playback, groups and startup delays require physical-device testing.
+
+On 5 October 2026, a JBL Charge 5 Wi-Fi played HomeCall’s generated MP3 test chime over direct Cast after Google Cast was enabled in JBL One. During iPhone-started YouTube Music casting, the chime played but music stayed stopped. Reopening the YouTube Music receiver and sending Play did not restore the track. Microphone recordings through Cast, Nest devices, groups and Music Assistant over Cast remain unverified. See the README [protocol compatibility table](../README.md#speaker-compatibility) and [setup recommendations](../README.md#which-setup-should-i-use).

@@ -34,7 +34,7 @@ def targets(hass):
     result.extend(
         t
         for t in dlna_candidates(hass)
-        if t.get("transport") in ("sonos", "music_assistant") or t["entity_id"] in confirmed
+        if t.get("transport") in ("sonos", "music_assistant", "cast") or t["entity_id"] in confirmed
     )
     return sorted(result, key=lambda item: item["name"])
 
@@ -76,17 +76,17 @@ def allowed_targets(hass, entry):
         if device["entity_id"] in allowed
         or (
             values["use_all"]
-            and device.get("transport") not in ("dlna", "sonos", "music_assistant")
+            and device.get("transport") not in ("dlna", "sonos", "music_assistant", "cast")
         )
     ]
 
 
 def dlna_candidates(hass):
-    """Discover local DLNA, Sonos and Music Assistant players; retain the legacy API name."""
+    """Discover local DLNA, Sonos, Music Assistant and Cast players; retain the legacy API name."""
     result = []
     for entity in er.async_get(hass).entities.values():
         if (
-            entity.platform not in ("dlna_dmr", "sonos", "music_assistant")
+            entity.platform not in ("dlna_dmr", "sonos", "music_assistant", "cast")
             or entity.domain != "media_player"
             or entity.disabled_by
         ):

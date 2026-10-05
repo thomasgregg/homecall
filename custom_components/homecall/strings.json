@@ -52,12 +52,14 @@
         "menu_options": {
           "alexa_setup": "Alexa speakers",
           "dlna_setup": "DLNA speakers",
-          "music_assistant_setup": "Music Assistant"
+          "music_assistant_setup": "Music Assistant",
+          "cast_setup": "Google Cast speakers"
         },
         "menu_option_descriptions": {
           "alexa_setup": "Set up Alexa. Add DLNA speakers later.",
           "dlna_setup": "Start with DLNA. Test and add speakers in HomeCall settings.",
-          "music_assistant_setup": "Add Music Assistant players in HomeCall settings."
+          "music_assistant_setup": "Add Music Assistant players in HomeCall settings.",
+          "cast_setup": "Add Nest and other Cast devices in HomeCall settings."
         }
       },
       "dlna_setup": {
@@ -67,6 +69,10 @@
       "music_assistant_setup": {
         "title": "Music Assistant",
         "description": "Set up the Music Assistant integration first, then add players in HomeCall settings. Music Assistant handles music restoration."
+      },
+      "cast_setup": {
+        "title": "Google Cast speakers",
+        "description": "Set up Google Cast in Home Assistant first. After finishing, open HomeCall Configure → Google Cast speakers, add devices and play the test sound. Playback interrupts music and does not automatically restore it. JBL Cast test playback is verified; Nest devices still need testing."
       }
     },
     "error": {
