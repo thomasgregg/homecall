@@ -36,11 +36,11 @@ HomeCall turns microphone recordings into short speaker announcements. It handle
 
 ## Screenshots
 
-HomeCall’s configuration screens in a real Home Assistant installation: connection overview, Alexa speaker selection, and DLNA speaker options.
+Overview and Music Assistant setup in Home Assistant.
 
 ![HomeCall settings overview and Music Assistant speaker setup](docs/assets/ui-configuration.png)
 
-View the full-size screens: [overview](docs/assets/ui-overview.png), [Alexa speakers](docs/assets/ui-alexa.png), and [DLNA speakers](docs/assets/ui-dlna.png).
+Full-size: [overview](docs/assets/ui-overview.png) · [Music Assistant](docs/assets/ui-music-assistant.png).
 
 The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card#screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
 
