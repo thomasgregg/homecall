@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1
+
+- Refine DLNA settings with native HA list rows, separate added-speaker and sound-test sections, and Refresh.
+- Show registered offline renderers even when HA clears their advertised capabilities.
+- Distinguish offline speakers from missing DLNA discovery and prevent testing offline candidates.
+- Add offline-to-online settings refresh coverage.
+
 ## 1.1.0
 
 - Add an optional per-speaker setting to restore interrupted DLNA tracks and seek positions where supported.

@@ -189,3 +189,29 @@ test("resume music is off by default and can be toggled per speaker", async ({
   });
   await expect(checkbox).not.toHaveAttribute("checked", "");
 });
+
+test("offline speakers stay visible and refresh reveals recovered speakers", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.evaluate(() => {
+    window.settings.dlna_candidates[0].available = false;
+  });
+  await page.locator('[data-page="dlna"]').click();
+  await page.locator(".refresh-speakers").click();
+  await expect(
+    page.getByText("JBL Charge 5 Wi-Fi", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Turn on these speakers to run the sound test."),
+  ).toBeVisible();
+  await expect(page.locator(".add-speaker")).toHaveCount(0);
+  await expect(
+    page.getByText(/Add the DLNA Digital Media Renderer/),
+  ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.settings.dlna_candidates[0].available = true;
+  });
+  await page.locator(".refresh-speakers").click();
+  await expect(page.locator(".add-speaker")).toBeVisible();
+});

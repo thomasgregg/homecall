@@ -114,7 +114,7 @@ def test_platform_discovery_and_confirmation(hass, entry, monkeypatch):
     for name, platform, features, disabled, state in [
         ("jbl", "dlna_dmr", 512, False, "idle"),
         ("other_brand", "dlna_dmr", 512, False, "off"),
-        ("offline", "dlna_dmr", 512, False, "unavailable"),
+        ("offline", "dlna_dmr", 0, False, "unavailable"),
         ("cast", "cast", 512, False, "idle"),
         ("unsupported", "dlna_dmr", 0, False, "idle"),
         ("disabled", "dlna_dmr", 512, True, "idle"),

@@ -80,9 +80,9 @@ def dlna_candidates(hass):
         if entity.platform != "dlna_dmr" or entity.domain != "media_player" or entity.disabled_by:
             continue
         state = hass.states.get(entity.entity_id)
-        if (
-            state is None
-            or not int(state.attributes.get("supported_features", 0))
+        if state is None or (
+            state.state not in ("unavailable", "unknown")
+            and not int(state.attributes.get("supported_features", 0))
             & MediaPlayerEntityFeature.PLAY_MEDIA
         ):
             continue
