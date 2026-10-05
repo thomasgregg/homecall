@@ -10,26 +10,48 @@
 
 HomeCall turns microphone recordings into short speaker announcements. It handles authenticated uploads, audio conversion, speakers shown in the card, and temporary delivery links. The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card) provides the recording interface.
 
-**HomeCall supports Alexa/Echo, compatible DLNA speakers, Music Assistant players, Google Cast devices, and Sonos through Home Assistant’s Sonos integration.** Use Alexa through Home Assistant’s Alexa Devices integration, DLNA through DLNA Digital Media Renderer, Sonos through the Sonos integration, and Music Assistant players through the Music Assistant integration. You can combine these platforms.
-
-DLNA speakers must pass a sound test before they can appear in the card. JBL Charge 5 Wi-Fi has been checked for basic MP3 playback; other renderers require their own test. Optional **Resume music after announcements** can restore the interrupted media item and seek where supported. It does not restore playlists, queues, or streaming-service sessions. See [DLNA configuration and limitations](docs/configuration.md#dlna-speakers).
-
-Ideas and contributions for other speaker platforms are welcome. [Open an issue](https://github.com/thomasgregg/homecall/issues) to discuss support.
-
 ## Contents
 
-- [Speaker compatibility](#speaker-compatibility)
-- [Which setup should I use?](#which-setup-should-i-use)
 - [Why HomeCall](#why-homecall)
 - [Screenshots](#screenshots)
+- [Speaker compatibility](#speaker-compatibility)
+- [Which setup should I use?](#which-setup-should-i-use)
 - [Before you start](#before-you-start)
+- [Google Cast / Nest setup](#google-cast--nest-setup)
 - [Install](#install)
 - [Use](#use)
 - [How it works](#how-it-works)
 - [Documentation](#documentation)
 - [Development](#development)
 
+## Why HomeCall
+
+- **Original voice:** send recorded audio rather than synthesized speech.
+- **One room or many:** announce to selected Alexa, DLNA, Sonos, Music Assistant or Google Cast speakers.
+- **Native setup:** configure the public address and speakers shown in the card through Home Assistant.
+- **Short-lived audio:** recordings are held in memory and delivery links expire after three minutes.
+- **Clear feedback:** distinguish request acceptance from audio retrieval.
+- **English and German:** setup and settings follow the Home Assistant language.
+
+## Screenshots
+
+HomeCall’s configuration screens in a real Home Assistant installation: connection overview, Alexa speaker selection, and DLNA speaker options.
+
+![HomeCall integration overview, Alexa speaker selection, and DLNA music restoration settings](docs/assets/ui-configuration.png)
+
+View the full-size screens: [overview](docs/assets/ui-overview.png), [Alexa speakers](docs/assets/ui-alexa.png), and [DLNA speakers](docs/assets/ui-dlna.png).
+
+The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card#screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
+
+[![HomeCall Card recording a real microphone waveform with speaker selection enabled](docs/assets/ui-card-recording.png)](https://github.com/thomasgregg/homecall-card#screenshots)
+
 ## Speaker compatibility
+
+**HomeCall supports Alexa/Echo, compatible DLNA speakers, Music Assistant players, Google Cast devices, and Sonos through Home Assistant’s Sonos integration.** Use Alexa through Home Assistant’s Alexa Devices integration, DLNA through DLNA Digital Media Renderer, Sonos through the Sonos integration, and Music Assistant players through the Music Assistant integration. You can combine these platforms.
+
+DLNA speakers must pass a sound test before they can appear in the card. JBL Charge 5 Wi-Fi has been checked for basic MP3 playback; other renderers require their own test. Optional **Resume music after announcements** can restore the interrupted media item and seek where supported. It does not restore playlists, queues, or streaming-service sessions. See [DLNA configuration and limitations](docs/configuration.md#dlna-speakers).
+
+Ideas and contributions for other speaker platforms are welcome. [Open an issue](https://github.com/thomasgregg/homecall/issues) to discuss support.
 
 🟢 **Verified** on the noted setup · 🟠 **Unverified or conditional** · 🔴 **Unsupported or failed**
 
@@ -69,27 +91,6 @@ The Alexa resume test used soundbank audio through the same Speak/SSML mechanism
 | Basic local audio renderer without MA | **DLNA**. | Validate with the sound test. Optional resume handles a reusable current item where supported, rather than streaming-service sessions or full queues. |
 
 Choose one HomeCall target per physical speaker. When MA manages the music, use its entity and hide the corresponding direct Cast/DLNA/Sonos entry from the card to avoid duplicate announcements. For MA groups, consult its [announcement group behavior](https://www.music-assistant.io/integration/announcements/#group-behaviour).
-
-## Why HomeCall
-
-- **Original voice:** send recorded audio rather than synthesized speech.
-- **One room or many:** announce to selected Alexa, DLNA, Sonos, Music Assistant or Google Cast speakers.
-- **Native setup:** configure the public address and speakers shown in the card through Home Assistant.
-- **Short-lived audio:** recordings are held in memory and delivery links expire after three minutes.
-- **Clear feedback:** distinguish request acceptance from audio retrieval.
-- **English and German:** setup and settings follow the Home Assistant language.
-
-## Screenshots
-
-HomeCall’s configuration screens in a real Home Assistant installation: connection overview, Alexa speaker selection, and DLNA speaker options.
-
-![HomeCall integration overview, Alexa speaker selection, and DLNA music restoration settings](docs/assets/ui-configuration.png)
-
-View the full-size screens: [overview](docs/assets/ui-overview.png), [Alexa speakers](docs/assets/ui-alexa.png), and [DLNA speakers](docs/assets/ui-dlna.png).
-
-The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card#screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
-
-[![HomeCall Card recording a real microphone waveform with speaker selection enabled](docs/assets/ui-card-recording.png)](https://github.com/thomasgregg/homecall-card#screenshots)
 
 ## Before you start
 
