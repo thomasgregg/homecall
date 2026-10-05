@@ -182,11 +182,13 @@ Object.assign(HC_WORDS.en, {
   noAddedHint: "Add a speaker below to show it in the card.",
   refresh: "Refresh",
   online: "Online",
+  allAdded: "All detected speakers have been added.",
 });
 Object.assign(HC_WORDS.de, {
   offlineDlna: "Diese Lautsprecher einschalten, um den Testton abzuspielen.",
   connectedSpeakers: "Deine Lautsprecher",
   availableSpeakers: "Verfügbare Lautsprecher",
+  allAdded: "Alle erkannten Lautsprecher wurden hinzugefügt.",
   noAdded: "Noch keine Lautsprecher hinzugefügt",
   noAddedHint:
     "Unten einen Lautsprecher hinzufügen, damit er in der Karte erscheint.",
@@ -503,9 +505,9 @@ class HomeCallSettings extends HTMLElement {
       const speakerHeading = (t) =>
         `<ha-list-item-base><ha-icon slot="start" icon="mdi:speaker"></ha-icon><div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${this._t(t.available ? "online" : "offline")}</div></ha-list-item-base>`;
       body = `<ha-card class="dlna-section"><div class="section-heading"><h2>${this._t("connectedSpeakers")}</h2></div>${added.length ? added.map((t) => `<ha-list-base>${speakerHeading(t)}<ha-list-item-base><div slot="headline">${this._t("shown")}</div><ha-checkbox slot="end" data-visible="${hcEscape(t.entity_id)}" aria-label="${this._t("shown")}"></ha-checkbox></ha-list-item-base><ha-list-item-base><div slot="headline">${this._t("resume")}</div><div slot="supporting-text">${this._t("resumeHint")}</div><ha-checkbox slot="end" data-resume="${hcEscape(t.entity_id)}" aria-label="${this._t("resume")}"></ha-checkbox></ha-list-item-base></ha-list-base><div class="section-actions"><ha-button appearance="plain" variant="neutral" data-remove="${hcEscape(t.entity_id)}" ${disabled}>${this._t("remove")}</ha-button></div>`).join("") : `<ha-list-base><ha-list-item-base><ha-icon slot="start" icon="mdi:speaker-off"></ha-icon><div slot="headline">${this._t("noAdded")}</div><div slot="supporting-text">${this._t("noAddedHint")}</div></ha-list-item-base></ha-list-base>`}</ha-card>
-      <ha-card class="dlna-section"><div class="section-heading"><h2>${this._t("add")}</h2><ha-button class="refresh-speakers" appearance="plain" variant="neutral" ${disabled}>${this._t("refresh")}</ha-button></div><p class="section-description">${this._t("dlnaHint")}</p>
+      <ha-card class="dlna-section"><div class="section-heading"><h2>${this._t("availableSpeakers")}</h2><ha-button class="refresh-speakers" appearance="plain" variant="neutral" ${disabled}>${this._t("refresh")}</ha-button></div><p class="section-description">${this._t("dlnaHint")}</p>
       ${onlineChoices.length ? (!this._adding ? `<div class="section-actions"><ha-button class="add-speaker" appearance="accent">${this._t("add")}</ha-button></div>` : `<div class="test-content"><ha-form></ha-form><p class="secondary">${this._t("interruption")}</p><ha-button class="test-sound" appearance="accent" ${disabled}>${this._t(this._busy ? "testing" : "playTest")}</ha-button></div>`) : ""}
-      ${offlineChoices.length ? `<ha-list-base>${offlineChoices.map(speakerHeading).join("")}</ha-list-base><div class="test-content"><ha-alert alert-type="info">${this._t("offlineDlna")}</ha-alert></div>` : !choices.length ? `<div class="test-content"><ha-alert alert-type="info">${this._t("emptyDlna")}</ha-alert></div>` : ""}
+      ${offlineChoices.length ? `<ha-list-base>${offlineChoices.map(speakerHeading).join("")}</ha-list-base><div class="test-content"><ha-alert alert-type="info">${this._t("offlineDlna")}</ha-alert></div>` : !choices.length ? `<div class="test-content"><ha-alert alert-type="info">${this._t(candidates.length ? "allAdded" : "emptyDlna")}</ha-alert></div>` : ""}
       ${this._test ? `<div class="confirmation"><h3>${this._t("heard")}</h3><ha-button class="confirm-test" appearance="accent" ${disabled}>${this._t("yes")}</ha-button><ha-button class="retry-test" appearance="plain" variant="neutral" ${disabled}>${this._t("no")}</ha-button></div>` : ""}${this._error ? `<div class="test-content"><ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert></div>` : ""}</ha-card>`;
     } else {
       body = "<ha-form></ha-form>";

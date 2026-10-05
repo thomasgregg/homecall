@@ -215,3 +215,15 @@ test("offline speakers stay visible and refresh reveals recovered speakers", asy
   await page.locator(".refresh-speakers").click();
   await expect(page.locator(".add-speaker")).toBeVisible();
 });
+
+test("DLNA page has one Add speaker action and no Alexa explanation", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.locator('[data-page="dlna"]').click();
+  await expect(page.getByText("Add speaker", { exact: true })).toHaveCount(1);
+  await expect(
+    page.getByRole("heading", { name: "Available speakers" }),
+  ).toBeVisible();
+  await expect(page.getByText(/Alexa speakers already/)).toHaveCount(0);
+});

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+
+- Use Available speakers as the section heading, reserving Add speaker for the action.
+- Explain when all detected speakers are already added without suggesting another integration is needed.
+
 ## 1.1.1
 
 - Refine DLNA settings with native HA list rows, separate added-speaker and sound-test sections, and Refresh.
