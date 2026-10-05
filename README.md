@@ -36,7 +36,7 @@ HomeCall turns microphone recordings into short speaker announcements. It handle
 
 ## Screenshots
 
-Earlier overview and Music Assistant setup in Home Assistant. The current overview removes the Ready summary, places Connection in its own card, and groups all six speaker connectors together.
+Overview and Music Assistant setup in Home Assistant.
 
 [![HomeCall settings overview and Music Assistant speaker setup](docs/assets/ui-configuration.svg)](docs/assets/ui-configuration.svg)
 
