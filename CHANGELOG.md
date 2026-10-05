@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.3
+
+- Display the existing banner through a standard Markdown image and PNG export for HACS compatibility.
+- Preserve the original banner artwork and application behavior.
+
 ## 1.2.2
 
 - Fix the README banner in HACS by using an absolute public image URL.
