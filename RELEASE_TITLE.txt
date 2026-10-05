@@ -1,1 +1,1 @@
-Setup screenshots and HACS submission
+Sonos support and separate speaker settings

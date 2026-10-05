@@ -69,15 +69,19 @@ def allowed_targets(hass, entry):
         device
         for device in devices
         if device["entity_id"] in allowed
-        or (values["use_all"] and device.get("transport") != "dlna")
+        or (values["use_all"] and device.get("transport") not in ("dlna", "sonos"))
     ]
 
 
 def dlna_candidates(hass):
-    """Only registered DLNA renderers with URL playback; Cast is not a fallback."""
+    """Discover local DLNA and Sonos players; retain the legacy API name."""
     result = []
     for entity in er.async_get(hass).entities.values():
-        if entity.platform != "dlna_dmr" or entity.domain != "media_player" or entity.disabled_by:
+        if (
+            entity.platform not in ("dlna_dmr", "sonos")
+            or entity.domain != "media_player"
+            or entity.disabled_by
+        ):
             continue
         state = hass.states.get(entity.entity_id)
         if state is None or (
@@ -91,7 +95,7 @@ def dlna_candidates(hass):
                 "entity_id": entity.entity_id,
                 "name": state.name,
                 "available": state.state not in ("unavailable", "unknown"),
-                "transport": "dlna",
+                "transport": "sonos" if entity.platform == "sonos" else "dlna",
             }
         )
     return sorted(result, key=lambda item: item["name"])

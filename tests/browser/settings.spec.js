@@ -7,7 +7,7 @@ const script = await readFile(
   ),
   "utf8",
 );
-async function fixture(page, language = "en") {
+async function fixture(page, language = "en", transport = "dlna") {
   await page.setContent(
     "<style>body{font:16px Arial;background:#f5f5f5;--primary-text-color:#222;--secondary-text-color:#666;--divider-color:#ddd;--secondary-background-color:#f4f4f4}ha-card{display:block;background:white;border:1px solid #ddd;border-radius:16px}ha-list-item-button{display:flex;padding:20px;gap:14px;cursor:pointer}ha-button{display:inline-block;padding:12px;background:#009ac0;color:white;border-radius:10px;cursor:pointer}ha-button[disabled]{pointer-events:none;opacity:.5}ha-icon{width:24px}ha-list-item-base{display:block;padding:20px}</style><main></main>",
   );
@@ -66,14 +66,14 @@ async function fixture(page, language = "en") {
     );
   });
   await page.addScriptTag({ content: script });
-  await page.evaluate((language) => {
+  await page.evaluate(({language, transport}) => {
     window.calls = [];
     window.failTest = false;
     const candidate = {
       entity_id: "media_player.jbl",
       name: "JBL Charge 5 Wi-Fi",
       available: true,
-      transport: "dlna",
+      transport,
     };
     window.settings = {
       public_url: "https://ha.example.com",
@@ -120,7 +120,7 @@ async function fixture(page, language = "en") {
       },
     };
     document.querySelector("main").append(el);
-  }, language);
+  }, {language, transport});
   await expect(page.getByText(language === "de" ? "Alexa-Lautsprecher" : "Alexa speakers", { exact: true })).toBeVisible();
 }
 async function toggle(page, selector, checked) {
@@ -304,4 +304,43 @@ test('Refresh is only available beside the expanded discovery list', async ({pag
   await page.locator('.refresh-speakers').click();
   await expect(page.locator('[data-available-panel]')).toHaveAttribute('expanded','');
   await expect(page.locator('[data-test]')).toBeVisible();
+});
+
+
+test('Sonos onboarding and visibility use local speakers without DLNA resume', async ({page}) => {
+  await fixture(page, "en", "sonos");
+  await expect(page.locator('[data-page="sonos"]')).toContainText('Sonos speakers');
+  await page.locator('[data-page="sonos"]').click();
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await page.locator('.confirm-test').click();
+  await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveAttribute('checked', '');
+  await page.locator('[data-speaker-panel] button').click();
+  await expect(page.locator('[data-resume]')).toHaveCount(0);
+  await toggle(page, '[data-visible]', false);
+  await page.locator('.save').click();
+  expect(await page.evaluate(() => window.settings.default_targets)).toEqual([]);
+  await page.locator('[data-page="devices"]').click();
+  await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveCount(0);
+});
+
+
+test('local platform pages filter discovery and preserve other platform selections', async ({page}) => {
+  await fixture(page);
+  await page.evaluate(() => {
+    const sonos = {entity_id: "media_player.sonos", name: "Sonos One", available: true, transport: "sonos"};
+    window.settings.dlna_candidates.push(sonos);
+    window.settings.targets.push(sonos);
+    window.settings.tested_dlna.push(sonos.entity_id);
+    window.settings.default_targets.push(sonos.entity_id);
+  });
+  await page.evaluate(() => document.querySelector('homecall-settings')._load());
+  await page.locator('[data-page="dlna"]').click();
+  await page.locator('.refresh-speakers').click();
+  await expect(page.locator('[data-test="media_player.jbl"]')).toBeVisible();
+  await expect(page.locator('[data-visible="media_player.sonos"]')).toHaveCount(0);
+  await page.locator('.save').click();
+  expect(await page.evaluate(() => window.settings.default_targets)).toContain('media_player.sonos');
+  await page.locator('[data-page="sonos"]').click();
+  await expect(page.locator('[data-visible="media_player.sonos"]')).toHaveAttribute('checked','');
+  await expect(page.locator('[data-test="media_player.jbl"]')).toHaveCount(0);
 });

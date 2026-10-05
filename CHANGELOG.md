@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0
+
+- Add Sonos discovery and native announcement delivery with `announce: true`; let Sonos handle music restoration.
+- Give DLNA and Sonos separate settings entries using one shared speaker screen and sound-test flow. Preserve existing selections and require audible test confirmation before adding speakers.
+- Use matching speaker icons and leave a gap between Refresh and empty-list information.
+- Add a README compatibility table distinguishing tested Alexa delivery, basic DLNA playback on JBL Charge 5 Wi-Fi, and Sonos awaiting hardware testing.
+- Cover Sonos discovery, onboarding, delivery, platform filtering and selection preservation with simulated backend and browser checks.
+
 ## 1.2.4
 
 - Add real Home Assistant setup screenshots and a compact README banner.

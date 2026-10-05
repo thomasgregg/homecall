@@ -10,28 +10,28 @@ Alexa needs to fetch `/api/homecall/audio/<token>.mp3` from this address. An ext
 
 ## Speaker groups
 
-HomeCall starts with two groups: **Alexa speakers** and **DLNA speakers**. You can use either or both; Alexa Devices is not a mandatory dependency for DLNA-only setups.
+HomeCall has three separate groups: **Alexa speakers**, **DLNA speakers**, and **Sonos speakers**. You can combine them; Alexa Devices is not required for local-only setups.
 
 ### Alexa speakers
 
 Each speaker has a checkbox. **Select all** checks or clears the speakers currently listed and shows a partial-selection state when only some are checked. Press **Save changes** once for the page. Saving this list uses the current selection; speakers discovered later are not automatically added. Editing Alexa selection preserves the separate DLNA selection. Alexa does not require the DLNA sound test.
 
-### DLNA speakers
+### DLNA & Sonos speakers
 
-1. Configure the speaker through Home Assistant’s **DLNA Digital Media Renderer** integration.
-2. Open **HomeCall → Configure → DLNA speakers → Available speakers**.
+1. Configure the speaker through Home Assistant’s **DLNA Digital Media Renderer** or **Sonos** integration.
+2. Open **HomeCall → Configure → DLNA speakers / Sonos speakers → Available speakers**.
 3. Select **Test** beside an online speaker. Progress, errors, and confirmation appear under that row.
 4. Confirm **Yes, add speaker** only if you heard it.
 
 The test plays a three-second chime at the current speaker volume and replaces any current playback. HomeCall requires both a download of the test audio and your audible confirmation before adding the speaker. An accepted service call alone is insufficient. Failed, expired and offline tests never add a device.
 
-Added speakers have a checkbox controlling visibility in the card. Unchecking hides the speaker without discarding the successful test. Expand the speaker row to edit **Resume music after announcements** or use **Remove**. Visibility and resume edits remain pending until **Save changes** at the bottom of the page; refreshing discovery preserves pending edits. Adding and removing speakers take effect immediately. **Remove** discards the test and visibility; re-adding requires a new test. New DLNA speakers never enter the card automatically.
+Added speakers have a checkbox controlling visibility in the card. Unchecking hides the speaker without discarding the successful test. Expand the speaker row to use **Remove**. DLNA rows also offer **Resume music after announcements**; Sonos handles restoration through native announcement mode. Visibility and resume edits remain pending until **Save changes** at the bottom of the page; refreshing discovery preserves pending edits. Adding and removing speakers take effect immediately. **Remove** discards the test and visibility; re-adding requires a new test. New DLNA speakers never enter the card automatically.
 
-Discovery uses the `dlna_dmr` entity platform and `PLAY_MEDIA` capability, not manufacturer names. Cast entities for the same physical device are excluded. Passing the test confirms basic MP3 playback, not music resumption or every announcement scenario.
+Discovery uses the `dlna_dmr` and `sonos` entity platforms and `PLAY_MEDIA` capability, not manufacturer names. Cast entities for the same physical device are excluded. Passing the test confirms basic MP3 playback, not music resumption or every announcement scenario.
 
 ### Local audio address
 
-DLNA uses HA’s local address automatically. If the speaker cannot resolve that address, set **Connection → Local address for DLNA** to an address it can reach, for example `http://192.168.1.2:8123`. [HA recommends HTTP and an IP address for DLNA playback](https://www.home-assistant.io/integrations/dlna_dmr/#playing-media). Do not disable TLS or authentication on your HA instance; use an existing reachable listener. Changing the address may require testing speakers again.
+DLNA uses HA’s local address automatically. If the speaker cannot resolve that address, set **Connection → Local address for DLNA / Sonos (optional)** to an address it can reach, for example `http://192.168.1.2:8123`. [HA recommends HTTP and an IP address for DLNA playback](https://www.home-assistant.io/integrations/dlna_dmr/#playing-media). Do not disable TLS or authentication on your HA instance; use an existing reachable listener. Changing the address may require testing speakers again.
 
 Alexa continues to use the public HTTPS address. Mixed announcements share one encoded clip but use the appropriate delivery address for each route. Both links retain the same random token and three-minute expiry.
 
@@ -50,3 +50,9 @@ Changing tracks, pausing the announcement, going offline, an early stop, or disa
 This restores one media item, not a playlist, queue or streaming-service session. Expiring media URLs may no longer play. Missing playback-completion events cause restoration to time out rather than interrupt potentially active audio. A stop from another app that reports exactly the same state as natural completion may be indistinguishable from completion.
 
 JBL Charge 5 Wi-Fi was checked with local MP3s: replay after interruption and a seek to five seconds succeeded in HA. This does not prove restoration of Spotify or other streaming sessions, or the complete HomeCall flow on the installed instance.
+
+### Sonos announcements
+
+Sonos speakers appear in Available speakers and require the same downloaded sound test and audible confirmation before appearing in the card. HomeCall sends MP3 URLs through `media_player.play_media` with `announce: true`. Sonos handles the music overlay and volume restoration; the DLNA resume checkbox is therefore hidden for Sonos. Legacy settings/API keys retain their DLNA names for compatibility.
+
+The speaker must reach Home Assistant’s local audio address. Home Assistant must also reach TCP port 1443 on the Sonos speaker for announcements. Older hardware and S1 firmware may not fully support overlays; see [Home Assistant’s Sonos documentation](https://www.home-assistant.io/integrations/sonos/). Discovery, onboarding and service calls are covered by simulated tests; audible Sonos playback and restoration have not been verified on hardware.

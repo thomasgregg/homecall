@@ -247,7 +247,9 @@ class AudioView(HomeCallView):
 async def deliver(hass, entry, entity_id, token, context=None, duration=3):
     """Route only previously validated targets through their actual HA platform."""
     try:
-        dlna = entity_id in {t["entity_id"] for t in dlna_candidates(hass)}
+        candidate = next((t for t in dlna_candidates(hass) if t["entity_id"] == entity_id), None)
+        dlna = candidate is not None
+        sonos = bool(candidate and candidate.get("transport") == "sonos")
         base = local_url(hass, entry) if dlna else settings(entry, hass)["public_url"]
         if not base:
             raise ValueError("No audio address")
@@ -258,9 +260,11 @@ async def deliver(hass, entry, entity_id, token, context=None, duration=3):
             if dlna
             else {"message": "<audio src=" + quoteattr(url) + "/>"}
         )
+        if sonos:
+            data["announce"] = True
         manager = hass.data[DOMAIN].get("resume_manager")
         if dlna and manager:
-            if entity_id in settings(entry)["resume_dlna"]:
+            if not sonos and entity_id in settings(entry)["resume_dlna"]:
                 manager.prepare(entity_id, url, duration, context)
             else:
                 manager.cancel(entity_id)

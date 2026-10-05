@@ -3,7 +3,8 @@
   "name": "HomeCall",
   "after_dependencies": [
     "alexa_devices",
-    "dlna_dmr"
+    "dlna_dmr",
+    "sonos"
   ],
   "codeowners": [
     "@thomasgregg"
@@ -21,5 +22,5 @@
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/thomasgregg/homecall/issues",
-  "version": "1.2.4"
+  "version": "1.3.0"
 }
