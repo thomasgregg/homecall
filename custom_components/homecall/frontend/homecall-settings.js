@@ -119,7 +119,6 @@ Object.assign(HC_WORDS.en, {
   music_assistant: "Music Assistant speakers",
   cast: "Google Cast speakers",
   emptyCast: "No new Google Cast devices found. Set up Google Cast in Home Assistant first.",
-  castHint: "Plays recorded messages on Cast devices, including Nest Mini and Nest Hub. Playback interrupts music; automatic music restoration is not supported.",
   emptyMusicAssistant: "No new Music Assistant players found. Set up the Music Assistant integration in Home Assistant first.",
   emptyAlexa: "No new Alexa speakers found. Set up the Alexa Devices integration in Home Assistant first.",
   emptySonos: "No new Sonos speakers found. Set up the Sonos integration in Home Assistant first.",
@@ -164,7 +163,6 @@ Object.assign(HC_WORDS.de, {
   music_assistant: "Music Assistant-Lautsprecher",
   cast: "Google Cast-Lautsprecher",
   emptyCast: "Keine neuen Google Cast-Geräte gefunden. Zuerst Google Cast in Home Assistant einrichten.",
-  castHint: "Spielt Aufnahmen auf Cast-Geräten wie Nest Mini und Nest Hub. Musik wird unterbrochen und nicht automatisch fortgesetzt.",
   emptyMusicAssistant: "Keine neuen Music Assistant-Player gefunden. Zuerst Music Assistant in Home Assistant einrichten.",
   emptyAlexa: "Keine neuen Alexa-Lautsprecher gefunden. Zuerst Alexa Devices in Home Assistant einrichten.",
   emptySonos: "Keine neuen Sonos-Lautsprecher gefunden. Zuerst Sonos in Home Assistant einrichten.",
@@ -534,7 +532,7 @@ class HomeCallSettings extends HTMLElement {
       const checkbox = `<ha-checkbox slot="leading-icon" data-visible="${id}" aria-label="${hcEscape(t.name)}"></ha-checkbox>`;
       return `<ha-expansion-panel data-speaker-panel="${id}" >${checkbox}<div slot="header" class="speaker-label">${hcEscape(t.name)}<div class="speaker-status">${this._t(t.available ? "online" : "offline")}</div></div>${this._page !== "dlna" ? "" : `<div class="speaker-options speaker-control-row"><div class="speaker-control-copy"><label class="speaker-control-label" for="resume-${id}">${this._t("resume")}</label></div><ha-checkbox id="resume-${id}" data-resume="${id}" aria-label="${hcEscape(this._t("resume"))}"></ha-checkbox></div>`}<div class="section-actions"><p class="sound-test-description">${this._t("testHint")}</p><ha-button appearance="plain" variant="brand" data-test="${id}" ${!t.available || this._busy || this._test ? "disabled" : ""}>${this._t(this._chosenDlna === t.entity_id && this._busy ? "testing" : "test")}</ha-button></div>${`<div class="section-actions remove-actions"><p class="sound-test-description">${this._t("removeHint")}</p><ha-button appearance="plain" variant="brand" data-remove="${id}" ${disabled}>${this._t("remove")}</ha-button></div>`}</ha-expansion-panel>`;
     }).join("");
-    let body = `${this._page === "cast" ? `<ha-alert alert-type="info">${this._t("castHint")}</ha-alert>` : ""}<ha-card class="speaker-section">${heading}${all}<ha-list-base>${rows || `<ha-list-item-base><div slot="headline">${this._t("noAdded")}</div><div slot="supporting-text">${this._t("noAddedHint")}</div></ha-list-item-base>`}</ha-list-base></ha-card>`;
+    let body = `<ha-card class="speaker-section">${heading}${all}<ha-list-base>${rows || `<ha-list-item-base><div slot="headline">${this._t("noAdded")}</div><div slot="supporting-text">${this._t("noAddedHint")}</div></ha-list-item-base>`}</ha-list-base></ha-card>`;
     {
       const added = new Set(speakers.map(t => t.entity_id));
       const choices = this._speakerCandidates(values).filter(t => !added.has(t.entity_id));
