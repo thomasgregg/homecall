@@ -148,6 +148,10 @@ flowchart TD
     Route -->|Google Cast| CastService[Cast: media_player.play_media]
     CastService -->|Local audio URL| CastPlayer[Google Cast device]
     CastPlayer -->|Fetch MP3| Audio
+    Route -->|EchoMuse| EchoService[ESPHome: media_player.play_media announce]
+    EchoService -->|Audio URL over ESPHome API| EchoController[EchoMuse controller]
+    EchoController -->|Fetch audio directly or through HA proxy| Audio
+    EchoController -->|Decoded audio stream| EchoDot[EchoMuse Dot]
     Store -.->|Clip bytes| Audio
     Audio -->|Increment clip fetch count| Receipt[Receipt status]
     Card -->|Authenticated receipt polling| Receipt
@@ -156,13 +160,14 @@ flowchart TD
     Resume -.->|Restore media after completion; seek if supported| Speaker
 ```
 
-Alexa uses the public HTTPS delivery address; DLNA, Sonos, Music Assistant and Google Cast use the local address for the same in-memory clip and expiring token. Sonos and Music Assistant manage their announcement playback and restoration; HomeCall offers its own optional restoration only for DLNA. The card is installed separately and communicates only with HomeCall’s authenticated API. Music restoration depends on renderer capabilities and playback-state events; it is not guaranteed by a successful sound test.
+Alexa uses the public HTTPS delivery address; DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use the local address for the same in-memory clip and expiring token. Sonos, Music Assistant and EchoMuse manage their announcement playback and restoration; HomeCall offers its own optional restoration only for DLNA. For EchoMuse, Home Assistant sends the announcement command through ESPHome to the EchoMuse controller, which fetches and decodes the audio and streams it to the Dot. Home Assistant may transcode the audio through its ESPHome proxy; the controller must also be able to reach that proxy URL. The card is installed separately and communicates only with HomeCall’s authenticated API. Music restoration depends on renderer capabilities and playback-state events; it is not guaranteed by a successful sound test.
 
 ## Documentation
 
 | Guide                                      | Covers                                                            |
 | ------------------------------------------ | ----------------------------------------------------------------- |
 | [Configuration](docs/configuration.md)     | Public address, speakers shown in the card, and changing settings |
+| [EchoMuse](docs/echomuse.md) | ESPHome setup, audio delivery and playback limitations |
 | [Google Cast / Nest](docs/google-cast.md) | Cast setup, network requirements, test results and music continuation |
 | [API and architecture](docs/api.md)        | Endpoints, limits, audio lifecycle, and module responsibilities   |
 | [Troubleshooting](docs/troubleshooting.md) | Missing devices, microphone access, conversion, and delivery      |
