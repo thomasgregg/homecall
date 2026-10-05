@@ -4,6 +4,7 @@
   "after_dependencies": [
     "alexa_devices",
     "dlna_dmr",
+    "music_assistant",
     "sonos"
   ],
   "codeowners": [
@@ -22,5 +23,5 @@
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/thomasgregg/homecall/issues",
-  "version": "1.3.0"
+  "version": "1.4.0"
 }

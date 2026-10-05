@@ -25,7 +25,7 @@ def flow(hass, monkeypatch):
 
 async def test_connection_menu(flow):
     result = await flow.async_step_user()
-    assert result["menu_options"] == ["alexa_setup", "dlna_setup"]
+    assert result["menu_options"] == ["alexa_setup", "dlna_setup", "music_assistant_setup"]
     assert (await flow.async_step_alexa_setup())["menu_options"] == [
         "system_address",
         "custom_address",
@@ -141,3 +141,15 @@ async def test_dlna_only_setup_does_not_require_public_url(flow):
     await flow.async_step_dlna_setup({})
     assert flow._values["public_url"] == ""
     flow._create.assert_awaited_once()
+
+
+async def test_music_assistant_setup_without_public_address(hass):
+    from custom_components.homecall.config_flow import HomeCallConfigFlow
+
+    flow = HomeCallConfigFlow()
+    flow.hass = hass
+    await flow.async_step_user()
+    result = await flow.async_step_music_assistant_setup()
+    assert result["step_id"] == "music_assistant_setup"
+    assert flow._values["public_url"] == ""
+    assert flow._values["use_all"] is False

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0
+
+- Add Music Assistant setup, player discovery and a separate speaker settings page. Send recordings through `music_assistant.play_announcement` and let Music Assistant manage music interruption and restoration.
+- Verify audible HomeCall test-chime playback on a JBL Charge 5 Wi-Fi through Music Assistant 2.10.5 and AirPlay 2: music lowered during the announcement and returned to its previous volume afterward. Full pause/resume, microphone recordings through this route, groups and other protocols remain unverified on hardware.
+- Allow Alexa, Sonos and Music Assistant speakers to be added directly, with optional sound tests. Keep downloaded-test and audible-confirmation requirements for DLNA onboarding.
+- Save speaker additions, removals and visibility together; preserve pending selections across discovery refreshes. Keep separate speaker sections for each integration.
+- Document Music Assistant installation, duplicate physical-speaker entries, delivery selection and playback limits.
+
 ## 1.3.0
 
 - Add Sonos discovery and native announcement delivery with `announce: true`; let Sonos handle music restoration.

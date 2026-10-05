@@ -31,7 +31,11 @@ def targets(hass):
         )
     entry = hass.data.get("homecall", {}).get("entry")
     confirmed = settings(entry).get("tested_dlna", []) if entry else []
-    result.extend(t for t in dlna_candidates(hass) if t["entity_id"] in confirmed)
+    result.extend(
+        t
+        for t in dlna_candidates(hass)
+        if t.get("transport") in ("sonos", "music_assistant") or t["entity_id"] in confirmed
+    )
     return sorted(result, key=lambda item: item["name"])
 
 
@@ -55,6 +59,7 @@ def settings(entry, hass=None):
         "use_system_url": automatic,
         "use_all": values.get("use_all", not bool(values.get("default_targets"))),
         "default_targets": values.get("default_targets", []),
+        "added_speakers": values.get("added_speakers"),
         "tested_dlna": values.get("tested_dlna", []),
         "resume_dlna": values.get("resume_dlna", []),
         "local_url": values.get("local_url", ""),
@@ -69,16 +74,19 @@ def allowed_targets(hass, entry):
         device
         for device in devices
         if device["entity_id"] in allowed
-        or (values["use_all"] and device.get("transport") not in ("dlna", "sonos"))
+        or (
+            values["use_all"]
+            and device.get("transport") not in ("dlna", "sonos", "music_assistant")
+        )
     ]
 
 
 def dlna_candidates(hass):
-    """Discover local DLNA and Sonos players; retain the legacy API name."""
+    """Discover local DLNA, Sonos and Music Assistant players; retain the legacy API name."""
     result = []
     for entity in er.async_get(hass).entities.values():
         if (
-            entity.platform not in ("dlna_dmr", "sonos")
+            entity.platform not in ("dlna_dmr", "sonos", "music_assistant")
             or entity.domain != "media_player"
             or entity.disabled_by
         ):
@@ -95,7 +103,7 @@ def dlna_candidates(hass):
                 "entity_id": entity.entity_id,
                 "name": state.name,
                 "available": state.state not in ("unavailable", "unknown"),
-                "transport": "sonos" if entity.platform == "sonos" else "dlna",
+                "transport": "dlna" if entity.platform == "dlna_dmr" else entity.platform,
             }
         )
     return sorted(result, key=lambda item: item["name"])

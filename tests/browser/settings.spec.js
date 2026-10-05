@@ -115,6 +115,9 @@ async function fixture(page, language = "en", transport = "dlna") {
           window.settings.default_targets = [];
           return structuredClone(window.settings);
         }
+        if (data.removed_dlna) {
+          window.settings.tested_dlna = window.settings.tested_dlna.filter(id => !data.removed_dlna.includes(id));
+        }
         Object.assign(window.settings, data);
         return structuredClone(window.settings);
       },
@@ -149,6 +152,14 @@ test('inline sound test confirms before registering, and removal stays per speak
   await page.locator('[data-speaker-panel] button').click();
   await page.locator('[data-remove]').click();
   await expect(page.locator('[data-visible]')).toHaveCount(0);
+  expect(await page.evaluate(() => window.settings.tested_dlna)).toEqual(['media_player.jbl']);
+  await page.locator('homecall-settings').evaluate(el => el._back());
+  await page.locator('[data-page="dlna"]').click();
+  await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveCount(1);
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-remove]').click();
+  await page.locator('.save').click();
+  expect(await page.evaluate(() => window.settings.tested_dlna)).toEqual([]);
 });
 test('failed and offline tests never register speakers', async ({page}) => {
   await fixture(page);
@@ -184,6 +195,7 @@ test('Alexa select all selects current speakers, preserves DLNA and supports par
     el._data.targets.push({entity_id:'notify.bedroom_speak',name:'Bedroom',available:false});
     el._data.default_targets=['media_player.jbl'];
     el._data.use_all=false;
+    el._data.added_speakers=['notify.kitchen_speak','notify.bedroom_speak'];
   });
   await page.locator('[data-page="devices"]').click();
   await toggle(page,'[data-select-all]',true);
@@ -311,10 +323,15 @@ test('Sonos onboarding and visibility use local speakers without DLNA resume', a
   await fixture(page, "en", "sonos");
   await expect(page.locator('[data-page="sonos"]')).toContainText('Sonos speakers');
   await page.locator('[data-page="sonos"]').click();
-  await page.locator('[data-test="media_player.jbl"]').click();
-  await page.locator('.confirm-test').click();
-  await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveAttribute('checked', '');
+  await page.locator('[data-add="media_player.jbl"]').click();
   await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await expect(page.locator('.confirm-test')).toHaveCount(0);
+  await toggle(page, '[data-visible]', true);
+  if (!await page.locator('.refresh-speakers').isVisible())
+    await page.locator('[data-available-panel] button').first().click();
+  await page.locator('.refresh-speakers').click();
+  await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveAttribute('checked', '');
   await expect(page.locator('[data-resume]')).toHaveCount(0);
   await toggle(page, '[data-visible]', false);
   await page.locator('.save').click();
@@ -343,4 +360,49 @@ test('local platform pages filter discovery and preserve other platform selectio
   await page.locator('[data-page="sonos"]').click();
   await expect(page.locator('[data-visible="media_player.sonos"]')).toHaveAttribute('checked','');
   await expect(page.locator('[data-test="media_player.jbl"]')).toHaveCount(0);
+});
+
+
+test('Alexa add/remove and visibility are separate drafts until Save', async ({page}) => {
+  await fixture(page);
+  await page.locator('[data-page="devices"]').click();
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-remove="notify.kitchen_speak"]').click();
+  await expect(page.locator('[data-add="notify.kitchen_speak"]')).toBeVisible();
+  expect(await page.evaluate(() => window.settings.added_speakers)).toBeUndefined();
+  await page.locator('homecall-settings').evaluate(el => el._back());
+  await page.locator('[data-page="devices"]').click();
+  await expect(page.locator('[data-visible="notify.kitchen_speak"]')).toHaveCount(1);
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-remove="notify.kitchen_speak"]').click();
+  await page.locator('.save').click();
+  expect(await page.evaluate(() => window.settings.added_speakers)).toEqual([]);
+  await page.locator('[data-page="devices"]').click();
+  await page.locator('[data-add="notify.kitchen_speak"]').click();
+  await toggle(page, '[data-visible="notify.kitchen_speak"]', false);
+  await expect(page.locator('[data-visible="notify.kitchen_speak"]')).toHaveCount(1);
+  await page.locator('.save').click();
+  expect(await page.evaluate(() => window.settings.added_speakers)).toEqual(['notify.kitchen_speak']);
+  expect(await page.evaluate(() => window.settings.default_targets)).toEqual([]);
+});
+
+test('Music Assistant onboarding and visibility use local speakers without DLNA resume', async ({page}) => {
+  await fixture(page, "en", "music_assistant");
+  await expect(page.locator('[data-page="music_assistant"]')).toContainText('Music Assistant speakers');
+  await page.locator('[data-page="music_assistant"]').click();
+  await page.locator('[data-add="media_player.jbl"]').click();
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await expect(page.locator('.confirm-test')).toHaveCount(0);
+  await toggle(page, '[data-visible]', true);
+  if (!await page.locator('.refresh-speakers').isVisible())
+    await page.locator('[data-available-panel] button').first().click();
+  await page.locator('.refresh-speakers').click();
+  await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveAttribute('checked', '');
+  await expect(page.locator('[data-resume]')).toHaveCount(0);
+  await toggle(page, '[data-visible]', false);
+  await page.locator('.save').click();
+  expect(await page.evaluate(() => window.settings.default_targets)).toEqual([]);
+  await page.locator('[data-page="devices"]').click();
+  await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveCount(0);
 });

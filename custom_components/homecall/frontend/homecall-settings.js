@@ -116,6 +116,9 @@ Object.assign(HC_WORDS.en, {
   devices: "Alexa speakers",
   dlna: "DLNA speakers",
   sonos: "Sonos speakers",
+  music_assistant: "Music Assistant speakers",
+  emptyMusicAssistant: "No new Music Assistant players found. Set up the Music Assistant integration in Home Assistant first.",
+  emptyAlexa: "No new Alexa speakers found. Set up the Alexa Devices integration in Home Assistant first.",
   emptySonos: "No new Sonos speakers found. Set up the Sonos integration in Home Assistant first.",
   add: "Add speaker",
   description: "Choose Alexa speakers shown in the card.",
@@ -130,7 +133,9 @@ Object.assign(HC_WORDS.en, {
   yes: "Yes, add speaker",
   no: "No, try again",
   testing: "Playing test …",
+  add: "Add",
   remove: "Remove",
+  removeHint: "Remove speaker from your list",
   shown: "Show in the card",
   resume: "Resume music after announcements",
   resumeHint:
@@ -145,7 +150,7 @@ Object.assign(HC_WORDS.en, {
     "The speaker has not downloaded the sound, or the test expired. Play the test again.",
   speaker_unavailable: "This speaker is offline. Turn it on and try again.",
   test_busy: "Another announcement is being sent. Try again shortly.",
-  localAddress: "Local address for DLNA / Sonos (optional)",
+  localAddress: "Local address for DLNA / Sonos / Music Assistant (optional)",
   localHint: "Leave blank to use Home Assistant’s local address automatically.",
   invalid_local_url: "Enter a valid HTTP or HTTPS address without a path.",
 });
@@ -153,6 +158,9 @@ Object.assign(HC_WORDS.de, {
   devices: "Alexa-Lautsprecher",
   dlna: "DLNA-Lautsprecher",
   sonos: "Sonos-Lautsprecher",
+  music_assistant: "Music Assistant-Lautsprecher",
+  emptyMusicAssistant: "Keine neuen Music Assistant-Player gefunden. Zuerst Music Assistant in Home Assistant einrichten.",
+  emptyAlexa: "Keine neuen Alexa-Lautsprecher gefunden. Zuerst Alexa Devices in Home Assistant einrichten.",
   emptySonos: "Keine neuen Sonos-Lautsprecher gefunden. Zuerst Sonos in Home Assistant einrichten.",
   add: "Lautsprecher hinzufügen",
   description: "Alexa-Lautsprecher auswählen, die in der Karte erscheinen.",
@@ -168,7 +176,9 @@ Object.assign(HC_WORDS.de, {
   yes: "Ja, hinzufügen",
   no: "Nein, erneut versuchen",
   testing: "Testton wird abgespielt …",
+  add: "Hinzufügen",
   remove: "Entfernen",
+  removeHint: "Lautsprecher aus deiner Liste entfernen",
   shown: "In der Karte anzeigen",
   resume: "Musik nach Durchsagen fortsetzen",
   resumeHint:
@@ -184,7 +194,7 @@ Object.assign(HC_WORDS.de, {
   speaker_unavailable:
     "Dieser Lautsprecher ist offline. Einschalten und erneut versuchen.",
   test_busy: "Eine Durchsage wird gesendet. Gleich erneut versuchen.",
-  localAddress: "Lokale Adresse für DLNA / Sonos (optional)",
+  localAddress: "Lokale Adresse für DLNA / Sonos / Music Assistant (optional)",
   localHint:
     "Leer lassen, um die lokale Home-Assistant-Adresse automatisch zu verwenden.",
   invalid_local_url: "Gültige HTTP- oder HTTPS-Adresse ohne Pfad eingeben.",
@@ -204,6 +214,7 @@ Object.assign(HC_WORDS.en, {
   speakerDescription: "Choose speakers shown in the HomeCall card.",
   selectAll: "Select all",
   test: "Test",
+  testHint: "Play a short sound to check this speaker.",
   saveChanges: "Save changes",
   availableSpeakers: "Available speakers",
   noAdded: "No speakers added yet",
@@ -218,6 +229,7 @@ Object.assign(HC_WORDS.de, {
   speakerDescription: "Lautsprecher auswählen, die in der HomeCall-Karte erscheinen.",
   selectAll: "Alle auswählen",
   test: "Testen",
+  testHint: "Einen kurzen Ton abspielen, um diesen Lautsprecher zu prüfen.",
   saveChanges: "Änderungen speichern",
   availableSpeakers: "Verfügbare Lautsprecher",
   allAdded: "Alle erkannten Lautsprecher wurden hinzugefügt.",
@@ -299,12 +311,15 @@ class HomeCallSettings extends HTMLElement {
       ...this._data,
       default_targets: [...this._data.default_targets],
       resume_dlna: [...(this._data.resume_dlna || [])],
+      tested_dlna: [...this._data.tested_dlna],
+      added_speakers: [...(this._data.added_speakers ?? this._data.default_targets)],
     };
     if (page === "devices" && this._draft.use_all) {
       this._draft.default_targets = [...new Set([
         ...this._draft.default_targets,
-        ...this._data.targets.filter(t => !["dlna", "sonos"].includes(t.transport)).map(t => t.entity_id),
+        ...this._data.targets.filter(t => !["dlna", "sonos", "music_assistant"].includes(t.transport)).map(t => t.entity_id),
       ])];
+      this._draft.added_speakers = [...new Set([...this._draft.added_speakers, ...this._draft.default_targets.filter(id => !this._data.tested_dlna.includes(id))])];
       this._draft.use_all = false;
     }
     this._expandedSpeakers.clear();
@@ -344,7 +359,8 @@ class HomeCallSettings extends HTMLElement {
               page: "devices",
               use_all: this._draft.use_all,
               default_targets: this._draft.default_targets,
-              ...(this._isLocalSpeakerPage() ? {resume_dlna: this._draft.resume_dlna} : {}),
+              added_speakers: this._draft.added_speakers,
+              ...(this._isLocalSpeakerPage() ? {resume_dlna: this._draft.resume_dlna, removed_dlna: this._data.tested_dlna.filter(id => !this._draft.tested_dlna.includes(id))} : {}),
             };
       this._data = await this._hass.callApi(
         "POST",
@@ -373,8 +389,9 @@ class HomeCallSettings extends HTMLElement {
         receipt,
         enabled,
       });
-      if (action === "test")
-        this._test = { entity_id, receipt: result.receipt };
+      if (action === "test") {
+        this._test = this._page === "dlna" && !this._data.tested_dlna.includes(entity_id) ? { entity_id, receipt: result.receipt } : null;
+      }
       else {
         this._mergeSpeakerData(result);
         this._test = null;
@@ -390,14 +407,17 @@ class HomeCallSettings extends HTMLElement {
   _mergeSpeakerData(result) {
     const draft = this._draft;
     const previouslyTested = new Set(this._data?.tested_dlna || []);
-    const tested = new Set(result.tested_dlna || []);
-    // Test/confirm/remove update registration immediately. Retain unsaved
-    // visibility and resume edits for every other speaker.
+    const removed = new Set(draft ? [...previouslyTested].filter(id => !draft.tested_dlna.includes(id)) : []);
+    const registered = (result.tested_dlna || []).filter(id => !removed.has(id));
+    const tested = new Set(registered);
+    // Keep pending removal, visibility, and resume edits across refresh and tests.
     this._draft = {
       ...result,
+      tested_dlna: registered,
+      added_speakers: [...(draft?.added_speakers ?? result.added_speakers ?? result.default_targets)],
       use_all: draft?.use_all ?? result.use_all,
       default_targets: draft ? [
-        ...draft.default_targets.filter(id => !id.startsWith("media_player.") || tested.has(id)),
+        ...draft.default_targets.filter(id => !id.startsWith("media_player.") || tested.has(id) || (result.dlna_candidates || []).some(t => t.entity_id === id && ["sonos", "music_assistant"].includes(t.transport))),
         ...(result.tested_dlna || []).filter(id => !previouslyTested.has(id) && result.default_targets.includes(id)),
       ] : [...result.default_targets],
       resume_dlna: [...(draft?.resume_dlna || result.resume_dlna || [])].filter(id => tested.has(id)),
@@ -405,15 +425,19 @@ class HomeCallSettings extends HTMLElement {
     this._data = result;
   }
   _isLocalSpeakerPage() {
-    return ["dlna", "sonos"].includes(this._page);
+    return ["dlna", "sonos", "music_assistant"].includes(this._page);
   }
   _localCandidates(values, platform = this._page) {
     return (values.dlna_candidates || []).filter(t => (t.transport || "dlna") === platform);
   }
+  _speakerCandidates(values) {
+    return this._page === "devices"
+      ? values.targets.filter(t => !["dlna", "sonos", "music_assistant"].includes(t.transport))
+      : this._localCandidates(values);
+  }
   _speakerList(values) {
-    if (this._page === "devices")
-      return values.targets.filter(t => !["dlna", "sonos"].includes(t.transport));
-    const candidates = this._localCandidates(values);
+    const candidates = this._speakerCandidates(values);
+    if (this._page !== "dlna") return candidates.filter(t => (values.added_speakers ?? values.default_targets).includes(t.entity_id));
     return values.tested_dlna.map(id =>
       candidates.find(t => t.entity_id === id) ||
       (!(values.dlna_candidates || []).some(t => t.entity_id === id) && this._page === "dlna"
@@ -467,10 +491,11 @@ class HomeCallSettings extends HTMLElement {
     }
   }
   _bindLocalSpeakers(values) {
-    this.shadowRoot.querySelector(".refresh-speakers").onclick = event => { event.stopPropagation(); this._load(); };
+    const refresh = this.shadowRoot.querySelector(".refresh-speakers");
+    if (refresh) refresh.onclick = event => { event.stopPropagation(); this._load(); };
     const available = this.shadowRoot.querySelector("[data-available-panel]");
-    available.expanded = !!this._chosenDlna || (this._availableExpanded ?? !this._speakerList(values).length);
-    available.addEventListener("expanded-changed", event => {
+    if (available) available.expanded = !!this._chosenDlna || (this._availableExpanded ?? !this._speakerList(values).length);
+    available?.addEventListener("expanded-changed", event => {
       if (event.target === available) this._availableExpanded = event.detail.expanded;
     });
     for (const button of this.shadowRoot.querySelectorAll("[data-test]"))
@@ -479,8 +504,20 @@ class HomeCallSettings extends HTMLElement {
     if (yes) yes.onclick = () => this._speakerAction("confirm", this._test.entity_id, this._test.receipt);
     const no = this.shadowRoot.querySelector(".retry-test");
     if (no) no.onclick = () => { this._test = null; this._chosenDlna = ""; this._error = ""; this._render(); };
+    for (const button of this.shadowRoot.querySelectorAll("[data-add]"))
+      button.onclick = () => {
+        const id = button.dataset.add;
+        this._draft.added_speakers = [...new Set([...this._draft.added_speakers, id])];
+        this._draft.default_targets = [...new Set([...this._draft.default_targets, id])];
+        this._render();
+      };
     for (const button of this.shadowRoot.querySelectorAll("[data-remove]"))
-      button.onclick = () => this._speakerAction("remove", button.dataset.remove);
+      button.onclick = () => {
+        const id = button.dataset.remove;
+        for (const key of ["tested_dlna", "default_targets", "resume_dlna", "added_speakers"])
+          this._draft[key] = this._draft[key].filter(value => value !== id);
+        this._render();
+      };
   }
   _renderSpeakers(values, disabled) {
     const speakers = this._speakerList(values);
@@ -488,23 +525,22 @@ class HomeCallSettings extends HTMLElement {
     const all = `<ha-list-base><ha-list-item-base><ha-checkbox slot="start" data-select-all aria-label="${this._t("selectAll")}"></ha-checkbox><div slot="headline">${this._t("selectAll")}</div></ha-list-item-base></ha-list-base>`;
     const rows = speakers.map(t => {
       const id = hcEscape(t.entity_id);
-      const checkbox = `<ha-checkbox ${this._isLocalSpeakerPage() ? 'slot="leading-icon"' : 'slot="start"'} data-visible="${id}" aria-label="${hcEscape(t.name)}"></ha-checkbox>`;
-      if (this._page === "devices")
-        return `<ha-list-item-base>${checkbox}<div slot="headline">${hcEscape(t.name)}</div>${t.available ? "" : `<div slot="supporting-text">${this._t("offline")}</div>`}</ha-list-item-base>`;
-      return `<ha-expansion-panel data-speaker-panel="${id}" >${checkbox}<div slot="header" class="speaker-label">${hcEscape(t.name)}<div class="speaker-status">${this._t(t.available ? "online" : "offline")}</div></div>${t.transport === "sonos" ? "" : `<div class="speaker-options"><ha-checkbox data-resume="${id}">${this._t("resume")}<span slot="hint">${this._t("resumeHint")}</span></ha-checkbox></div>`}<div class="section-actions"><ha-button appearance="plain" variant="brand" data-remove="${id}" ${disabled}>${this._t("remove")}</ha-button></div></ha-expansion-panel>`;
+      const checkbox = `<ha-checkbox slot="leading-icon" data-visible="${id}" aria-label="${hcEscape(t.name)}"></ha-checkbox>`;
+      return `<ha-expansion-panel data-speaker-panel="${id}" >${checkbox}<div slot="header" class="speaker-label">${hcEscape(t.name)}<div class="speaker-status">${this._t(t.available ? "online" : "offline")}</div></div>${this._page !== "dlna" ? "" : `<div class="speaker-options speaker-control-row"><div class="speaker-control-copy"><label class="speaker-control-label" for="resume-${id}">${this._t("resume")}</label></div><ha-checkbox id="resume-${id}" data-resume="${id}" aria-label="${hcEscape(this._t("resume"))}"></ha-checkbox></div>`}<div class="section-actions"><p class="sound-test-description">${this._t("testHint")}</p><ha-button appearance="plain" variant="brand" data-test="${id}" ${!t.available || this._busy || this._test ? "disabled" : ""}>${this._t(this._chosenDlna === t.entity_id && this._busy ? "testing" : "test")}</ha-button></div>${`<div class="section-actions remove-actions"><p class="sound-test-description">${this._t("removeHint")}</p><ha-button appearance="plain" variant="brand" data-remove="${id}" ${disabled}>${this._t("remove")}</ha-button></div>`}</ha-expansion-panel>`;
     }).join("");
     let body = `<ha-card class="speaker-section">${heading}${all}<ha-list-base>${rows || `<ha-list-item-base><div slot="headline">${this._t("noAdded")}</div><div slot="supporting-text">${this._t("noAddedHint")}</div></ha-list-item-base>`}</ha-list-base></ha-card>`;
-    if (this._isLocalSpeakerPage()) {
-      const choices = this._localCandidates(values).filter(t => !values.tested_dlna.includes(t.entity_id));
+    {
+      const added = new Set(speakers.map(t => t.entity_id));
+      const choices = this._speakerCandidates(values).filter(t => !added.has(t.entity_id));
       const availableRows = choices.map(t => {
         const chosen = this._chosenDlna === t.entity_id;
-        const confirmation = chosen && this._test ? `<div class="confirmation"><ha-alert alert-type="info">${this._t("heard")}</ha-alert><div class="confirmation-actions"><ha-button class="retry-test" appearance="plain" variant="brand" ${disabled}>${this._t("no")}</ha-button><ha-button class="confirm-test" appearance="accent" variant="brand" ${disabled}>${this._t("yes")}</ha-button></div></div>` : "";
+        const confirmation = this._page === "dlna" && chosen && this._test ? `<div class="confirmation"><ha-alert alert-type="info">${this._t("heard")}</ha-alert><div class="confirmation-actions"><ha-button class="retry-test" appearance="plain" variant="brand" ${disabled}>${this._t("no")}</ha-button><ha-button class="confirm-test" appearance="accent" variant="brand" ${disabled}>${this._t("yes")}</ha-button></div></div>` : "";
         const progress = chosen && this._busy ? `<div class="test-content"><ha-alert alert-type="info" role="status">${this._t("testing")}</ha-alert></div>` : "";
-        return `<ha-list-item-base><div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${this._t(t.available ? "online" : "offline")}</div><ha-button slot="end" class="test-sound" data-test="${hcEscape(t.entity_id)}" appearance="plain" variant="brand" ${!t.available || this._busy || this._test ? "disabled" : ""}>${this._t(chosen && this._busy ? "testing" : "test")}</ha-button></ha-list-item-base>${progress}${confirmation}${chosen && this._error ? `<div class="test-content"><ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert></div>` : ""}`;
+        return `<ha-list-item-base><div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${this._t(t.available ? "online" : "offline")}</div><ha-button slot="end" class="test-sound" data-${this._page === "dlna" ? "test" : "add"}="${hcEscape(t.entity_id)}" appearance="plain" variant="brand" ${(this._page === "dlna" && !t.available) || this._busy || this._test ? "disabled" : ""}>${this._t(this._page === "dlna" ? chosen && this._busy ? "testing" : "test" : "add")}</ha-button></ha-list-item-base>${progress}${confirmation}${chosen && this._error ? `<div class="test-content"><ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert></div>` : ""}`;
       }).join("");
-      body += `<ha-card><ha-expansion-panel data-available-panel><span slot="header" class="discovery-label">${this._t("availableSpeakers")}</span><div class="section-actions"><ha-button class="refresh-speakers" appearance="plain" variant="brand" ${disabled}>${this._t("refresh")}</ha-button></div><ha-list-base>${availableRows}</ha-list-base>${!choices.length ? `<div class="test-content"><ha-alert alert-type="info">${this._t(this._localCandidates(values).length ? "allAdded" : this._page === "sonos" ? "emptySonos" : "emptyDlna")}</ha-alert></div>` : choices.every(t => !t.available) ? `<div class="test-content"><ha-alert alert-type="info">${this._t("offlineDlna")}</ha-alert></div>` : ""}</ha-expansion-panel></ha-card>`;
+      body += `<ha-card><ha-expansion-panel data-available-panel><span slot="header" class="discovery-label">${this._t("availableSpeakers")}</span><div class="section-actions"><ha-button class="refresh-speakers" appearance="plain" variant="brand" ${disabled}>${this._t("refresh")}</ha-button></div><ha-list-base>${availableRows}</ha-list-base>${!choices.length ? `<div class="test-content"><ha-alert alert-type="info">${this._t(this._speakerCandidates(values).length ? "allAdded" : this._page === "devices" ? "emptyAlexa" : this._page === "sonos" ? "emptySonos" : this._page === "music_assistant" ? "emptyMusicAssistant" : "emptyDlna")}</ha-alert></div>` : this._page === "dlna" && choices.every(t => !t.available) ? `<div class="test-content"><ha-alert alert-type="info">${this._t("offlineDlna")}</ha-alert></div>` : ""}</ha-expansion-panel></ha-card>`;
     }
-    if (this._error && !this._chosenDlna) body += `<ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert>`;
+    if (this._error && (this._page !== "dlna" || !this._chosenDlna)) body += `<ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert>`;
     return body + `<footer class="footer"><ha-button class="save" appearance="accent" variant="brand" ${this._busy || this._test ? "disabled" : ""}>${this._t(this._busy ? "saving" : "saveChanges")}</ha-button></footer>`;
   }
   _render() {
@@ -517,21 +553,21 @@ class HomeCallSettings extends HTMLElement {
       body = `<p role="status">${hcEscape(this._error || this._t("loading"))}</p>`;
     } else if (home) {
       const total =
-        values.targets.filter((t) => !["dlna", "sonos"].includes(t.transport)).length +
+        values.targets.filter((t) => !["dlna", "sonos", "music_assistant"].includes(t.transport)).length +
         values.dlna_candidates.length;
       const count = values.targets.filter(
         (t) =>
-          !["dlna", "sonos"].includes(t.transport) &&
+          !["dlna", "sonos", "music_assistant"].includes(t.transport) &&
           values.default_targets.includes(t.entity_id),
       ).length;
-      body = `<ha-card><ha-list-base><ha-list-item-base><ha-icon slot="start" icon="mdi:check-circle-outline"></ha-icon><div slot="headline">${this._t("ready")}</div><div slot="supporting-text">${total} ${this._t("found")}</div></ha-list-item-base></ha-list-base></ha-card><ha-card class="settings-navigation"><ha-list-base><ha-list-item-button data-page="connection"><ha-icon slot="start" icon="mdi:lan-connect"></ha-icon><div slot="headline">${this._t("connection")}</div><div slot="supporting-text">${this._t(values.use_system_url ? "systemAddress" : "ownAddress")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button><ha-list-item-button data-page="devices"><ha-icon slot="start" icon="mdi:speaker-multiple"></ha-icon><div slot="headline">${this._t("devices")}</div><div slot="supporting-text">${values.use_all ? this._t("allAllowed") : count === 1 ? (this._lang === "de" ? "1 Lautsprecher in der Karte" : "1 speaker shown in the card") : count + " " + this._t("allowed")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button>${["dlna", "sonos"].map(platform => `<ha-list-item-button data-page="${platform}"><ha-icon slot="start" icon="mdi:speaker-multiple"></ha-icon><div slot="headline">${this._t(platform)}</div><div slot="supporting-text">${this._localCandidates(values, platform).filter(t => values.tested_dlna.includes(t.entity_id) && values.default_targets.includes(t.entity_id)).length} ${this._t("allowed")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button>`).join("")}</ha-list-base></ha-card>`;
+      body = `<ha-card><ha-list-base><ha-list-item-base><ha-icon slot="start" icon="mdi:check-circle-outline"></ha-icon><div slot="headline">${this._t("ready")}</div><div slot="supporting-text">${total} ${this._t("found")}</div></ha-list-item-base></ha-list-base></ha-card><ha-card class="settings-navigation"><ha-list-base><ha-list-item-button data-page="connection"><ha-icon slot="start" icon="mdi:lan-connect"></ha-icon><div slot="headline">${this._t("connection")}</div><div slot="supporting-text">${this._t(values.use_system_url ? "systemAddress" : "ownAddress")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button><ha-list-item-button data-page="devices"><ha-icon slot="start" icon="mdi:speaker-multiple"></ha-icon><div slot="headline">${this._t("devices")}</div><div slot="supporting-text">${values.use_all ? this._t("allAllowed") : count === 1 ? (this._lang === "de" ? "1 Lautsprecher in der Karte" : "1 speaker shown in the card") : count + " " + this._t("allowed")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button>${["dlna", "sonos", "music_assistant"].map(platform => `<ha-list-item-button data-page="${platform}"><ha-icon slot="start" icon="mdi:speaker-multiple"></ha-icon><div slot="headline">${this._t(platform)}</div><div slot="supporting-text">${this._localCandidates(values, platform).filter(t => (platform === "dlna" ? values.tested_dlna : values.added_speakers ?? values.default_targets).includes(t.entity_id) && values.default_targets.includes(t.entity_id)).length} ${this._t("allowed")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button>`).join("")}</ha-list-base></ha-card>`;
     } else if (this._isLocalSpeakerPage() || this._page === "devices") {
       body = this._renderSpeakers(values, disabled);
     } else {
       body = "<ha-form></ha-form>";
     }
     this.shadowRoot.innerHTML = `<style>
-:host{display:block;height:100%;color:var(--primary-text-color);font-family:var(--primary-font-family)}.content{max-width:600px;margin:0 auto;padding:24px 16px calc(24px + var(--safe-area-inset-bottom,0px));display:grid;gap:16px}ha-card{overflow:hidden}.surface{padding:24px}ha-icon,ha-icon-next{color:var(--secondary-text-color)}ha-expansion-panel{color:var(--secondary-text-color)}[data-available-panel]{--expansion-panel-summary-padding:4px 16px;--expansion-panel-content-padding:0}.discovery-label{font-weight:var(--ha-font-weight-normal)}.speaker-label{margin-inline-start:8px;font-size:var(--ha-font-size-m);font-weight:var(--ha-font-weight-normal);line-height:var(--ha-line-height-normal)}.speaker-status{color:var(--secondary-text-color);font-size:var(--ha-font-size-s);font-weight:var(--ha-font-weight-normal)}.section-description{margin:0;padding:0 16px 8px;color:var(--secondary-text-color);font-size:var(--ha-font-size-m,14px);line-height:1.5}.section-actions{display:flex;justify-content:flex-end;padding:0 16px 12px}[data-available-panel]>.section-actions{padding:16px 16px 12px}.test-content{padding:0 16px 12px}.footer{display:flex;justify-content:flex-end;padding-inline:16px}.speaker-options{padding:8px 16px 4px 48px}.speaker-section>ha-list-base{padding:0 8px}.speaker-section ha-expansion-panel{--expansion-panel-content-padding:0;--expansion-panel-summary-padding:0 16px;margin:0}.error{display:block;margin-top:16px}.confirmation{padding:0 16px 12px}.confirmation-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;margin-top:8px}@media(max-width:500px){.content{padding-top:16px}.surface{padding:16px}}
+:host{display:block;height:100%;color:var(--primary-text-color);font-family:var(--primary-font-family)}.content{max-width:600px;margin:0 auto;padding:24px 16px calc(24px + var(--safe-area-inset-bottom,0px));display:grid;gap:16px}ha-card{overflow:hidden}.surface{padding:24px}ha-icon,ha-icon-next{color:var(--secondary-text-color)}ha-expansion-panel{color:var(--secondary-text-color)}[data-available-panel]{--expansion-panel-summary-padding:4px 16px;--expansion-panel-content-padding:0}.discovery-label{font-weight:var(--ha-font-weight-normal)}.speaker-label{margin-inline-start:8px;font-size:var(--ha-font-size-m);font-weight:var(--ha-font-weight-normal);line-height:var(--ha-line-height-normal)}.speaker-status{color:var(--secondary-text-color);font-size:var(--ha-font-size-s);font-weight:var(--ha-font-weight-normal)}.section-description,.speaker-control-label,.sound-test-description{font-size:var(--ha-font-size-m);font-weight:var(--ha-font-weight-normal);color:var(--secondary-text-color);line-height:1.5}.section-description{margin:0;padding:0 16px 8px;color:var(--secondary-text-color);font-size:var(--ha-font-size-m,14px);line-height:1.5}.section-actions{display:flex;justify-content:flex-end;padding:0 16px 12px}[data-available-panel]>.section-actions{padding:16px 16px 12px}.sound-test-description{flex:1;min-width:0;margin:0;padding:0;color:var(--secondary-text-color);font-size:var(--ha-font-size-m);line-height:1.5}.speaker-section .section-actions{align-items:center;padding:12px 16px 20px;gap:12px}.speaker-section .section-actions ha-button{flex-shrink:0}.speaker-section .remove-actions{padding-top:4px;border-top:1px solid var(--divider-color);margin:0 16px;padding-left:0;padding-right:0}.test-content{padding:0 16px 12px}.footer{display:flex;justify-content:flex-end;padding-inline:16px}.speaker-control-row{display:flex;align-items:center;gap:12px;padding:12px 16px}.speaker-control-copy{flex:1;min-width:0}.speaker-control-label{font-size:var(--ha-font-size-m);font-weight:var(--ha-font-weight-normal);color:var(--secondary-text-color);line-height:1.5}.speaker-control-hint{margin:4px 0 0;font-size:var(--ha-font-size-s);color:var(--secondary-text-color);line-height:1.5}.speaker-control-row ha-checkbox{flex-shrink:0}.speaker-section>ha-list-base{padding:0 8px}.speaker-section>ha-list-base:last-child{padding-bottom:8px}.speaker-section ha-expansion-panel{--expansion-panel-content-padding:0;--expansion-panel-summary-padding:0 16px;margin:0}.error{display:block;margin-top:16px}.confirmation{padding:0 16px 12px}.confirmation-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;margin-top:8px}@media(max-width:500px){.content{padding-top:16px}.surface{padding:16px}}
 </style><hass-subpage header="${home ? "HomeCall" : this._t(this._page)}" back-path="/config/integrations/integration/homecall"><ha-icon-button class="close" slot="toolbar-icon" label="${home ? this._t("close") : this._t("cancel")}" ${disabled}></ha-icon-button><main class="content">${home || this._isLocalSpeakerPage() || this._page === "devices" ? body : `<ha-card class="surface">${body}${this._error ? `<ha-alert class="error" alert-type="error">${hcEscape(this._error)}</ha-alert>` : ""}${this._isLocalSpeakerPage() ? "" : `<footer class="footer"><ha-button class="save" appearance="accent" variant="brand" ${disabled}>${this._busy ? this._t("saving") : this._t("save")}</ha-button></footer>`}</ha-card>`}</main></hass-subpage>`;
     const page = this.shadowRoot.querySelector("hass-subpage");
     page.hass = this._hass;
@@ -547,7 +583,7 @@ class HomeCallSettings extends HTMLElement {
       "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z";
     if (values && (this._isLocalSpeakerPage() || this._page === "devices")) {
       this._bindSpeakers(values);
-      if (this._isLocalSpeakerPage()) this._bindLocalSpeakers(values);
+      this._bindLocalSpeakers(values);
       return;
     }
     const form = this.shadowRoot.querySelector("ha-form");

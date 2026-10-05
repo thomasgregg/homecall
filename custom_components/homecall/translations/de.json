@@ -51,16 +51,22 @@
         "title": "Lautsprecher",
         "menu_options": {
           "alexa_setup": "Alexa-Lautsprecher",
-          "dlna_setup": "DLNA-Lautsprecher"
+          "dlna_setup": "DLNA-Lautsprecher",
+          "music_assistant_setup": "Music Assistant"
         },
         "menu_option_descriptions": {
           "alexa_setup": "Alexa einrichten. DLNA kann später hinzugefügt werden.",
-          "dlna_setup": "Mit DLNA starten. Lautsprecher anschließend in HomeCall testen."
+          "dlna_setup": "Mit DLNA starten. Lautsprecher anschließend in HomeCall testen.",
+          "music_assistant_setup": "Music Assistant-Player in den HomeCall-Einstellungen hinzufügen."
         }
       },
       "dlna_setup": {
         "title": "DLNA-Lautsprecher",
         "description": "Nach dem Abschluss HomeCall konfigurieren öffnen. Unter DLNA-Lautsprecher einen Lautsprecher auswählen, Testton abspielen und bestätigen. Alexa kann später ergänzt werden."
+      },
+      "music_assistant_setup": {
+        "title": "Music Assistant",
+        "description": "Zuerst die Music Assistant-Integration einrichten. Danach Player in den HomeCall-Einstellungen hinzufügen. Music Assistant übernimmt die Fortsetzung der Musik."
       }
     },
     "error": {

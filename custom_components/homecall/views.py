@@ -103,6 +103,25 @@ class SettingsView(HomeCallView):
                 raise web.HTTPBadRequest()
             if not set(selected).issubset(ids):
                 return self.json({"error": "select_echo"}, status_code=400)
+            if "added_speakers" in payload:
+                added = payload["added_speakers"]
+                if (
+                    not isinstance(added, list)
+                    or not all(isinstance(x, str) for x in added)
+                    or not set(added).issubset(ids)
+                ):
+                    raise web.HTTPBadRequest()
+                values["added_speakers"] = list(dict.fromkeys(added))
+            removed_dlna = payload.get("removed_dlna", [])
+            if (
+                not isinstance(removed_dlna, list)
+                or not all(isinstance(x, str) for x in removed_dlna)
+                or not set(removed_dlna).issubset(values["tested_dlna"])
+                or set(removed_dlna).intersection(selected)
+            ):
+                raise web.HTTPBadRequest()
+            values["tested_dlna"] = [x for x in values["tested_dlna"] if x not in removed_dlna]
+            values["resume_dlna"] = [x for x in values["resume_dlna"] if x not in removed_dlna]
             values["use_all"] = use_all
             # Keep the custom selection while switching to all-device mode.
             values["default_targets"] = list(dict.fromkeys(selected))
@@ -114,7 +133,7 @@ class SettingsView(HomeCallView):
                     or not set(resume).issubset(values["tested_dlna"])
                 ):
                     raise web.HTTPBadRequest()
-                removed = set(values["resume_dlna"]) - set(resume)
+                removed = (set(values["resume_dlna"]) - set(resume)) | set(removed_dlna)
                 values["resume_dlna"] = list(dict.fromkeys(resume))
                 if manager := self.hass.data[DOMAIN].get("resume_manager"):
                     for entity_id in removed:
@@ -250,6 +269,7 @@ async def deliver(hass, entry, entity_id, token, context=None, duration=3):
         candidate = next((t for t in dlna_candidates(hass) if t["entity_id"] == entity_id), None)
         dlna = candidate is not None
         sonos = bool(candidate and candidate.get("transport") == "sonos")
+        music_assistant = bool(candidate and candidate.get("transport") == "music_assistant")
         base = local_url(hass, entry) if dlna else settings(entry, hass)["public_url"]
         if not base:
             raise ValueError("No audio address")
@@ -260,11 +280,14 @@ async def deliver(hass, entry, entity_id, token, context=None, duration=3):
             if dlna
             else {"message": "<audio src=" + quoteattr(url) + "/>"}
         )
-        if sonos:
+        if music_assistant:
+            domain, service = "music_assistant", "play_announcement"
+            data = {"url": url, "use_pre_announce": False}
+        elif sonos:
             data["announce"] = True
         manager = hass.data[DOMAIN].get("resume_manager")
         if dlna and manager:
-            if not sonos and entity_id in settings(entry)["resume_dlna"]:
+            if not sonos and not music_assistant and entity_id in settings(entry)["resume_dlna"]:
                 manager.prepare(entity_id, url, duration, context)
             else:
                 manager.cancel(entity_id)
@@ -320,10 +343,18 @@ class SpeakerTestView(SettingsView):
             self.hass.config_entries.async_update_entry(entry, options={**entry.options, **values})
             return await self.get(request)
         candidate = next(
-            (t for t in dlna_candidates(self.hass) if t["entity_id"] == entity_id), None
+            (
+                t
+                for t in [*dlna_candidates(self.hass), *targets(self.hass)]
+                if t["entity_id"] == entity_id
+            ),
+            None,
         )
         if not candidate or not candidate["available"]:
             return self.json({"error": "speaker_unavailable"}, status_code=400)
+        requires_confirmation = candidate.get("transport") == "dlna"
+        if action == "confirm" and not requires_confirmation:
+            raise web.HTTPBadRequest()
         if action == "confirm":
             receipt = payload.get("receipt")
             if not isinstance(receipt, str):
@@ -344,7 +375,10 @@ class SpeakerTestView(SettingsView):
             return await self.get(request)
         if action != "test":
             raise web.HTTPBadRequest()
-        if not local_url(self.hass, entry):
+        address = (
+            local_url(self.hass, entry) if candidate.get("transport") else values["public_url"]
+        )
+        if not address:
             return self.json({"error": "no_local_url"}, status_code=400)
         if store["lock"].locked():
             return self.json({"error": "test_busy"}, status_code=409)
@@ -365,4 +399,4 @@ class SpeakerTestView(SettingsView):
             if not result["accepted"]:
                 store["clips"].pop(token, None)
                 return self.json({"error": "test_failed"}, status_code=400)
-            return self.json({"receipt": token})
+            return self.json({"receipt": token, "requires_confirmation": requires_confirmation})

@@ -54,7 +54,9 @@ class HomeCallConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "use_all": True,
                 "default_targets": [],
             }
-        return self.async_show_menu(step_id="user", menu_options=["alexa_setup", "dlna_setup"])
+        return self.async_show_menu(
+            step_id="user", menu_options=["alexa_setup", "dlna_setup", "music_assistant_setup"]
+        )
 
     async def async_step_alexa_setup(self, user_input=None):
         return await self.async_step_connection()
@@ -65,6 +67,14 @@ class HomeCallConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self._create()
         return self.async_show_form(
             step_id="dlna_setup", data_schema=vol.Schema({}), last_step=True
+        )
+
+    async def async_step_music_assistant_setup(self, user_input=None):
+        self._values.update(public_url="", use_system_url=False, use_all=False)
+        if user_input is not None:
+            return await self._create()
+        return self.async_show_form(
+            step_id="music_assistant_setup", data_schema=vol.Schema({}), last_step=True
         )
 
     async def async_step_connection(self, user_input=None):
@@ -144,6 +154,14 @@ class HomeCallOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         self._values = settings(self.config_entry, self.hass)
         return self.async_show_menu(step_id="init", menu_options=["connection", "devices"])
+
+    async def async_step_music_assistant_setup(self, user_input=None):
+        self._values.update(public_url="", use_system_url=False, use_all=False)
+        if user_input is not None:
+            return await self._create()
+        return self.async_show_form(
+            step_id="music_assistant_setup", data_schema=vol.Schema({}), last_step=True
+        )
 
     async def async_step_connection(self, user_input=None):
         return self.async_show_menu(

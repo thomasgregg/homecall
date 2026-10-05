@@ -117,6 +117,8 @@ def test_platform_discovery_and_confirmation(hass, entry, monkeypatch):
         ("offline", "dlna_dmr", 0, False, "unavailable"),
         ("cast", "cast", 512, False, "idle"),
         ("sonos", "sonos", 512, False, "idle"),
+        ("ma", "music_assistant", 512, False, "idle"),
+        ("ma_disabled", "music_assistant", 512, True, "idle"),
         ("sonos_disabled", "sonos", 512, True, "idle"),
         ("sonos_unsupported", "sonos", 0, False, "idle"),
         ("unsupported", "dlna_dmr", 0, False, "idle"),
@@ -134,8 +136,14 @@ def test_platform_discovery_and_confirmation(hass, entry, monkeypatch):
         lambda h: SimpleNamespace(entities=entities),
     )
     hass.states = SimpleNamespace(get=states.get)
-    assert {t["name"] for t in dlna_candidates(hass)} == {"jbl", "other_brand", "offline", "sonos"}
-    assert targets(hass) == []
+    assert {t["name"] for t in dlna_candidates(hass)} == {
+        "jbl",
+        "other_brand",
+        "offline",
+        "sonos",
+        "ma",
+    }
+    assert [t["name"] for t in targets(hass)] == ["ma", "sonos"]
     entry.options = {
         "tested_dlna": ["media_player.other_brand"],
         "default_targets": ["media_player.other_brand"],
@@ -208,7 +216,7 @@ def test_local_address_prefers_existing_http_ip_listener(hass, entry):
     assert local_url(hass, entry) == "http://192.168.1.5:8123"
 
 
-@pytest.mark.parametrize("transport", ["dlna", "sonos"])
+@pytest.mark.parametrize("transport", ["dlna", "sonos", "music_assistant"])
 async def test_local_announcement_route(hass, entry, dlna, transport):
     from unittest.mock import Mock
 
@@ -220,6 +228,19 @@ async def test_local_announcement_route(hass, entry, dlna, transport):
     entry.options = {"resume_dlna": [dlna["entity_id"]]}
     assert (await deliver(hass, entry, dlna["entity_id"], "clip"))["accepted"]
     data = hass.services.async_call.call_args.args[2]
+    if transport == "music_assistant":
+        assert hass.services.async_call.call_args.args[:2] == (
+            "music_assistant",
+            "play_announcement",
+        )
+        assert data == {
+            "entity_id": dlna["entity_id"],
+            "url": "http://192.168.1.2:8123/api/homecall/audio/clip.mp3",
+            "use_pre_announce": False,
+        }
+        manager.prepare.assert_not_called()
+        manager.cancel.assert_called_once_with(dlna["entity_id"])
+        return
     assert data["media_content_id"] == "http://192.168.1.2:8123/api/homecall/audio/clip.mp3"
     if transport == "sonos":
         assert data["announce"] is True
@@ -230,19 +251,32 @@ async def test_local_announcement_route(hass, entry, dlna, transport):
         manager.prepare.assert_called_once()
 
 
-async def test_sonos_onboarding_uses_announcement(hass, http_request, dlna):
-    dlna["transport"] = "sonos"
-    await test_download_and_confirmation_required(hass, http_request, dlna)
-    assert hass.services.async_call.call_args.args[2]["announce"] is True
+@pytest.mark.parametrize("transport", ["sonos", "music_assistant"])
+async def test_sonos_onboarding_uses_announcement(hass, http_request, dlna, transport):
+    dlna["transport"] = transport
+    response = await SpeakerTestView(hass).post(
+        http_request({"action": "test", "entity_id": dlna["entity_id"]})
+    )
+    assert response.status == 200
+    assert json.loads(response.body)["requires_confirmation"] is False
+    hass.config_entries.async_update_entry.assert_not_called()
+    if transport == "sonos":
+        assert hass.services.async_call.call_args.args[2]["announce"] is True
+    else:
+        assert hass.services.async_call.call_args.args[:2] == (
+            "music_assistant",
+            "play_announcement",
+        )
 
 
-def test_sonos_requires_confirmation_and_explicit_visibility(hass, entry, monkeypatch):
+@pytest.mark.parametrize("platform", ["sonos", "music_assistant"])
+def test_sonos_requires_confirmation_and_explicit_visibility(hass, entry, monkeypatch, platform):
     from types import SimpleNamespace
 
     from custom_components.homecall.helpers import allowed_targets
 
     entity = SimpleNamespace(
-        entity_id="media_player.sonos", domain="media_player", platform="sonos", disabled_by=None
+        entity_id="media_player.sonos", domain="media_player", platform=platform, disabled_by=None
     )
     monkeypatch.setattr(
         "custom_components.homecall.helpers.er.async_get",
@@ -257,4 +291,28 @@ def test_sonos_requires_confirmation_and_explicit_visibility(hass, entry, monkey
     entry.options = {"tested_dlna": [entity.entity_id]}
     assert allowed_targets(hass, entry) == []
     entry.options["default_targets"] = [entity.entity_id]
-    assert allowed_targets(hass, entry)[0]["transport"] == "sonos"
+    assert allowed_targets(hass, entry)[0]["transport"] == platform
+
+
+async def test_alexa_optional_sound_test(hass, http_request, devices, monkeypatch):
+    monkeypatch.setattr("custom_components.homecall.views.test_audio", lambda: b"mp3")
+    monkeypatch.setattr(SpeakerTestView, "context", lambda self, r: None)
+    response = await SpeakerTestView(hass).post(
+        http_request({"action": "test", "entity_id": "notify.kitchen_speak"})
+    )
+    assert response.status == 200
+    assert json.loads(response.body)["requires_confirmation"] is False
+    call = hass.services.async_call.call_args
+    assert call.args[:2] == ("notify", "send_message")
+    assert "https://ha.example.com/api/homecall/audio/" in call.args[2]["message"]
+    hass.config_entries.async_update_entry.assert_not_called()
+
+
+async def test_music_assistant_failure_does_not_fall_back(hass, entry, dlna):
+    from custom_components.homecall.views import deliver
+
+    dlna["transport"] = "music_assistant"
+    hass.services.async_call.side_effect = RuntimeError("MA unavailable")
+    assert not (await deliver(hass, entry, dlna["entity_id"], "clip"))["accepted"]
+    hass.services.async_call.assert_awaited_once()
+    assert hass.services.async_call.call_args.args[:2] == ("music_assistant", "play_announcement")

@@ -208,3 +208,40 @@ async def test_alexa_save_preserves_existing_resume_settings(hass, entry, http_r
     )
     assert response.status == 200
     assert json.loads(response.body)["resume_dlna"] == ["media_player.jbl"]
+
+
+async def test_removal_persists_with_page_save(hass, entry, http_request, devices):
+    entry.options = {"tested_dlna": ["media_player.jbl"], "resume_dlna": ["media_player.jbl"]}
+    response = await SettingsView(hass).post(
+        http_request(
+            {
+                "page": "devices",
+                "use_all": False,
+                "default_targets": [],
+                "resume_dlna": [],
+                "removed_dlna": ["media_player.jbl"],
+            }
+        )
+    )
+    assert response.status == 200
+    assert json.loads(response.body)["tested_dlna"] == []
+    assert json.loads(response.body)["resume_dlna"] == []
+    hass.config_entries.async_update_entry.assert_called_once()
+
+
+async def test_added_speakers_can_be_saved_without_selecting_them(
+    hass, entry, http_request, devices
+):
+    response = await SettingsView(hass).post(
+        http_request(
+            {
+                "page": "devices",
+                "use_all": False,
+                "default_targets": [],
+                "added_speakers": [devices[0]["entity_id"]],
+            }
+        )
+    )
+    assert response.status == 200
+    assert json.loads(response.body)["added_speakers"] == [devices[0]["entity_id"]]
+    assert json.loads(response.body)["default_targets"] == []

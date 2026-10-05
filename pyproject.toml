@@ -1,7 +1,7 @@
 [project]
 name = "homecall"
-version = "1.3.0"
-description = "Original-voice announcements through Home Assistant, Alexa, compatible DLNA speakers and Sonos"
+version = "1.4.0"
+description = "Original-voice announcements through Home Assistant, Alexa, compatible DLNA speakers, Sonos and Music Assistant"
 requires-python = ">=3.14"
 
 [tool.pytest.ini_options]

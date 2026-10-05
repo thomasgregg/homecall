@@ -1,1 +1,1 @@
-Sonos support and separate speaker settings
+Music Assistant announcements and JBL playback verification

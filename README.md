@@ -10,9 +10,9 @@
 
 HomeCall turns microphone recordings into short speaker announcements. It handles authenticated uploads, audio conversion, speakers shown in the card, and temporary delivery links. The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card) provides the recording interface.
 
-**HomeCall supports Alexa/Echo, compatible DLNA speakers, and Sonos through Home Assistant’s Sonos integration.** Use Alexa through Home Assistant’s Alexa Devices integration, DLNA through DLNA Digital Media Renderer, and Sonos through the Sonos integration. You can combine these platforms.
+**HomeCall supports Alexa/Echo, compatible DLNA speakers, Music Assistant players, and Sonos through Home Assistant’s Sonos integration.** Use Alexa through Home Assistant’s Alexa Devices integration, DLNA through DLNA Digital Media Renderer, Sonos through the Sonos integration, and Music Assistant players through the Music Assistant integration. You can combine these platforms.
 
-DLNA speakers must pass a sound test before they can appear in the card. JBL Charge 5 Wi-Fi has been checked for basic MP3 playback; other renderers require their own test. Optional **Resume music after announcements** can restore the interrupted media item and seek where supported. It does not restore playlists, queues, or streaming-service sessions. See [DLNA configuration and limitations](docs/configuration.md#dlna--sonos-speakers).
+DLNA speakers must pass a sound test before they can appear in the card. JBL Charge 5 Wi-Fi has been checked for basic MP3 playback; other renderers require their own test. Optional **Resume music after announcements** can restore the interrupted media item and seek where supported. It does not restore playlists, queues, or streaming-service sessions. See [DLNA configuration and limitations](docs/configuration.md#dlna-speakers).
 
 Ideas and contributions for other speaker platforms are welcome. [Open an issue](https://github.com/thomasgregg/homecall/issues) to discuss support.
 
@@ -34,14 +34,15 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
 | --- | --- | --- |
 | Alexa / Echo | Tested — works | Recorded announcements through Home Assistant’s Alexa Devices integration. |
 | DLNA | Tested — basic playback works | JBL Charge 5 Wi-Fi: audible HomeCall-format MP3 playback confirmed. Other DLNA devices require their own sound test; music restoration is not hardware-verified. |
+| Music Assistant | Tested — announcement and music ducking | JBL Charge 5 Wi-Fi through Music Assistant 2.10.5 / AirPlay 2: HomeCall test chime was audible while music lowered, then returned to its previous volume. Full pause/resume and other player protocols are not hardware-verified. |
 | Sonos | Integrated — needs device testing | Discovery, onboarding and announcement service calls verified with simulated entities. Audible playback, music ducking and restoration still need a real Sonos speaker test. |
 
-These results apply to the tested setup, not every model or firmware version. DLNA and Sonos speakers must pass the in-app sound test before they appear in the card.
+These results apply to the tested setup, not every model or firmware version. DLNA speakers must pass the in-app sound test before appearing in the card. Alexa, Sonos and Music Assistant offer optional sound tests and list discovered speakers directly.
 
 ## Why HomeCall
 
 - **Original voice:** send recorded audio rather than synthesized speech.
-- **One room or many:** announce to selected Alexa and tested DLNA or Sonos speakers.
+- **One room or many:** announce to selected Alexa, DLNA, Sonos or Music Assistant speakers.
 - **Native setup:** configure the public address and speakers shown in the card through Home Assistant.
 - **Short-lived audio:** recordings are held in memory and delivery links expire after three minutes.
 - **Clear feedback:** distinguish request acceptance from audio retrieval.
@@ -65,7 +66,9 @@ You need Home Assistant **2026.9 or newer** and FFmpeg with MP3 encoding. For Al
 
 For DLNA, configure the built-in [DLNA Digital Media Renderer integration](https://www.home-assistant.io/integrations/dlna_dmr/) and ensure the speaker can reach HA’s local audio address. A public HTTPS address is not needed for DLNA delivery. The browser still needs HTTPS for microphone access.
 
-For Sonos, configure Home Assistant’s [Sonos integration](https://www.home-assistant.io/integrations/sonos/), then run the sound test under **DLNA speakers** or **Sonos speakers**. HomeCall uses `announce: true` and leaves music restoration to Sonos. Simulated discovery, onboarding, and delivery tests pass; physical Sonos playback has not yet been verified. Older hardware and S1 firmware may have announcement limitations.
+For Sonos, configure Home Assistant’s [Sonos integration](https://www.home-assistant.io/integrations/sonos/), then choose speakers under **Sonos speakers**. A sound test is available in each speaker row and is optional. HomeCall uses `announce: true` and leaves music restoration to Sonos. Simulated discovery, onboarding, and delivery tests pass; physical Sonos playback has not yet been verified. Older hardware and S1 firmware may have announcement limitations.
+
+For Music Assistant, install and start the [Music Assistant server](https://www.music-assistant.io/), connect your speakers, and configure its [Home Assistant integration](https://www.home-assistant.io/integrations/music_assistant/), then open **HomeCall → Configure → Music Assistant speakers**, add players, select visibility, and save. HomeCall sends recorded MP3s through `music_assistant.play_announcement`; Music Assistant handles playback restoration. Choose the MA entity rather than the underlying DLNA/Sonos entity when music is managed by MA. The JBL Charge 5 Wi-Fi / AirPlay 2 test confirmed audible chime playback, music ducking and volume restoration. Playback behavior depends on the player and protocol; see [Music Assistant configuration and tested scope](docs/configuration.md#music-assistant-announcements).
 
 HomeCall is a community project. It is not affiliated with Amazon or Home Assistant. Account, region, and Alexa service behavior can affect delivery; validate an announcement with your own devices before relying on it.
 
@@ -81,7 +84,7 @@ With HACS installed, click the button to open this custom repository in your Hom
 2. Add `https://github.com/thomasgregg/homecall` as an **Integration**.
 3. Download HomeCall and restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → HomeCall**.
-5. Choose **Alexa speakers** or **DLNA speakers** or **Sonos speakers**. For Alexa, configure the public HTTPS address and speaker selection. For DLNA, finish setup, then open **Configure → DLNA speakers / Sonos speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
+5. Choose **Alexa speakers**, **DLNA speakers**, **Sonos speakers** or **Music Assistant speakers**. For Alexa, configure the public HTTPS address and speaker selection. For DLNA, finish setup, then open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
 6. Install [HomeCall Card](https://github.com/thomasgregg/homecall-card) separately.
 
 ### Manual
@@ -107,8 +110,14 @@ flowchart TD
     Notify -->|Public HTTPS audio URL| Amazon[Amazon Alexa service]
     Route -->|Tested DLNA| Play[DLNA DMR: media_player.play_media]
     Play -->|Local audio URL| Speaker[DLNA renderer]
+    Route -->|Sonos| SonosService[Sonos: media_player.play_media announce]
+    SonosService -->|Local audio URL| SonosPlayer[Sonos native announcement]
+    Route -->|Music Assistant| MAService[music_assistant.play_announcement]
+    MAService -->|Local audio URL| MAPlayer[Music Assistant managed player]
     Amazon -->|Fetch MP3| Audio[Token-protected audio endpoint]
     Speaker -->|Fetch MP3| Audio
+    SonosPlayer -->|Fetch MP3| Audio
+    MAPlayer -->|Fetch MP3| Audio
     Store -.->|Clip bytes| Audio
     Audio -->|Increment clip fetch count| Receipt[Receipt status]
     Card -->|Authenticated receipt polling| Receipt
@@ -117,7 +126,7 @@ flowchart TD
     Resume -.->|Restore media after completion; seek if supported| Speaker
 ```
 
-Alexa and DLNA use different delivery addresses for the same in-memory clip and expiring token. DLNA playback stays on the local network; Alexa delivery uses Amazon’s service. The card is installed separately and communicates only with HomeCall’s authenticated API. Music restoration depends on renderer capabilities and playback-state events; it is not guaranteed by a successful sound test.
+Alexa uses the public HTTPS delivery address; DLNA, Sonos and Music Assistant use the local address for the same in-memory clip and expiring token. Sonos and Music Assistant manage their announcement playback and restoration; HomeCall offers its own optional restoration only for DLNA. The card is installed separately and communicates only with HomeCall’s authenticated API. Music restoration depends on renderer capabilities and playback-state events; it is not guaranteed by a successful sound test.
 
 ## Documentation
 
