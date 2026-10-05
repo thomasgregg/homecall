@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.0
+
+- Add direct EchoMuse speaker discovery through ESPHome, setup, optional sound tests, explicit card visibility and local recorded-message announcements with `announce: true`. Music Assistant is not required.
+- Keep offline EchoMuse speakers listed and require playback and announcement capabilities for online devices. Leave music interruption and continuation to EchoMuse.
+- Give Connection its own overview section, remove the redundant Ready/device-count section and keep speaker connectors grouped together.
+- Keep hardware-verification notes in documentation rather than settings and setup text.
+- Add English/German guidance and simulated backend and Chromium/WebKit coverage. EchoMuse audible playback and music continuation remain hardware-unverified.
+
 ## 1.5.0
 
 - Add direct Google Cast discovery, setup and a speaker section in the existing HomeCall settings page, with English/German text, optional sound tests and explicit card visibility.

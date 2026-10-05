@@ -285,6 +285,8 @@ async def deliver(hass, entry, entity_id, token, context=None, duration=3):
             data = {"url": url, "use_pre_announce": False}
         elif candidate and candidate.get("transport") == "cast":
             data["media_content_type"] = "audio/mpeg"
+        elif candidate and candidate.get("transport") == "echomuse":
+            data.update(media_content_type="audio/mpeg", announce=True)
         elif sonos:
             data["announce"] = True
         manager = hass.data[DOMAIN].get("resume_manager")

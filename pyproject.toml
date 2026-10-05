@@ -1,6 +1,6 @@
 [project]
 name = "homecall"
-version = "1.5.0"
+version = "1.6.0"
 description = "Original-voice announcements through Home Assistant, Alexa, compatible DLNA speakers, Sonos, Music Assistant and Google Cast"
 requires-python = ">=3.14"
 

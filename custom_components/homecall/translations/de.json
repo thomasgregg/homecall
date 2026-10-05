@@ -53,13 +53,15 @@
           "alexa_setup": "Alexa-Lautsprecher",
           "dlna_setup": "DLNA-Lautsprecher",
           "music_assistant_setup": "Music Assistant",
-          "cast_setup": "Google Cast-Lautsprecher"
+          "cast_setup": "Google Cast-Lautsprecher",
+          "echomuse_setup": "EchoMuse-Lautsprecher"
         },
         "menu_option_descriptions": {
           "alexa_setup": "Alexa einrichten. DLNA kann später hinzugefügt werden.",
           "dlna_setup": "Mit DLNA starten. Lautsprecher anschließend in HomeCall testen.",
           "music_assistant_setup": "Music Assistant-Player in den HomeCall-Einstellungen hinzufügen.",
-          "cast_setup": "Nest und andere Cast-Geräte in HomeCall hinzufügen."
+          "cast_setup": "Nest und andere Cast-Geräte in HomeCall hinzufügen.",
+          "echomuse_setup": "EchoMuse-Dots direkt in den HomeCall-Einstellungen hinzufügen."
         }
       },
       "dlna_setup": {
@@ -72,7 +74,11 @@
       },
       "cast_setup": {
         "title": "Google Cast-Lautsprecher",
-        "description": "Zuerst Google Cast in Home Assistant einrichten. Danach unter HomeCall konfigurieren → Google Cast-Lautsprecher Geräte hinzufügen und den Testton abspielen. Musik wird unterbrochen und nicht automatisch fortgesetzt. Cast-Testwiedergabe auf JBL bestätigt; Nest-Geräte müssen noch getestet werden."
+        "description": "Zuerst Google Cast in Home Assistant einrichten. Danach unter HomeCall konfigurieren → Google Cast-Lautsprecher Geräte hinzufügen und den Testton abspielen. Musik wird unterbrochen und nicht automatisch fortgesetzt."
+      },
+      "echomuse_setup": {
+        "title": "EchoMuse-Lautsprecher",
+        "description": "Die EchoMuse-Dots zuerst über ESPHome in Home Assistant verbinden. Danach HomeCall konfigurieren → EchoMuse-Lautsprecher öffnen, Dots hinzufügen und den Testton abspielen. Music Assistant ist nicht erforderlich."
       }
     },
     "error": {

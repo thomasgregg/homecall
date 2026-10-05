@@ -56,7 +56,13 @@ class HomeCallConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         return self.async_show_menu(
             step_id="user",
-            menu_options=["alexa_setup", "dlna_setup", "music_assistant_setup", "cast_setup"],
+            menu_options=[
+                "alexa_setup",
+                "dlna_setup",
+                "music_assistant_setup",
+                "cast_setup",
+                "echomuse_setup",
+            ],
         )
 
     async def async_step_alexa_setup(self, user_input=None):
@@ -68,6 +74,14 @@ class HomeCallConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self._create()
         return self.async_show_form(
             step_id="dlna_setup", data_schema=vol.Schema({}), last_step=True
+        )
+
+    async def async_step_echomuse_setup(self, user_input=None):
+        self._values.update(public_url="", use_system_url=False, use_all=False)
+        if user_input is not None:
+            return await self._create()
+        return self.async_show_form(
+            step_id="echomuse_setup", data_schema=vol.Schema({}), last_step=True
         )
 
     async def async_step_cast_setup(self, user_input=None):

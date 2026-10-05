@@ -3,6 +3,7 @@
 from ipaddress import ip_address
 
 from homeassistant.components.media_player.const import MediaPlayerEntityFeature
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from yarl import URL
@@ -34,7 +35,8 @@ def targets(hass):
     result.extend(
         t
         for t in dlna_candidates(hass)
-        if t.get("transport") in ("sonos", "music_assistant", "cast") or t["entity_id"] in confirmed
+        if t.get("transport") in ("sonos", "music_assistant", "cast", "echomuse")
+        or t["entity_id"] in confirmed
     )
     return sorted(result, key=lambda item: item["name"])
 
@@ -76,17 +78,25 @@ def allowed_targets(hass, entry):
         if device["entity_id"] in allowed
         or (
             values["use_all"]
-            and device.get("transport") not in ("dlna", "sonos", "music_assistant", "cast")
+            and device.get("transport")
+            not in ("dlna", "sonos", "music_assistant", "cast", "echomuse")
         )
     ]
 
 
 def dlna_candidates(hass):
-    """Discover local DLNA, Sonos, Music Assistant and Cast players; retain the legacy API name."""
+    """Discover supported local players; retain the legacy API name."""
     result = []
     for entity in er.async_get(hass).entities.values():
+        echomuse = False
+        if entity.platform == "esphome" and entity.domain == "media_player":
+            device = dr.async_get(hass).async_get(entity.device_id) if entity.device_id else None
+            echomuse = bool(device and (device.manufacturer or "").casefold() == "echomuse")
         if (
-            entity.platform not in ("dlna_dmr", "sonos", "music_assistant", "cast")
+            (
+                entity.platform not in ("dlna_dmr", "sonos", "music_assistant", "cast")
+                and not echomuse
+            )
             or entity.domain != "media_player"
             or entity.disabled_by
         ):
@@ -98,12 +108,25 @@ def dlna_candidates(hass):
             & MediaPlayerEntityFeature.PLAY_MEDIA
         ):
             continue
+        if (
+            echomuse
+            and state.state not in ("unavailable", "unknown")
+            and not int(state.attributes.get("supported_features", 0))
+            & MediaPlayerEntityFeature.MEDIA_ANNOUNCE
+        ):
+            continue
         result.append(
             {
                 "entity_id": entity.entity_id,
                 "name": state.name,
                 "available": state.state not in ("unavailable", "unknown"),
-                "transport": "dlna" if entity.platform == "dlna_dmr" else entity.platform,
+                "transport": (
+                    "echomuse"
+                    if echomuse
+                    else "dlna"
+                    if entity.platform == "dlna_dmr"
+                    else entity.platform
+                ),
             }
         )
     return sorted(result, key=lambda item: item["name"])

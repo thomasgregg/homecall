@@ -28,7 +28,7 @@ HomeCall turns microphone recordings into short speaker announcements. It handle
 ## Why HomeCall
 
 - **Original voice:** send recorded audio rather than synthesized speech.
-- **One room or many:** announce to selected Alexa, DLNA, Sonos, Music Assistant or Google Cast speakers.
+- **One room or many:** announce to selected Alexa, DLNA, Sonos, Music Assistant, Google Cast or EchoMuse speakers.
 - **Native setup:** configure the public address and speakers shown in the card through Home Assistant.
 - **Short-lived audio:** recordings are held in memory and delivery links expire after three minutes.
 - **Clear feedback:** distinguish request acceptance from audio retrieval.
@@ -48,7 +48,7 @@ The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall
 
 ## Speaker compatibility
 
-**HomeCall supports Alexa/Echo, compatible DLNA speakers, Music Assistant players, Google Cast devices, and Sonos through Home Assistant’s Sonos integration.** Use Alexa through Home Assistant’s Alexa Devices integration, DLNA through DLNA Digital Media Renderer, Sonos through the Sonos integration, and Music Assistant players through the Music Assistant integration. You can combine these platforms.
+**HomeCall supports Alexa/Echo, compatible DLNA speakers, Music Assistant players, Google Cast devices, Sonos through Home Assistant’s Sonos integration, and EchoMuse Dots through ESPHome.** Use Alexa through Home Assistant’s Alexa Devices integration, DLNA through DLNA Digital Media Renderer, Sonos through the Sonos integration, and Music Assistant players through the Music Assistant integration. You can combine these platforms.
 
 DLNA speakers must pass a sound test before they can appear in the card. JBL Charge 5 Wi-Fi has been checked for basic MP3 playback; other renderers require their own test. Optional **Resume music after announcements** can restore the interrupted media item and seek where supported. It does not restore playlists, queues, or streaming-service sessions. See [DLNA configuration and limitations](docs/configuration.md#dlna-speakers).
 
@@ -63,6 +63,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
 | Sonos | 🟠 Implemented using native `announce: true`; hardware playback unverified. | 🟠 Delegated to Sonos; not hardware-verified. | Simulated discovery, setup and service-call tests only. |
 | Music Assistant → AirPlay 2 | 🟢 HomeCall MP3 test chime verified. | 🟢 With MA-managed music: ducking, continuation and volume restoration verified. | JBL Charge 5 Wi-Fi, MA 2.10.5. Ducking verified; full pause/resume untested. |
 | Music Assistant → Google Cast / other providers | 🟠 Uses MA’s announcement service; these transports remain unverified with HomeCall. | 🟠 MA documents restoration of its own music; verify per provider/device. | AirPlay results do not establish Cast, DLNA, Sonos or group behavior. |
+| Direct EchoMuse (ESPHome) | 🟠 Implemented with `announce: true`; hardware playback unverified. | 🟠 Delegated to EchoMuse; hardware continuation unverified. | Automated discovery, selection and delivery tests only. |
 | Direct Google Cast | 🟢 HomeCall MP3 test chime verified. | 🔴 No automatic restoration. Phone-started YouTube Music remained stopped in our test. | JBL Charge 5 Wi-Fi; Nest Mini, Nest Hub and groups still need hardware tests. |
 
 Results apply to the tested setup, not every model or firmware version. The DLNA, MA and Cast hardware checks used generated MP3s; microphone recordings through these routes still need separate verification. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
@@ -96,6 +97,8 @@ For Music Assistant, install and start the [Music Assistant server](https://www.
 For Google Cast or Nest, configure HA’s Google Cast integration and add devices under **HomeCall → Configure → Google Cast speakers**. Direct playback interrupts music without automatic restoration. See the [Google Cast guide](docs/google-cast.md) for setup, network requirements, test results and music-continuation options.
 
 HomeCall is a community project. It is not affiliated with Amazon or Home Assistant. Account, region, and Alexa service behavior can affect delivery; validate an announcement with your own devices before relying on it.
+
+For EchoMuse, connect your Dots through Home Assistant’s ESPHome integration, then open **HomeCall → Configure → EchoMuse speakers**, add a Dot, enable visibility and play the sound test. Music Assistant and a public audio address are not required. The EchoMuse controller must reach Home Assistant’s local audio address and any ESPHome transcoding proxy URL. See [EchoMuse setup and limitations](docs/echomuse.md).
 
 ## Install
 

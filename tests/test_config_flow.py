@@ -30,6 +30,7 @@ async def test_connection_menu(flow):
         "dlna_setup",
         "music_assistant_setup",
         "cast_setup",
+        "echomuse_setup",
     ]
     assert (await flow.async_step_alexa_setup())["menu_options"] == [
         "system_address",
@@ -167,3 +168,12 @@ async def test_cast_setup_without_public_address(flow):
     assert flow._values["public_url"] == ""
     await flow.async_step_cast_setup({})
     flow._create.assert_awaited_once()
+
+
+async def test_echomuse_setup_without_public_address(flow):
+    result = await flow.async_step_echomuse_setup()
+    assert result["step_id"] == "echomuse_setup"
+    assert flow._values["public_url"] == ""
+    assert flow._values["use_all"] is False
+    result = await flow.async_step_echomuse_setup({})
+    assert result["type"] == "create_entry"

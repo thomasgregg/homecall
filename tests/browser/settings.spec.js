@@ -428,3 +428,49 @@ for (const language of ['en', 'de']) {
     await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveCount(0);
   });
 }
+
+for (const language of ['en', 'de']) {
+  test(`EchoMuse onboarding, testing and visibility (${language})`, async ({page}) => {
+    await fixture(page, language, 'echomuse');
+    await page.locator('[data-page="echomuse"]').click();
+    await expect(page.locator('ha-alert')).toHaveCount(0);
+    await page.locator('[data-add="media_player.jbl"]').click();
+    await page.locator('[data-speaker-panel] button').click();
+    await page.locator('[data-test="media_player.jbl"]').click();
+    await expect(page.locator('.confirm-test')).toHaveCount(0);
+    await expect(page.locator('[data-resume]')).toHaveCount(0);
+    await toggle(page, '[data-visible]', true);
+    if (!await page.locator('.refresh-speakers').isVisible())
+      await page.locator('[data-available-panel] button').first().click();
+    await page.locator('.refresh-speakers').click();
+    await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveAttribute('checked', '');
+    await page.locator('.save').click();
+    expect(await page.evaluate(() => window.settings.default_targets)).toContain('media_player.jbl');
+    await page.locator('[data-page="devices"]').click();
+    await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveCount(0);
+  });
+}
+
+for (const language of ['en', 'de']) {
+  test(`EchoMuse removal and empty discovery (${language})`, async ({page}) => {
+    await fixture(page, language, 'echomuse');
+    await page.locator('[data-page="echomuse"]').click();
+    await page.locator('[data-add="media_player.jbl"]').click();
+    await page.locator('[data-speaker-panel] button').click();
+    await toggle(page, '[data-visible]', true);
+    await page.locator('.save').click();
+    await page.locator('[data-page="echomuse"]').click();
+    await page.locator('[data-speaker-panel] button').click();
+    await page.locator('[data-remove="media_player.jbl"]').click();
+    await page.locator('.save').click();
+    expect(await page.evaluate(() => window.settings.default_targets)).not.toContain('media_player.jbl');
+    expect(await page.evaluate(() => window.settings.added_speakers)).not.toContain('media_player.jbl');
+    await page.locator('[data-page="echomuse"]').click();
+    await page.evaluate(() => {
+      window.settings.targets = [];
+      window.settings.dlna_candidates = [];
+    });
+    await page.locator('.refresh-speakers').click();
+    await expect(page.locator('ha-alert')).toContainText(language === 'de' ? 'über ESPHome' : 'through ESPHome');
+  });
+}

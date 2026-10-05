@@ -6,7 +6,8 @@
     "cast",
     "dlna_dmr",
     "music_assistant",
-    "sonos"
+    "sonos",
+    "esphome"
   ],
   "codeowners": [
     "@thomasgregg"
@@ -24,5 +25,5 @@
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/thomasgregg/homecall/issues",
-  "version": "1.5.0"
+  "version": "1.6.0"
 }

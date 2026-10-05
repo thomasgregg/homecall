@@ -57,7 +57,7 @@ Sonos speakers appear in **Available speakers**. Press **Add**, then select whic
 
 The speaker must reach Home Assistant’s local audio address. Home Assistant must also reach TCP port 1443 on the Sonos speaker for announcements. Older hardware and S1 firmware may not fully support overlays; see [Home Assistant’s Sonos documentation](https://www.home-assistant.io/integrations/sonos/). Discovery, onboarding and service calls are covered by simulated tests; audible Sonos playback and restoration have not been verified on hardware.
 
-All five speaker groups use the same expandable speaker rows, visibility checkboxes, Select all and Save changes. Expand any online speaker to play a sound test. Alexa, Sonos, Music Assistant and Google Cast tests do not add or select speakers and need no confirmation; DLNA onboarding still requires a downloaded test and audible confirmation. Testing produces audible sound and can interrupt playback. Only DLNA offers the HomeCall resume setting.
+All six speaker groups use the same expandable speaker rows, visibility checkboxes, Select all and Save changes. Expand any online speaker to play a sound test. Alexa, Sonos, Music Assistant, Google Cast and EchoMuse tests do not add or select speakers and need no confirmation; DLNA onboarding still requires a downloaded test and audible confirmation. Testing produces audible sound and can interrupt playback. Only DLNA offers the HomeCall resume setting.
 
 ### Music Assistant announcements
 
@@ -82,3 +82,7 @@ The device must reach the local audio address. Under Connection, an explicit LAN
 On 5 October 2026, a JBL Charge 5 Wi-Fi played HomeCall’s generated MP3 test chime over direct Cast after Google Cast was enabled in JBL One. During iPhone-started YouTube Music casting, the chime played but music stayed stopped. Reopening the YouTube Music receiver and sending Play did not restore the track. Microphone recordings through Cast, Nest devices, groups and Music Assistant over Cast remain unverified. See the README [protocol compatibility table](../README.md#speaker-compatibility) and [setup recommendations](../README.md#which-setup-should-i-use).
 
 For detailed setup, network troubleshooting, hardware findings and recovery options, see the [Google Cast / Nest guide](google-cast.md).
+
+### EchoMuse announcements
+
+Connect EchoMuse Dots through ESPHome in Home Assistant, then add and select them under **EchoMuse speakers**. Sound tests are optional. HomeCall uses local `media_player.play_media` announcements and delegates music handling to EchoMuse. Hardware playback remains unverified. See [EchoMuse setup and limitations](echomuse.md).
