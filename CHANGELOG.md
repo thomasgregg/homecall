@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2
+
+- Fix the README banner in HACS by using an absolute public image URL.
+- Documentation-only change; recording and integration behavior are unchanged.
+
 ## 1.2.1
 
 - Clarify the card’s 60-second countdown, automatic recording stop, and explicit Send action in the usage guide.

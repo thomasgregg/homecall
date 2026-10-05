@@ -1,1 +1,1 @@
-Recording usage documentation
+HACS banner display
