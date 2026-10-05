@@ -38,7 +38,7 @@ HomeCall turns microphone recordings into short speaker announcements. It handle
 
 Overview and Music Assistant setup in Home Assistant.
 
-![HomeCall settings overview and Music Assistant speaker setup](docs/assets/ui-configuration.png)
+[![HomeCall settings overview and Music Assistant speaker setup](docs/assets/ui-configuration.svg)](docs/assets/ui-configuration.svg)
 
 Full-size: [overview](docs/assets/ui-overview.png) · [Music Assistant](docs/assets/ui-music-assistant.png).
 
