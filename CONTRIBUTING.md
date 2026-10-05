@@ -29,3 +29,14 @@ The administrative settings UI has browser regression tests. Run `npm ci`, insta
 ## Integration UI conventions
 
 Use Home Assistant components for controls: `ha-form` with native selectors, `ha-button`, `ha-checkbox`, `ha-alert`, and HA list components. Let components inherit their default theme colours, typography, icon sizing, and header styles. Use theme variables for supporting text; never hardcode colours or restyle control internals. Custom CSS should handle layout and spacing only. Primary actions use the native brand variant; secondary actions use plain brand buttons. Check long names and narrow screens before releasing.
+
+## Release note format
+
+Use this format for every release in both HomeCall repositories. Titles are `v<version> — <short summary>`; update `RELEASE_TITLE.txt` with that summary before tagging. Notes always contain these sections, in this order:
+
+1. **Changes** — the version's changelog entry, describing user-visible behavior.
+2. **Installation** — HACS and manual asset instructions, including the separate card/integration installation.
+3. **Validation** — checks actually performed and any material validation limits. Never invent historical test results.
+4. **Full changelog** — a link comparing the previous published release with this tag, or the initial tag's commits.
+
+The release workflow generates notes with `scripts/release-notes.py`. Do not replace them with GitHub's generated changelog-only notes. If editing release notes afterward, preserve this structure and record any additional validation accurately.
