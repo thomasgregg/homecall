@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.4
+
+- Add real Home Assistant setup screenshots and a compact README banner.
+- Add Hassfest validation for submission to the HACS default repository list.
+- Integration runtime behavior is unchanged.
+
 ## 1.2.3
 
 - Display the existing banner through a standard Markdown image and PNG export for HACS compatibility.
