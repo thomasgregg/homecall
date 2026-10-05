@@ -40,8 +40,6 @@ Overview and Alexa speaker setup in the HomeCall integration.
 
 [![HomeCall settings overview and Alexa speaker setup](docs/assets/ui-configuration.svg)](docs/assets/ui-configuration.svg)
 
-Full-size: [overview](docs/assets/ui-overview.png) · [Alexa speakers](docs/assets/ui-alexa.png).
-
 The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card#screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
 
 [![HomeCall Card recording a real microphone waveform with speaker selection enabled](docs/assets/ui-card-recording.png)](https://github.com/thomasgregg/homecall-card#screenshots)
