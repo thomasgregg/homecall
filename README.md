@@ -36,7 +36,7 @@ HomeCall turns microphone recordings into short speaker announcements. It handle
 
 ## Screenshots
 
-Overview and Alexa speaker setup in Home Assistant.
+Overview and Alexa speaker setup in the HomeCall integration.
 
 [![HomeCall settings overview and Alexa speaker setup](docs/assets/ui-configuration.svg)](docs/assets/ui-configuration.svg)
 
