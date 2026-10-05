@@ -36,7 +36,7 @@ HomeCall turns microphone recordings into short speaker announcements. It handle
 
 ## Screenshots
 
-Overview and Music Assistant setup in Home Assistant.
+Earlier overview and Music Assistant setup in Home Assistant. The current overview removes the Ready summary, places Connection in its own card, and groups all six speaker connectors together.
 
 [![HomeCall settings overview and Music Assistant speaker setup](docs/assets/ui-configuration.svg)](docs/assets/ui-configuration.svg)
 
@@ -56,30 +56,30 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
 
 🟢 **Verified** on the noted setup · 🟠 **Unverified or conditional** · 🔴 **Unsupported or failed**
 
-| Protocol / integration | Announcement playback | Music continuation | Tested hardware / scope |
-| --- | --- | --- | --- |
-| Alexa Devices | 🟢 Recorded voice announcements verified. | 🟢 TuneIn radio resumed after Alexa SSML soundbank clips. | Echo Show with Deutschlandfunk/TuneIn and soundbank clips. HomeCall-recording resume and other sources/models untested. |
-| DLNA | 🟢 MP3 playback verified. | 🟠 Optional current-item restoration and seek where supported; hardware restoration unverified. No playlist/session restoration. | JBL Charge 5 Wi-Fi; other renderers require the sound test. |
-| Sonos | 🟠 Implemented using native `announce: true`; hardware playback unverified. | 🟠 Delegated to Sonos; not hardware-verified. | Simulated discovery, setup and service-call tests only. |
-| Music Assistant | 🟢 MP3 test chime verified through AirPlay 2; other providers unverified. | 🟢 Ducking, continuation and volume restoration verified with MA-managed music through AirPlay 2. | JBL Charge 5 Wi-Fi, MA 2.10.5. Other providers, groups and full pause/resume untested. |
-| EchoMuse (ESPHome) | 🟠 Implemented with `announce: true`; hardware playback unverified. | 🟠 Delegated to EchoMuse; hardware continuation unverified. | Automated discovery, selection and delivery tests only. |
-| Google Cast | 🟢 HomeCall MP3 test chime verified. | 🔴 No automatic restoration. Phone-started YouTube Music remained stopped in our test. | JBL Charge 5 Wi-Fi; Nest Mini, Nest Hub and groups still need hardware tests. |
+| Protocol / integration | Announcement playback                                                       | Music continuation                                                                                                               | Tested hardware / scope                                                                                                 |
+| ---------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Alexa Devices          | 🟢 Recorded voice announcements verified.                                   | 🟢 TuneIn radio resumed after Alexa SSML soundbank clips.                                                                        | Echo Show with Deutschlandfunk/TuneIn and soundbank clips. HomeCall-recording resume and other sources/models untested. |
+| DLNA                   | 🟢 MP3 playback verified.                                                   | 🟠 Optional current-item restoration and seek where supported; hardware restoration unverified. No playlist/session restoration. | JBL Charge 5 Wi-Fi; other renderers require the sound test.                                                             |
+| Sonos                  | 🟠 Implemented using native `announce: true`; hardware playback unverified. | 🟠 Delegated to Sonos; not hardware-verified.                                                                                    | Simulated discovery, setup and service-call tests only.                                                                 |
+| Music Assistant        | 🟢 MP3 test chime verified through AirPlay 2; other providers unverified.   | 🟢 Ducking, continuation and volume restoration verified with MA-managed music through AirPlay 2.                                | JBL Charge 5 Wi-Fi, MA 2.10.5. Other providers, groups and full pause/resume untested.                                  |
+| EchoMuse (ESPHome)     | 🟠 Implemented with `announce: true`; hardware playback unverified.         | 🟠 Delegated to EchoMuse; hardware continuation unverified.                                                                      | Automated discovery, selection and delivery tests only.                                                                 |
+| Google Cast            | 🟢 HomeCall MP3 test chime verified.                                        | 🔴 No automatic restoration. Phone-started YouTube Music remained stopped in our test.                                           | JBL Charge 5 Wi-Fi; Nest Mini, Nest Hub and groups still need hardware tests.                                           |
 
 Results apply to the tested setup, not every model or firmware version. The DLNA, MA and Cast hardware checks used generated MP3s; microphone recordings through these routes still need separate verification. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
-
 
 The Alexa resume test used soundbank audio through the same Speak/SSML mechanism as HomeCall, with audible confirmation that the station resumed automatically. It did not test restoration after a HomeCall-hosted recorded MP3.
 
 ## Which setup should I use?
 
-| Use case | Recommended route | What to expect |
-| --- | --- | --- |
-| Streaming music or playlists should continue after messages | **Music Assistant**, with music started through MA and announcements sent to its MA entity. | MA owns the queue and handles announcements. Our AirPlay 2 test passed; test your chosen provider. MA supports many [music services](https://www.music-assistant.io/music-providers/), subject to provider and account requirements. |
-| Occasional messages on Nest or another Cast speaker, with music interruption acceptable | **Google Cast**. | Simple local MP3 delivery, no MA server required. Current playback is replaced and does not automatically return. Nest hardware still needs testing. |
-| Keep casting YouTube Music directly from a phone and preserve its session | 🔴 No verified HomeCall route for an audio-only Cast speaker. For dependable queue control, start music through **MA** instead. | Direct Cast interrupted our phone session; reopening the receiver did not restore it. |
-| Existing Echo speakers | **Alexa Devices**. | Recorded voice playback is verified; Amazon must reach the public HTTPS audio URL. TuneIn radio resumed in the Echo Show soundbank test; recorded-MP3 restoration and other sources still need verification. |
-| Existing Sonos system without MA | **Direct Sonos**. | Uses Sonos’s native announcement support; audible playback and restoration still need a hardware test. If MA manages the music, use the MA entity. |
-| Basic local audio renderer without MA | **DLNA**. | Validate with the sound test. Optional resume handles a reusable current item where supported, rather than streaming-service sessions or full queues. |
+| Use case                                                                                | Recommended route                                                                                                               | What to expect                                                                                                                                                                                                                       |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Streaming music or playlists should continue after messages                             | **Music Assistant**, with music started through MA and announcements sent to its MA entity.                                     | MA owns the queue and handles announcements. Our AirPlay 2 test passed; test your chosen provider. MA supports many [music services](https://www.music-assistant.io/music-providers/), subject to provider and account requirements. |
+| Occasional messages on Nest or another Cast speaker, with music interruption acceptable | **Google Cast**.                                                                                                                | Simple local MP3 delivery, no MA server required. Current playback is replaced and does not automatically return. Nest hardware still needs testing.                                                                                 |
+| Keep casting YouTube Music directly from a phone and preserve its session               | 🔴 No verified HomeCall route for an audio-only Cast speaker. For dependable queue control, start music through **MA** instead. | Direct Cast interrupted our phone session; reopening the receiver did not restore it.                                                                                                                                                |
+| Existing Echo speakers                                                                  | **Alexa Devices**.                                                                                                              | Recorded voice playback is verified; Amazon must reach the public HTTPS audio URL. TuneIn radio resumed in the Echo Show soundbank test; recorded-MP3 restoration and other sources still need verification.                         |
+| EchoMuse-flashed Dots                                                                   | **EchoMuse (ESPHome)**.                                                                                                         | Local announcement delivery without Music Assistant or Amazon’s Alexa service. Requires an EchoMuse controller and compatible ESPHome firmware; audible playback and continuation still need testing.                                |
+| Existing Sonos system without MA                                                        | **Sonos**.                                                                                                               | Uses Sonos’s native announcement support; audible playback and restoration still need a hardware test. If MA manages the music, use the MA entity.                                                                                   |
+| Basic local audio renderer without MA                                                   | **DLNA**.                                                                                                                       | Validate with the sound test. Optional resume handles a reusable current item where supported, rather than streaming-service sessions or full queues.                                                                                |
 
 Choose one HomeCall target per physical speaker. When MA manages the music, use its entity and hide the corresponding direct Cast/DLNA/Sonos entry from the card to avoid duplicate announcements. For MA groups, consult its [announcement group behavior](https://www.music-assistant.io/integration/announcements/#group-behaviour).
 
@@ -164,16 +164,16 @@ Alexa uses the public HTTPS delivery address; DLNA, Sonos, Music Assistant, Goog
 
 ## Documentation
 
-| Guide                                      | Covers                                                            |
-| ------------------------------------------ | ----------------------------------------------------------------- |
-| [Configuration](docs/configuration.md)     | Public address, speakers shown in the card, and changing settings |
-| [EchoMuse](docs/echomuse.md) | ESPHome setup, audio delivery and playback limitations |
-| [Google Cast / Nest](docs/google-cast.md) | Cast setup, network requirements, test results and music continuation |
-| [API and architecture](docs/api.md)        | Endpoints, limits, audio lifecycle, and module responsibilities   |
-| [Troubleshooting](docs/troubleshooting.md) | Missing devices, microphone access, conversion, and delivery      |
-| [Privacy and security](SECURITY.md)        | Authentication, audio access, retention, and reporting            |
-| [Contributing](CONTRIBUTING.md)            | Development setup, test commands, and release checks              |
-| [Changelog](CHANGELOG.md)                  | Public version history                                            |
+| Guide                                      | Covers                                                                |
+| ------------------------------------------ | --------------------------------------------------------------------- |
+| [Configuration](docs/configuration.md)     | Public address, speakers shown in the card, and changing settings     |
+| [EchoMuse](docs/echomuse.md)               | ESPHome setup, audio delivery and playback limitations                |
+| [Google Cast / Nest](docs/google-cast.md)  | Cast setup, network requirements, test results and music continuation |
+| [API and architecture](docs/api.md)        | Endpoints, limits, audio lifecycle, and module responsibilities       |
+| [Troubleshooting](docs/troubleshooting.md) | Missing devices, microphone access, conversion, and delivery          |
+| [Privacy and security](SECURITY.md)        | Authentication, audio access, retention, and reporting                |
+| [Contributing](CONTRIBUTING.md)            | Development setup, test commands, and release checks                  |
+| [Changelog](CHANGELOG.md)                  | Public version history                                                |
 
 ## Development
 
@@ -187,6 +187,6 @@ ruff format --check .
 pytest --cov=custom_components.homecall --cov-report=term-missing
 ```
 
-Tests import real Home Assistant modules and exercise WAV parsing, real FFmpeg conversion, HTTP handler behavior, settings permissions, device filtering, expiring tokens, and configuration flows. Service calls are mocked so tests do not contact Amazon or announce to real speakers. Audible Alexa/DLNA playback and DLNA music restoration remain hardware acceptance checks.
+Tests import real Home Assistant modules and exercise WAV parsing, real FFmpeg conversion, HTTP handler behavior, settings permissions, device filtering, expiring tokens, and configuration flows. Service calls are mocked so tests do not contact Amazon or announce to real speakers. Audible playback and music handling require route-specific hardware acceptance checks; see the compatibility table for the checks actually performed.
 
 Licensed under [MIT](LICENSE). Built and maintained by [Thomas Gregg](https://github.com/thomasgregg).

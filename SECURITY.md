@@ -6,7 +6,7 @@ HomeCall Card buffers microphone audio in browser memory. It uploads only after 
 
 Status and send endpoints require Home Assistant authentication. Integration settings additionally require administrator access. All target IDs are validated against the configured allowlist and current availability.
 
-Alexa cannot authenticate to HA. The audio endpoint therefore permits retrieval by anyone holding its random, expiring token URL. Treat that URL like a short-lived credential. Audio is transmitted to Amazon/Alexa for playback; HomeCall's local retention does not describe Amazon's retention policy. Do not use it to distribute confidential recordings.
+Alexa cannot authenticate to HA. The audio endpoint therefore permits retrieval by anyone holding its random, expiring token URL. Treat that URL like a short-lived credential. For Alexa delivery, audio is transmitted to Amazon/Alexa; HomeCall’s local retention does not describe Amazon’s retention policy. DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use the local audio address; the relevant speaker, server or controller retrieves the clip. Playback integrations and their services may have their own data handling. Do not use it to distribute confidential recordings.
 
 ## Reporting
 

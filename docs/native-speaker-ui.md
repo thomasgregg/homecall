@@ -1,6 +1,6 @@
 # Native speaker UI component review
 
-The component inventory was reviewed before implementing the shared Alexa/DLNA settings layout. Sources are the official [HA frontend component directory](https://github.com/home-assistant/frontend/tree/dev/src/components) and [design gallery](https://github.com/home-assistant/frontend/tree/dev/gallery). The review covers controls applicable to speaker selection, expandable settings, discovery, test progress, confirmation, errors, and saving; it does not introduce a second component library.
+The component inventory was reviewed before implementing the shared speaker settings layout. Sources are the official [HA frontend component directory](https://github.com/home-assistant/frontend/tree/dev/src/components) and [design gallery](https://github.com/home-assistant/frontend/tree/dev/gallery). The review covers controls applicable to speaker selection, expandable settings, discovery, test progress, confirmation, errors, and saving; it does not introduce a second component library.
 
 | Need | Reused HA element | Decision |
 | --- | --- | --- |
@@ -32,3 +32,5 @@ Browser tests use native-control stand-ins for behavior and inherited theme vari
 Current appearance: navigation icons and expansion chevrons use `--secondary-text-color`. Speaker labels and the discovery label use the native header slot with `--ha-font-weight-normal`. The selection heading is a native list headline. Save uses accent/brand; secondary actions, including Remove and Refresh, use plain/brand. Checkbox sizing and internals remain native.
 
 Refresh sits above the speaker list in the expanded discovery content, outside the clickable summary, with 16px top and side insets. It is hidden when discovery is collapsed and preserves the panel state when used. Chevron layout is retained per the user's request.
+
+The overview now places Connection in its own card and groups the six speaker connectors in a second card. The former Ready/device-count summary is removed.

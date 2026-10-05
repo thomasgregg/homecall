@@ -18,13 +18,13 @@ Never include real credentials, recordings, delivery URLs, or personal dashboard
 
 1. Update the version in `custom_components/homecall/manifest.json` and `pyproject.toml` and add a changelog entry.
 2. Run all checks locally and confirm CI passes.
-3. Check native setup and one actual Alexa announcement in HA.
+3. Check native setup and actual playback on the affected speaker routes in HA. Record hardware checks performed and any unverified routes in the release validation.
 4. Tag `v<version>` and push the tag. The release workflow validates and publishes the distribution asset.
 5. Install the published asset through HACS or the manual instructions to verify packaging.
 
 MIT is the project's license. Contributions are provided under that license.
 
-The administrative settings UI has browser regression tests. Run `npm ci`, install matching browsers with `npx playwright install chromium webkit`, then run `npm run test:browser`. Chromium and WebKit fixtures verify the four speaker groups, test confirmation, failure handling and selection preservation. They use native-control stand-ins; real HA styling and audible playback still need device checks.
+The administrative settings UI has browser regression tests. Run `npm ci`, install matching browsers with `npx playwright install chromium webkit`, then run `npm run test:browser`. Chromium and WebKit fixtures verify the six speaker groups, test confirmation, failure handling and selection preservation. They use native-control stand-ins; real HA styling and audible playback still need device checks.
 
 ## Integration UI conventions
 
