@@ -31,14 +31,16 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
 
 ## Speaker compatibility
 
+🟢 **Verified** on the noted setup · 🟠 **Unverified or conditional** · 🔴 **Unsupported or failed**
+
 | Protocol / integration | Announcement playback | Music continuation | Tested hardware / scope |
 | --- | --- | --- | --- |
-| Alexa Devices | **Verified:** recorded voice announcements. | Not verified in these tests; depends on Alexa behavior. | Echo setup through HA’s Alexa Devices integration. |
-| DLNA | **Verified:** MP3 playback. | Optional current-item restoration and seek where supported; no playlist/session restoration. Hardware restoration remains unverified. | JBL Charge 5 Wi-Fi; other renderers require the sound test. |
-| Sonos | Implemented using native `announce: true`; hardware playback unverified. | Delegated to Sonos; not hardware-verified. | Simulated discovery, setup and service-call tests only. |
-| Music Assistant → AirPlay 2 | **Verified:** HomeCall MP3 test chime. | **Verified with MA-managed music:** music ducked, continued and returned to its prior volume. Full pause/resume unverified. | JBL Charge 5 Wi-Fi, MA 2.10.5; repeat test confirmed audible continuation of the same track. |
-| Music Assistant → Google Cast / other providers | Uses MA’s announcement service; these transports remain unverified with HomeCall. | MA documents restoration of its own music; verify per provider/device. | AirPlay results do not establish Cast, DLNA, Sonos or group behavior. |
-| Direct Google Cast | **Verified:** HomeCall MP3 test chime. | **Unsupported:** interrupts media without automatic restoration. Phone-started YouTube Music remained stopped in our test. | JBL Charge 5 Wi-Fi; Nest Mini, Nest Hub and groups still need hardware tests. |
+| Alexa Devices | 🟢 Recorded voice announcements verified. | 🟠 Not verified in these tests; depends on Alexa behavior. | Echo setup through HA’s Alexa Devices integration. |
+| DLNA | 🟢 MP3 playback verified. | 🟠 Optional current-item restoration and seek where supported; hardware restoration unverified. No playlist/session restoration. | JBL Charge 5 Wi-Fi; other renderers require the sound test. |
+| Sonos | 🟠 Implemented using native `announce: true`; hardware playback unverified. | 🟠 Delegated to Sonos; not hardware-verified. | Simulated discovery, setup and service-call tests only. |
+| Music Assistant → AirPlay 2 | 🟢 HomeCall MP3 test chime verified. | 🟢 With MA-managed music: ducking, continuation and volume restoration verified. Full pause/resume unverified. | JBL Charge 5 Wi-Fi, MA 2.10.5; repeat test confirmed audible continuation of the same track. |
+| Music Assistant → Google Cast / other providers | 🟠 Uses MA’s announcement service; these transports remain unverified with HomeCall. | 🟠 MA documents restoration of its own music; verify per provider/device. | AirPlay results do not establish Cast, DLNA, Sonos or group behavior. |
+| Direct Google Cast | 🟢 HomeCall MP3 test chime verified. | 🔴 No automatic restoration. Phone-started YouTube Music remained stopped in our test. | JBL Charge 5 Wi-Fi; Nest Mini, Nest Hub and groups still need hardware tests. |
 
 Hardware results were recorded on 5 October 2026 and apply to the tested setup, not every model or firmware version. The DLNA, MA and Cast hardware checks used generated MP3s; microphone recordings through these routes still need separate verification. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
 
@@ -59,7 +61,7 @@ Hardware results were recorded on 5 October 2026 and apply to the tested setup, 
 | --- | --- | --- |
 | Streaming music or playlists should continue after messages | **Music Assistant**, with music started through MA and announcements sent to its MA entity. | MA owns the queue and handles announcements. Our AirPlay 2 test passed; test your chosen provider. MA supports many [music services](https://www.music-assistant.io/music-providers/), subject to provider and account requirements. |
 | Occasional messages on Nest or another Cast speaker, with music interruption acceptable | **Direct Google Cast**. | Simple local MP3 delivery, no MA server required. Current playback is replaced and does not automatically return. Nest hardware still needs testing. |
-| Keep casting YouTube Music directly from a phone and preserve its session | No verified HomeCall route for an audio-only Cast speaker. For dependable queue control, start music through **MA** instead. | Direct Cast interrupted our phone session; reopening the receiver did not restore it. |
+| Keep casting YouTube Music directly from a phone and preserve its session | 🔴 No verified HomeCall route for an audio-only Cast speaker. For dependable queue control, start music through **MA** instead. | Direct Cast interrupted our phone session; reopening the receiver did not restore it. |
 | Existing Echo speakers | **Alexa Devices**. | Recorded voice playback is verified; Amazon must reach the public HTTPS audio URL. Music behavior depends on Alexa. |
 | Existing Sonos system without MA | **Direct Sonos**. | Uses Sonos’s native announcement support; audible playback and restoration still need a hardware test. If MA manages the music, use the MA entity. |
 | Basic local audio renderer without MA | **DLNA**. | Validate with the sound test. Optional resume handles a reusable current item where supported, rather than streaming-service sessions or full queues. |
