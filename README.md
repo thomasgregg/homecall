@@ -1,4 +1,4 @@
-![HomeCall — your voice across your home](https://raw.githubusercontent.com/thomasgregg/homecall/main/docs/assets/hero.png)
+![HomeCall — your voice across your home](https://raw.githubusercontent.com/thomasgregg/homecall/main/docs/assets/hero-compact.png)
 
 <p align="center">
 <a href="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml"><img src="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
