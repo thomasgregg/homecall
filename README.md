@@ -35,10 +35,12 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
 
 | Protocol / integration | Announcement playback | Music continuation | Tested hardware / scope |
 | --- | --- | --- | --- |
-| Alexa Devices | 🟢 Recorded voice announcements verified. | 🟢 TuneIn radio resumed after Alexa SSML soundbank clips.<br><br>🟠 Resume after a HomeCall-hosted recording remains unverified. | Living Room Echo Show; Deutschlandfunk/TuneIn interruption-and-resume test. Other sources/models untested. |
+| Alexa Devices | 🟢 Recorded voice announcements verified. | 🟢 TuneIn radio resumed after Alexa SSML soundbank clips. | Living Room Echo Show; Deutschlandfunk/TuneIn interruption-and-resume test. Other sources/models untested. |
+| Alexa Devices — recorded-MP3 restoration | Same recorded-voice route as above. | 🟠 Resume after a HomeCall-hosted recording remains unverified. | The radio-resume test used Alexa soundbank clips. |
 | DLNA | 🟢 MP3 playback verified. | 🟠 Optional current-item restoration and seek where supported; hardware restoration unverified. No playlist/session restoration. | JBL Charge 5 Wi-Fi; other renderers require the sound test. |
 | Sonos | 🟠 Implemented using native `announce: true`; hardware playback unverified. | 🟠 Delegated to Sonos; not hardware-verified. | Simulated discovery, setup and service-call tests only. |
-| Music Assistant → AirPlay 2 | 🟢 HomeCall MP3 test chime verified. | 🟢 With MA-managed music: ducking, continuation and volume restoration verified.<br><br>🟠 Full pause/resume unverified. | JBL Charge 5 Wi-Fi, MA 2.10.5; repeat test confirmed audible continuation of the same track. |
+| Music Assistant → AirPlay 2 | 🟢 HomeCall MP3 test chime verified. | 🟢 With MA-managed music: ducking, continuation and volume restoration verified. | JBL Charge 5 Wi-Fi, MA 2.10.5; repeat test confirmed audible continuation of the same track. |
+| Music Assistant → AirPlay 2 — full pause/resume | Same announcement route as above. | 🟠 Full pause/resume unverified. | Our setup ducked the music while it continued playing. |
 | Music Assistant → Google Cast / other providers | 🟠 Uses MA’s announcement service; these transports remain unverified with HomeCall. | 🟠 MA documents restoration of its own music; verify per provider/device. | AirPlay results do not establish Cast, DLNA, Sonos or group behavior. |
 | Direct Google Cast | 🟢 HomeCall MP3 test chime verified. | 🔴 No automatic restoration. Phone-started YouTube Music remained stopped in our test. | JBL Charge 5 Wi-Fi; Nest Mini, Nest Hub and groups still need hardware tests. |
 
