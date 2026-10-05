@@ -15,7 +15,7 @@ def test_manifest_and_version():
     assert manifest["domain"] == project["name"] == "homecall"
     assert manifest["version"] == project["version"]
     assert manifest["config_flow"] is True
-    assert "alexa_devices" in manifest["dependencies"]
+    assert "alexa_devices" in manifest["after_dependencies"]
     assert manifest["codeowners"] == ["@thomasgregg"]
     assert (COMPONENT / "frontend" / "homecall-settings.js").is_file()
 

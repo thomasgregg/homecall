@@ -57,6 +57,7 @@ def hass(entry):
 @pytest.fixture
 def http_request():
     class Request(dict):
+        method = "GET"
         query = MultiDict()
         content_length = None
 
@@ -85,6 +86,11 @@ def devices(monkeypatch):
         {"entity_id": "notify.kitchen_speak", "name": "Kitchen", "available": True},
         {"entity_id": "notify.office_speak", "name": "Office", "available": False},
     ]
+    monkeypatch.setattr("custom_components.homecall.views.dlna_candidates", lambda h: [])
+    monkeypatch.setattr("custom_components.homecall.helpers.dlna_candidates", lambda h: [])
+    monkeypatch.setattr(
+        "custom_components.homecall.views.local_url", lambda h, e: "http://192.168.1.2:8123"
+    )
     monkeypatch.setattr("custom_components.homecall.views.targets", lambda h: result)
     monkeypatch.setattr("custom_components.homecall.helpers.targets", lambda h: result)
     return result

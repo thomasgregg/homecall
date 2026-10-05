@@ -72,7 +72,7 @@ async def test_invalid_settings_payload(hass, http_request, devices, payload):
         await SettingsView(hass).post(http_request(payload))
 
 
-@pytest.mark.parametrize("selected", [[], ["notify.unlisted_speak"]])
+@pytest.mark.parametrize("selected", [["notify.unlisted_speak"]])
 async def test_rejects_invalid_whitelist(hass, http_request, devices, selected):
     response = await SettingsView(hass).post(
         http_request({"page": "devices", "use_all": False, "default_targets": selected})

@@ -25,7 +25,11 @@ def flow(hass, monkeypatch):
 
 async def test_connection_menu(flow):
     result = await flow.async_step_user()
-    assert result["menu_options"] == ["system_address", "custom_address"]
+    assert result["menu_options"] == ["alexa_setup", "dlna_setup"]
+    assert (await flow.async_step_alexa_setup())["menu_options"] == [
+        "system_address",
+        "custom_address",
+    ]
 
 
 async def test_invalid_custom_address_stays_in_form(flow):
@@ -129,3 +133,11 @@ async def test_options_device_selection(options, monkeypatch, entry):
     result = await options.async_step_all_devices()
     assert result["data"]["use_all"] is True
     assert result["data"]["default_targets"] == ["notify.kitchen_speak"]
+
+
+async def test_dlna_only_setup_does_not_require_public_url(flow):
+    result = await flow.async_step_dlna_setup()
+    assert result["step_id"] == "dlna_setup"
+    await flow.async_step_dlna_setup({})
+    assert flow._values["public_url"] == ""
+    flow._create.assert_awaited_once()

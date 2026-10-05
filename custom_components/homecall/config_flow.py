@@ -20,7 +20,11 @@ def connection_schema(values):
 
 
 def devices_schema(hass, values):
-    choices = [{"value": t["entity_id"], "label": t["name"]} for t in targets(hass)]
+    choices = [
+        {"value": t["entity_id"], "label": t["name"]}
+        for t in targets(hass)
+        if t.get("transport") != "dlna"
+    ]
     ids = {t["value"] for t in choices}
     selected = [x for x in values.get("default_targets", []) if x in ids]
     return vol.Schema(
@@ -50,7 +54,18 @@ class HomeCallConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "use_all": True,
                 "default_targets": [],
             }
-        return await self.async_step_connection(user_input)
+        return self.async_show_menu(step_id="user", menu_options=["alexa_setup", "dlna_setup"])
+
+    async def async_step_alexa_setup(self, user_input=None):
+        return await self.async_step_connection()
+
+    async def async_step_dlna_setup(self, user_input=None):
+        self._values.update(public_url="", use_system_url=False, use_all=False)
+        if user_input is not None:
+            return await self._create()
+        return self.async_show_form(
+            step_id="dlna_setup", data_schema=vol.Schema({}), last_step=True
+        )
 
     async def async_step_connection(self, user_input=None):
         return self.async_show_menu(
@@ -191,7 +206,18 @@ class HomeCallOptionsFlow(config_entries.OptionsFlow):
                     data={
                         **self.config_entry.options,
                         "use_all": False,
-                        "default_targets": selected,
+                        "default_targets": list(
+                            dict.fromkeys(
+                                [
+                                    *selected,
+                                    *[
+                                        x
+                                        for x in self._values["default_targets"]
+                                        if x.startswith("media_player.")
+                                    ],
+                                ]
+                            )
+                        ),
                     },
                 )
             self._values["default_targets"] = selected

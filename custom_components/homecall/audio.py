@@ -59,3 +59,25 @@ def convert_wav(data):
             stderr=subprocess.PIPE,
         )
         return dest.read_bytes()
+
+
+def test_audio():
+    """A short quiet chime encoded exactly like microphone recordings."""
+    import math
+    import struct
+
+    buffer = io.BytesIO()
+    rate = 24000
+    with wave.open(buffer, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(rate)
+        samples = []
+        for i in range(rate * 3):
+            t = i / rate
+            envelope = min(t / 0.08, (3 - t) / 0.2, 1)
+            samples.append(
+                struct.pack("<h", int(1800 * envelope * math.sin(2 * math.pi * 660 * t)))
+            )
+        wav.writeframes(b"".join(samples))
+    return convert_wav(buffer.getvalue())

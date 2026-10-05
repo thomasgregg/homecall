@@ -1,4 +1,4 @@
-"""HomeCall: original-voice announcements through Alexa devices."""
+"""HomeCall: original-voice announcements through Alexa and compatible DLNA speakers."""
 
 import asyncio
 import hashlib
@@ -8,12 +8,15 @@ from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 
 from .const import DOMAIN
-from .views import AudioView, SettingsView, StatusView, UploadView
+from .resume import ResumeManager
+from .views import AudioView, SettingsView, SpeakerTestView, StatusView, UploadView
 
 
 async def async_setup_entry(hass, entry):
     store = hass.data.setdefault(DOMAIN, {"lock": asyncio.Lock(), "clips": {}, "registered": False})
     store["entry"] = entry
+    if "resume_manager" not in store:
+        store["resume_manager"] = ResumeManager(hass)
 
     async def update_options(hass, updated_entry):
         store["entry"] = updated_entry
@@ -24,6 +27,7 @@ async def async_setup_entry(hass, entry):
         hass.http.register_view(UploadView(hass))
         hass.http.register_view(AudioView(hass))
         hass.http.register_view(SettingsView(hass))
+        hass.http.register_view(SpeakerTestView(hass))
         await hass.http.async_register_static_paths(
             [StaticPathConfig("/homecall-assets", str(Path(__file__).parent / "frontend"), False)]
         )
@@ -46,6 +50,9 @@ async def async_setup_entry(hass, entry):
 
 async def async_unload_entry(hass, entry):
     store = hass.data.get(DOMAIN, {})
+    manager = store.pop("resume_manager", None)
+    if manager:
+        manager.close()
     store.pop("entry", None)
     store.get("clips", {}).clear()
     frontend.async_remove_panel(hass, "homecall", warn_if_unknown=False)

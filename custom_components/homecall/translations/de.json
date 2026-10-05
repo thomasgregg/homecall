@@ -14,24 +14,24 @@
         }
       },
       "devices": {
-        "title": "Geräte",
+        "title": "Alexa-Lautsprecher",
         "description": "Diese Geräte erscheinen in der Karte.",
         "menu_options": {
-          "all_devices": "Alle Geräte",
+          "all_devices": "Alle Alexa-Lautsprecher",
           "custom_devices": "Eigene Auswahl",
           "connection": "Zurück",
           "init": "Zurück"
         },
         "menu_option_descriptions": {
           "all_devices": "Neue Geräte automatisch einschließen.",
-          "custom_devices": "Nur ausgewählte Geräte freigeben."
+          "custom_devices": "Lautsprecher für die Karte auswählen."
         }
       },
       "custom_devices": {
-        "title": "Geräte",
+        "title": "Alexa-Lautsprecher",
         "description": "Diese Geräte erscheinen in der Karte.",
         "data": {
-          "default_targets": "Freigegebene Geräte"
+          "default_targets": "In der Karte angezeigte Lautsprecher"
         }
       },
       "custom_address": {
@@ -46,6 +46,21 @@
       "system_address": {
         "title": "Home-Assistant-Adresse",
         "description": "Erkannte Adresse: {address}"
+      },
+      "user": {
+        "title": "Lautsprecher",
+        "menu_options": {
+          "alexa_setup": "Alexa-Lautsprecher",
+          "dlna_setup": "DLNA-Lautsprecher"
+        },
+        "menu_option_descriptions": {
+          "alexa_setup": "Alexa einrichten. DLNA kann später hinzugefügt werden.",
+          "dlna_setup": "Mit DLNA starten. Lautsprecher anschließend in HomeCall testen."
+        }
+      },
+      "dlna_setup": {
+        "title": "DLNA-Lautsprecher",
+        "description": "Nach dem Abschluss HomeCall konfigurieren öffnen. Unter DLNA-Lautsprecher einen Lautsprecher auswählen, Testton abspielen und bestätigen. Alexa kann später ergänzt werden."
       }
     },
     "error": {
@@ -82,24 +97,24 @@
         }
       },
       "devices": {
-        "title": "Geräte",
+        "title": "Alexa-Lautsprecher",
         "description": "Diese Geräte erscheinen in der Karte.",
         "menu_options": {
-          "all_devices": "Alle Geräte",
+          "all_devices": "Alle Alexa-Lautsprecher",
           "custom_devices": "Eigene Auswahl",
           "connection": "Zurück",
           "init": "Zurück"
         },
         "menu_option_descriptions": {
           "all_devices": "Neue Geräte automatisch einschließen.",
-          "custom_devices": "Nur ausgewählte Geräte freigeben."
+          "custom_devices": "Lautsprecher für die Karte auswählen."
         }
       },
       "custom_devices": {
-        "title": "Geräte",
+        "title": "Alexa-Lautsprecher",
         "description": "Diese Geräte erscheinen in der Karte.",
         "data": {
-          "default_targets": "Freigegebene Geräte"
+          "default_targets": "In der Karte angezeigte Lautsprecher"
         }
       },
       "custom_address": {

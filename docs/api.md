@@ -60,3 +60,11 @@ A successful HTTP response can include rejected targets. The card reports full, 
   "default_targets": ["notify.kitchen_speak"]
 }
 ```
+
+## DLNA onboarding API
+
+`POST /api/homecall/speaker-test` requires an administrator. Send `{"action":"test","entity_id":"media_player.speaker"}` to play the chime. The returned `receipt` is temporary and bound to that entity. After hearing it, send `{"action":"confirm","entity_id":"media_player.speaker","receipt":"..."}`. Confirmation requires an unexpired test clip that was downloaded (HEAD requests do not count). `{"action":"remove","entity_id":"media_player.speaker"}` revokes its tested state and card visibility.
+
+Settings return `dlna_candidates`, `tested_dlna`, `local_url` and `detected_local_url`. `local_url` is an optional HTTP/HTTPS origin override. `use_all` applies to Alexa only; DLNA speakers must be tested and explicitly present in `default_targets`. The normal upload endpoint cannot bypass either requirement. DLNA delivery calls `media_player.play_media`; Alexa delivery calls `notify.send_message`.
+
+Music restoration is stored in `resume_dlna` (entity IDs, empty by default). Administrators can set it using `POST /api/homecall/speaker-test` with `{"action":"resume","entity_id":"media_player.speaker","enabled":true}`. The entity must already have passed its sound test. Removing the speaker revokes restoration and cancels pending work. Settings pages preserve this list when saving unrelated options.

@@ -23,3 +23,5 @@ Never include real credentials, recordings, delivery URLs, or personal dashboard
 5. Install the published asset through HACS or the manual instructions to verify packaging.
 
 MIT is the project's license. Contributions are provided under that license.
+
+The administrative settings UI has browser regression tests. Run `npm ci`, install matching browsers with `npx playwright install chromium webkit`, then run `npm run test:browser`. Chromium and WebKit fixtures verify the two speaker groups, test confirmation, failure handling and selection preservation. They use native-control stand-ins; real HA styling and audible playback still need device checks.

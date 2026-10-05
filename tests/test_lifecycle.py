@@ -15,9 +15,9 @@ async def test_setup_registers_routes_once_and_unload_clears_audio(hass, entry, 
     remove = Mock()
     monkeypatch.setattr("custom_components.homecall.frontend.async_remove_panel", remove)
     assert await async_setup_entry(hass, entry)
-    assert hass.http.register_view.call_count == 4
+    assert hass.http.register_view.call_count == 5
     assert await async_setup_entry(hass, entry)
-    assert hass.http.register_view.call_count == 4
+    assert hass.http.register_view.call_count == 5
     hass.data[DOMAIN]["clips"]["temporary"] = [10, b"clip", 0]
     assert await async_unload_entry(hass, entry)
     assert not hass.data[DOMAIN]["clips"]

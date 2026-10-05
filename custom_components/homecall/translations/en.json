@@ -14,24 +14,24 @@
         }
       },
       "devices": {
-        "title": "Devices",
+        "title": "Alexa speakers",
         "description": "These devices appear in the card.",
         "menu_options": {
-          "all_devices": "All devices",
+          "all_devices": "All Alexa speakers",
           "custom_devices": "Custom selection",
           "connection": "Back",
           "init": "Back"
         },
         "menu_option_descriptions": {
           "all_devices": "Automatically include new devices.",
-          "custom_devices": "Allow only selected devices."
+          "custom_devices": "Choose speakers shown in the card."
         }
       },
       "custom_devices": {
-        "title": "Devices",
+        "title": "Alexa speakers",
         "description": "These devices appear in the card.",
         "data": {
-          "default_targets": "Allowed devices"
+          "default_targets": "Speakers shown in the card"
         }
       },
       "custom_address": {
@@ -46,6 +46,21 @@
       "system_address": {
         "title": "Home Assistant address",
         "description": "Detected address: {address}"
+      },
+      "user": {
+        "title": "Speakers",
+        "menu_options": {
+          "alexa_setup": "Alexa speakers",
+          "dlna_setup": "DLNA speakers"
+        },
+        "menu_option_descriptions": {
+          "alexa_setup": "Set up Alexa. Add DLNA speakers later.",
+          "dlna_setup": "Start with DLNA. Test and add speakers in HomeCall settings."
+        }
+      },
+      "dlna_setup": {
+        "title": "DLNA speakers",
+        "description": "After finishing, open Configure for HomeCall. Under DLNA speakers, choose a speaker, play the test sound and confirm you heard it. You can add Alexa later."
       }
     },
     "error": {
@@ -82,24 +97,24 @@
         }
       },
       "devices": {
-        "title": "Devices",
+        "title": "Alexa speakers",
         "description": "These devices appear in the card.",
         "menu_options": {
-          "all_devices": "All devices",
+          "all_devices": "All Alexa speakers",
           "custom_devices": "Custom selection",
           "connection": "Back",
           "init": "Back"
         },
         "menu_option_descriptions": {
           "all_devices": "Automatically include new devices.",
-          "custom_devices": "Allow only selected devices."
+          "custom_devices": "Choose speakers shown in the card."
         }
       },
       "custom_devices": {
-        "title": "Devices",
+        "title": "Alexa speakers",
         "description": "These devices appear in the card.",
         "data": {
-          "default_targets": "Allowed devices"
+          "default_targets": "Speakers shown in the card"
         }
       },
       "custom_address": {
