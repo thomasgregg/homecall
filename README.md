@@ -64,7 +64,7 @@ Copy [`custom_components/homecall`](custom_components/homecall) into `<config>/c
 
 ## Use
 
-Add HomeCall Card to your dashboard. Tap the microphone, speak for up to 60 seconds, and tap **Send** to announce to the selected speakers. **Discard** stops recording and clears the local audio. Configure speakers shown in the card and the delivery address from the integration's settings page.
+Add HomeCall Card to your dashboard. Tap the microphone to record. In HomeCall Card 1.1.0, the timer counts down from **1:00** and the recording ring fills clockwise. At **0:00**, recording stops and the outlined Send icon appears; nothing is sent automatically. Tap **Send** to announce to the selected speakers, or send earlier while recording. **Discard** stops recording and clears the local audio. Configure speakers shown in the card and the delivery address from the integration's settings page.
 
 An accepted request means the target’s Home Assistant service call completed successfully. An audio-fetch receipt means a client fetched the temporary audio URL. Neither receipt proves a speaker audibly played the message.
 

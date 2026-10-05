@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1
+
+- Clarify the card’s 60-second countdown, automatic recording stop, and explicit Send action in the usage guide.
+- Documentation release alongside HomeCall Card 1.1.0; integration runtime behavior is unchanged.
+
 ## 1.2.0
 
 - Use matching compact Alexa and DLNA speaker lists with Select all and one page-level Save changes action.
