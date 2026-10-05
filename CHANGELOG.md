@@ -5,6 +5,7 @@
 - Add direct Google Cast discovery, setup and a speaker section in the existing HomeCall settings page, with English/German text, optional sound tests and explicit card visibility.
 - Deliver recorded MP3s over the local audio URL through `media_player.play_media`. Keep Cast separate from Alexa automatic selection and DLNA music restoration.
 - Verify audible direct-Cast test-chime playback on a JBL Charge 5 Wi-Fi after enabling Google Cast in the speaker app. Phone-started YouTube Music remained stopped after interruption; receiver relaunch did not restore it. Nest devices, groups and microphone recordings through Cast remain unverified.
+- Document the earlier Echo Show/TuneIn native radio-resume test with Alexa soundbank clips, separately from unverified HomeCall-recording restoration.
 - Add simulated backend and Chromium/WebKit settings tests, a protocol-based compatibility table and recommendations for announcements, music continuation and Music Assistant setups. Direct Cast music restoration is not implemented.
 
 ## 1.4.0
