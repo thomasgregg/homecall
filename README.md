@@ -42,7 +42,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
 | Music Assistant → Google Cast / other providers | 🟠 Uses MA’s announcement service; these transports remain unverified with HomeCall. | 🟠 MA documents restoration of its own music; verify per provider/device. | AirPlay results do not establish Cast, DLNA, Sonos or group behavior. |
 | Direct Google Cast | 🟢 HomeCall MP3 test chime verified. | 🔴 No automatic restoration. Phone-started YouTube Music remained stopped in our test. | JBL Charge 5 Wi-Fi; Nest Mini, Nest Hub and groups still need hardware tests. |
 
-Hardware results were recorded on 5 October 2026 and apply to the tested setup, not every model or firmware version. The DLNA, MA and Cast hardware checks used generated MP3s; microphone recordings through these routes still need separate verification. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
+Results apply to the tested setup, not every model or firmware version. The DLNA, MA and Cast hardware checks used generated MP3s; microphone recordings through these routes still need separate verification. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
 
 <details>
 <summary>Additional Cast test findings</summary>
@@ -109,11 +109,11 @@ Configure Home Assistant’s [Google Cast integration](https://www.home-assistan
 
 HomeCall sends the recorded MP3 directly through `media_player.play_media`. The Cast device must be able to reach Home Assistant’s local audio URL. If necessary, set **Connection → Local address** to a LAN IP address and port, for example `http://192.168.1.2:8123`. Cast devices can have trouble resolving `.local` names; HTTPS must have a certificate the device trusts. The browser still needs HTTPS for microphone recording.
 
-Direct Cast playback interrupts existing media and does not restore it automatically. On 5 October 2026, a JBL Charge 5 Wi-Fi played HomeCall’s test chime after Google Cast was enabled in JBL One. A second test interrupted iPhone-started YouTube Music: the chime was audible, but music remained stopped. Reopening the YouTube Music receiver and sending Play did not recover the track. A Nest Hub may replace its current screen while receiving media. Service acceptance and an audio download do not prove audible playback. Nest hardware, microphone recordings through Cast and Cast groups have not yet been verified.
+Direct Cast playback interrupts existing media and does not restore it automatically. A JBL Charge 5 Wi-Fi played HomeCall’s test chime after Google Cast was enabled in JBL One. A second test interrupted iPhone-started YouTube Music: the chime was audible, but music remained stopped. Reopening the YouTube Music receiver and sending Play did not recover the track. A Nest Hub may replace its current screen while receiving media. Service acceptance and an audio download do not prove audible playback. Nest hardware, microphone recordings through Cast and Cast groups have not yet been verified.
 
 ### Cast music continuation: possible routes
 
-These are research findings as of 5 October 2026, not additional passing hardware tests:
+These are possible recovery routes, not additional passing hardware tests:
 
 | Route | Feasibility / next check |
 | --- | --- |
