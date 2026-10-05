@@ -10,7 +10,11 @@
 
 HomeCall turns microphone recordings into short speaker announcements. It handles authenticated uploads, audio conversion, speakers shown in the card, and temporary delivery links. The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card) provides the recording interface.
 
-**HomeCall supports Alexa/Echo and compatible DLNA speakers.** Alexa works through its existing integration; DLNA speakers are added after a short sound test. JBL Charge 5 Wi-Fi has passed a basic MP3 playback test. Other DLNA devices need their own test; Optional per-speaker music restoration can restart the interrupted track and seek where supported; playlists and streaming sessions are not guaranteed. I’m happy to expand support to other speakers and welcome ideas and contributions. [Open an issue](https://github.com/thomasgregg/homecall/issues) to discuss a speaker platform you’d like to help support.
+**HomeCall supports Alexa/Echo and compatible DLNA speakers.** Use Alexa through Home Assistant’s Alexa Devices integration, DLNA through DLNA Digital Media Renderer, or both together.
+
+DLNA speakers must pass a sound test before they can appear in the card. JBL Charge 5 Wi-Fi has been checked for basic MP3 playback; other renderers require their own test. Optional **Resume music after announcements** can restore the interrupted media item and seek where supported. It does not restore playlists, queues, or streaming-service sessions. See [DLNA configuration and limitations](docs/configuration.md#dlna-speakers).
+
+Ideas and contributions for other speaker platforms are welcome. [Open an issue](https://github.com/thomasgregg/homecall/issues) to discuss support.
 
 ## Contents
 
@@ -51,7 +55,7 @@ With HACS installed, click the button to open this custom repository in your Hom
 2. Add `https://github.com/thomasgregg/homecall` as an **Integration**.
 3. Download HomeCall and restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → HomeCall**.
-5. Choose **Alexa speakers** or **DLNA speakers**. For Alexa, configure the public HTTPS address and speaker selection. For DLNA, finish setup, then open **Configure → DLNA speakers → Add speaker** to play and confirm a sound test.
+5. Choose **Alexa speakers** or **DLNA speakers**. For Alexa, configure the public HTTPS address and speaker selection. For DLNA, finish setup, then open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
 6. Install [HomeCall Card](https://github.com/thomasgregg/homecall-card) separately.
 
 ### Manual
@@ -62,22 +66,33 @@ Copy [`custom_components/homecall`](custom_components/homecall) into `<config>/c
 
 Add HomeCall Card to your dashboard. Tap the microphone, speak for up to 60 seconds, and tap **Send** to announce to the selected speakers. **Discard** stops recording and clears the local audio. Configure speakers shown in the card and the delivery address from the integration's settings page.
 
-An accepted request means Alexa accepted the announcement instruction. An audio-fetch receipt means a client fetched the temporary audio URL. Neither receipt proves a speaker audibly played the message.
+An accepted request means the target’s Home Assistant service call completed successfully. An audio-fetch receipt means a client fetched the temporary audio URL. Neither receipt proves a speaker audibly played the message.
 
 ## How it works
 
 ```mermaid
-sequenceDiagram
-    participant Browser as HomeCall Card
-    participant HA as HomeCall integration
-    participant Alexa as Alexa service
-    Browser->>HA: Authenticated mono WAV upload + selected targets
-    HA->>HA: Validate and encode MP3 with FFmpeg
-    HA->>Alexa: notify.send_message with temporary audio URL
-    Alexa->>HA: Fetch MP3 using random expiring token
-    Browser->>HA: Poll audio-fetch receipt
-    HA-->>Browser: Request acceptance and fetch count
+flowchart TD
+    Card[HomeCall Card] -->|Authenticated mono WAV + selected targets| API[HomeCall API]
+    API --> Validate[Validate audio and allowed targets]
+    Validate --> Encode[FFmpeg: encode one MP3]
+    Encode --> Store[In-memory clip: random token, 3-minute expiry]
+    Store --> Route{Selected targets}
+    Route -->|Alexa| Notify[Alexa Devices: notify.send_message]
+    Notify -->|Public HTTPS audio URL| Amazon[Amazon Alexa service]
+    Route -->|Tested DLNA| Play[DLNA DMR: media_player.play_media]
+    Play -->|Local audio URL| Speaker[DLNA renderer]
+    Amazon -->|Fetch MP3| Audio[Token-protected audio endpoint]
+    Speaker -->|Fetch MP3| Audio
+    Store -.->|Clip bytes| Audio
+    Audio -->|Increment clip fetch count| Receipt[Receipt status]
+    Card -->|Authenticated receipt polling| Receipt
+    API -->|Per-target service acceptance + receipt| Card
+    Speaker -.->|Playback state via HA| Resume[Optional resume manager]
+    Resume -.->|Restore media after completion; seek if supported| Speaker
 ```
+
+
+Alexa and DLNA use different delivery addresses for the same in-memory clip and expiring token. DLNA playback stays on the local network; Alexa delivery uses Amazon’s service. The card is installed separately and communicates only with HomeCall’s authenticated API. Music restoration depends on renderer capabilities and playback-state events; it is not guaranteed by a successful sound test.
 
 ## Documentation
 
@@ -102,6 +117,6 @@ ruff format --check .
 pytest --cov=custom_components.homecall --cov-report=term-missing
 ```
 
-Tests import real Home Assistant modules and exercise WAV parsing, real FFmpeg conversion, HTTP handler behavior, settings permissions, device filtering, expiring tokens, and configuration flows. Service calls are mocked so tests do not contact Amazon or announce to real speakers. End-to-end Alexa playback remains a hardware acceptance check.
+Tests import real Home Assistant modules and exercise WAV parsing, real FFmpeg conversion, HTTP handler behavior, settings permissions, device filtering, expiring tokens, and configuration flows. Service calls are mocked so tests do not contact Amazon or announce to real speakers. Audible Alexa/DLNA playback and DLNA music restoration remain hardware acceptance checks.
 
 Licensed under [MIT](LICENSE). Built and maintained by [Thomas Gregg](https://github.com/thomasgregg).

@@ -153,3 +153,58 @@ def test_discovery_excludes_other_platforms_disabled_and_missing_entities(hass, 
         {"entity_id": "notify.a_speak", "name": "Attic", "available": True},
         {"entity_id": "notify.z_speak", "name": "Zebra", "available": False},
     ]
+
+
+async def test_speaker_save_updates_visibility_and_resume_together(
+    hass, entry, http_request, devices
+):
+    from unittest.mock import Mock
+
+    speaker = "media_player.jbl"
+    devices.append({"entity_id": speaker, "name": "JBL", "available": True, "transport": "dlna"})
+    entry.options = {"tested_dlna": [speaker], "resume_dlna": [speaker]}
+    manager = Mock()
+    hass.data[DOMAIN]["resume_manager"] = manager
+    response = await SettingsView(hass).post(
+        http_request(
+            {
+                "page": "devices",
+                "use_all": False,
+                "default_targets": ["notify.kitchen_speak"],
+                "resume_dlna": [],
+            }
+        )
+    )
+    assert response.status == 200
+    options = hass.config_entries.async_update_entry.call_args.kwargs["options"]
+    assert options["default_targets"] == ["notify.kitchen_speak"]
+    assert options["resume_dlna"] == []
+    manager.cancel.assert_called_once_with(speaker)
+
+
+@pytest.mark.parametrize("resume", [None, "media_player.jbl", [7], ["media_player.untested"]])
+async def test_invalid_resume_save_does_not_persist_selection(
+    hass, entry, http_request, devices, resume
+):
+    entry.options = {"tested_dlna": ["media_player.jbl"]}
+    with pytest.raises(web.HTTPBadRequest):
+        await SettingsView(hass).post(
+            http_request(
+                {
+                    "page": "devices",
+                    "use_all": False,
+                    "default_targets": ["notify.kitchen_speak"],
+                    "resume_dlna": resume,
+                }
+            )
+        )
+    hass.config_entries.async_update_entry.assert_not_called()
+
+
+async def test_alexa_save_preserves_existing_resume_settings(hass, entry, http_request, devices):
+    entry.options = {"tested_dlna": ["media_player.jbl"], "resume_dlna": ["media_player.jbl"]}
+    response = await SettingsView(hass).post(
+        http_request({"page": "devices", "use_all": False, "default_targets": []})
+    )
+    assert response.status == 200
+    assert json.loads(response.body)["resume_dlna"] == ["media_player.jbl"]

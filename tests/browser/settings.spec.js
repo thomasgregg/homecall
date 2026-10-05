@@ -7,12 +7,28 @@ const script = await readFile(
   ),
   "utf8",
 );
-async function fixture(page) {
+async function fixture(page, language = "en") {
   await page.setContent(
     "<style>body{font:16px Arial;background:#f5f5f5;--primary-text-color:#222;--secondary-text-color:#666;--divider-color:#ddd;--secondary-background-color:#f4f4f4}ha-card{display:block;background:white;border:1px solid #ddd;border-radius:16px}ha-list-item-button{display:flex;padding:20px;gap:14px;cursor:pointer}ha-button{display:inline-block;padding:12px;background:#009ac0;color:white;border-radius:10px;cursor:pointer}ha-button[disabled]{pointer-events:none;opacity:.5}ha-icon{width:24px}ha-list-item-base{display:block;padding:20px}</style><main></main>",
   );
   await page.evaluate(() => {
     customElements.define("hass-subpage", class extends HTMLElement {});
+    customElements.define("ha-expansion-panel", class extends HTMLElement {
+      connectedCallback() {
+        this.attachShadow({mode:"open"});
+        this.shadowRoot.innerHTML = '<div><slot name="leading-icon"></slot><button type="button"><slot name="header"></slot></button></div><section><slot></slot></section>';
+        this.shadowRoot.querySelector('slot[name="header"]').textContent = this.getAttribute('header') || '';
+        this.shadowRoot.querySelector('button').onclick = () => {
+          this.expanded = !this.expanded;
+          this.dispatchEvent(new CustomEvent('expanded-changed',{detail:{expanded:this.expanded}}));
+        };
+      }
+      get expanded() { return this.hasAttribute('expanded'); }
+      set expanded(value) {
+        this.toggleAttribute('expanded',value);
+        this.shadowRoot.querySelector('section').hidden = !value;
+      }
+    });
     customElements.define(
       "ha-checkbox",
       class extends HTMLElement {
@@ -50,7 +66,7 @@ async function fixture(page) {
     );
   });
   await page.addScriptTag({ content: script });
-  await page.evaluate(() => {
+  await page.evaluate((language) => {
     window.calls = [];
     window.failTest = false;
     const candidate = {
@@ -74,7 +90,7 @@ async function fixture(page) {
     };
     const el = document.createElement("homecall-settings");
     el.hass = {
-      language: "en",
+      language,
       callApi: async (method, path, data) => {
         window.calls.push({ method, path, data });
         if (method === "GET") return structuredClone(window.settings);
@@ -104,142 +120,188 @@ async function fixture(page) {
       },
     };
     document.querySelector("main").append(el);
-  });
-  await expect(page.getByText("Alexa speakers", { exact: true })).toBeVisible();
+  }, language);
+  await expect(page.getByText(language === "de" ? "Alexa-Lautsprecher" : "Alexa speakers", { exact: true })).toBeVisible();
 }
-test("two groups and DLNA test confirmation before adding", async ({
-  page,
-}) => {
-  await fixture(page);
-  await expect(page.getByText("DLNA speakers", { exact: true })).toBeVisible();
-  await page.locator('[data-page="dlna"]').click();
-  await page.locator(".add-speaker").click();
-  await page.getByRole("combobox").selectOption("media_player.jbl");
-  await page.locator(".test-sound").click();
-  await expect(
-    page.getByText("Did you hear the sound?", { exact: true }),
-  ).toBeVisible();
-  expect(await page.locator("ha-form").evaluate(el => el.schema[0].selector.select.mode)).toBe("dropdown");
-  await expect(page.locator(".confirmation ha-alert")).toHaveAttribute("alert-type", "info");
-  await expect(page.locator(".retry-test")).toHaveAttribute("appearance", "plain");
-  const gap = await page.locator(".confirmation-actions").evaluate(el => getComputedStyle(el).gap);
-  expect(gap).toBe("12px");
-  expect(await page.evaluate(() => window.settings.tested_dlna)).toEqual([]);
-  await page.locator(".confirm-test").click();
-  await expect(
-    page.locator('[data-visible="media_player.jbl"]'),
-  ).toHaveAttribute("checked", "");
-  expect(await page.evaluate(() => window.settings.tested_dlna)).toEqual([
-    "media_player.jbl",
-  ]);
-  await page.locator("[data-remove]").click();
-  await expect(page.locator("[data-visible]")).toHaveCount(0);
-});
-test("failed test does not offer confirmation or enable speaker", async ({
-  page,
-}) => {
-  await fixture(page);
-  await page.evaluate(() => (window.failTest = true));
-  await page.locator('[data-page="dlna"]').click();
-  await page.locator(".add-speaker").click();
-  await page.getByRole("combobox").selectOption("media_player.jbl");
-  await page.locator(".test-sound").click();
-  await expect(
-    page.getByText(
-      "The speaker could not start playback. Check its connection and try again.",
-    ),
-  ).toBeVisible();
-  await expect(page.locator(".confirm-test")).toHaveCount(0);
-  expect(await page.evaluate(() => window.settings.tested_dlna)).toEqual([]);
-});
-test("Alexa selection retains DLNA visibility", async ({ page }) => {
-  await fixture(page);
-  await page.evaluate(() => {
-    const el = document.querySelector("homecall-settings");
-    el._data.default_targets = ["media_player.jbl"];
-    el._open("devices");
-    const form = el.shadowRoot.querySelector("ha-form");
-    form.data = { mode: "custom", targets: ["notify.kitchen_speak"] };
-    el._capture();
-  });
-  expect(
-    await page
-      .locator("homecall-settings")
-      .evaluate((el) => el._draft.default_targets),
-  ).toEqual(["notify.kitchen_speak", "media_player.jbl"]);
-});
-
-test("resume music is off by default and can be toggled per speaker", async ({
-  page,
-}) => {
-  await fixture(page);
-  await page.locator("[data-page=dlna]").click();
-  await page.locator(".add-speaker").click();
-  await page.getByRole("combobox").selectOption("media_player.jbl");
-  await page.locator(".test-sound").click();
-  await page.locator(".confirm-test").click();
-  const checkbox = page.locator("[data-resume]");
-  await expect(checkbox).not.toHaveAttribute("checked", "");
-  await checkbox.evaluate((el) => {
-    el.checked = true;
+async function toggle(page, selector, checked) {
+  await page.locator(selector).evaluate((el, value) => {
+    el.checked = value;
     el.dispatchEvent(new Event("change"));
-  });
-  await expect(checkbox).toHaveAttribute("checked", "");
-  expect(await page.evaluate(() => window.settings.resume_dlna)).toEqual([
-    "media_player.jbl",
-  ]);
-  await checkbox.evaluate((el) => {
-    el.checked = false;
-    el.dispatchEvent(new Event("change"));
-  });
-  await expect(checkbox).not.toHaveAttribute("checked", "");
-});
-
-test("offline speakers stay visible and refresh reveals recovered speakers", async ({
-  page,
-}) => {
-  await fixture(page);
-  await page.evaluate(() => {
-    window.settings.dlna_candidates[0].available = false;
-  });
+  }, checked);
+}
+async function addDlna(page) {
   await page.locator('[data-page="dlna"]').click();
-  await page.locator(".refresh-speakers").click();
-  await expect(
-    page.getByText("JBL Charge 5 Wi-Fi", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Turn on these speakers to run the sound test."),
-  ).toBeVisible();
-  await expect(page.locator(".add-speaker")).toHaveCount(0);
-  await expect(
-    page.getByText(/Add the DLNA Digital Media Renderer/),
-  ).toHaveCount(0);
-  await page.evaluate(() => {
-    window.settings.dlna_candidates[0].available = true;
-  });
-  await page.locator(".refresh-speakers").click();
-  await expect(page.locator(".add-speaker")).toBeVisible();
-});
-
-test("DLNA page has one Add speaker action and no Alexa explanation", async ({
-  page,
-}) => {
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await page.locator('.confirm-test').click();
+}
+test('inline sound test confirms before registering, and removal stays per speaker', async ({page}) => {
   await fixture(page);
   await page.locator('[data-page="dlna"]').click();
-  await expect(page.getByText("Add speaker", { exact: true })).toHaveCount(1);
-  await expect(
-    page.getByRole("heading", { name: "Available speakers" }),
-  ).toBeVisible();
-  await expect(page.getByText(/Alexa speakers already/)).toHaveCount(0);
+  await expect(page.locator('.save')).toHaveCount(1);
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await expect(page.getByText('Did you hear the sound?', {exact:true})).toBeVisible();
+  expect(await page.evaluate(() => window.settings.tested_dlna)).toEqual([]);
+  await page.locator('.retry-test').click();
+  await expect(page.locator('.confirm-test')).toHaveCount(0);
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await page.locator('.confirm-test').click();
+  await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveAttribute('checked','');
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-remove]').click();
+  await expect(page.locator('[data-visible]')).toHaveCount(0);
 });
-
-test("integration controls inherit HA theme styles", async ({ page }) => {
+test('failed and offline tests never register speakers', async ({page}) => {
   await fixture(page);
-  const css = await page.locator("homecall-settings").evaluate(el => el.shadowRoot.querySelector("style").textContent);
-  expect(css).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|--app-header-|--mdc-icon-size/iu);
-  for (const name of ["connection", "devices", "dlna"]) {
-    await page.locator(`[data-page="${name}"]`).click();
-    expect(await page.locator("homecall-settings").evaluate(el => el.shadowRoot.querySelectorAll("button,input,select,textarea").length)).toBe(0);
-    await page.locator(".close").evaluate(el => el.click());
+  await page.evaluate(() => window.failTest = true);
+  await page.locator('[data-page="dlna"]').click();
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await expect(page.getByText('The speaker could not start playback. Check its connection and try again.')).toBeVisible();
+  await expect(page.locator('.confirm-test')).toHaveCount(0);
+  expect(await page.evaluate(() => window.settings.tested_dlna)).toEqual([]);
+  await page.evaluate(() => window.settings.dlna_candidates[0].available = false);
+  await page.locator('.refresh-speakers').click();
+  await expect(page.locator('[data-test]')).toHaveAttribute('disabled','');
+  await expect(page.getByText('Turn on these speakers to run the sound test.')).toBeVisible();
+});
+test('resume and visibility remain drafts until one page-level Save', async ({page}) => {
+  await fixture(page);
+  await addDlna(page);
+  await page.locator('[data-speaker-panel] button').click();
+  await toggle(page,'[data-resume]',true);
+  await toggle(page,'[data-visible]',false);
+  expect(await page.evaluate(() => window.settings.resume_dlna)).toEqual([]);
+  expect(await page.evaluate(() => window.settings.default_targets)).toEqual(['media_player.jbl']);
+  await expect(page.locator('.save')).toHaveCount(1);
+  expect(await page.locator('.save').evaluate(el=>el.closest('ha-card'))).toBeNull();
+  await page.locator('.save').click();
+  expect(await page.evaluate(() => window.settings.resume_dlna)).toEqual(['media_player.jbl']);
+  expect(await page.evaluate(() => window.settings.default_targets)).toEqual([]);
+});
+test('Alexa select all selects current speakers, preserves DLNA and supports partial selection', async ({page}) => {
+  await fixture(page);
+  await page.evaluate(() => {
+    const el=document.querySelector('homecall-settings');
+    el._data.targets.push({entity_id:'notify.bedroom_speak',name:'Bedroom',available:false});
+    el._data.default_targets=['media_player.jbl'];
+    el._data.use_all=false;
+  });
+  await page.locator('[data-page="devices"]').click();
+  await toggle(page,'[data-select-all]',true);
+  await toggle(page,'[data-visible="notify.bedroom_speak"]',false);
+  expect(await page.locator('[data-select-all]').evaluate(el=>el.indeterminate)).toBe(true);
+  await page.locator('.save').click();
+  expect(await page.evaluate(() => window.settings.default_targets)).toEqual(['media_player.jbl','notify.kitchen_speak']);
+  expect(await page.evaluate(() => window.settings.use_all)).toBe(false);
+});
+test('refresh preserves unsaved visibility and resume changes', async ({page}) => {
+  await fixture(page);
+  await addDlna(page);
+  await page.locator('[data-speaker-panel] button').click();
+  await toggle(page,'[data-resume]',true);
+  await toggle(page,'[data-visible]',false);
+  await page.locator('[data-available-panel] button').click();
+  await page.locator('.refresh-speakers').click();
+  await expect(page.locator('[data-visible]')).not.toHaveAttribute('checked','');
+  await expect(page.locator('[data-resume]')).toHaveAttribute('checked','');
+});
+for (const language of ['en','de']) {
+  for (const dark of [false,true]) {
+    test(`native controls and theme inheritance: ${language}, ${dark?'dark':'light'}`, async ({page}) => {
+      await fixture(page,language);
+      await page.evaluate(dark=>{
+        document.body.style.setProperty('--primary-text-color',dark?'#eee':'#222');
+        document.body.style.setProperty('--secondary-text-color',dark?'#bbb':'#666');
+      },dark);
+      for(const name of ['devices','dlna']) {
+        await page.locator(`[data-page="${name}"]`).click();
+        await expect(page.locator('.save')).toHaveCount(1);
+        const data=await page.locator('homecall-settings').evaluate(el=>({
+          css:el.shadowRoot.querySelector('style').textContent,
+          controls:el.shadowRoot.querySelectorAll('button,input,select,textarea').length,
+          speakerIcons:el.shadowRoot.querySelectorAll('ha-icon[icon="mdi:speaker"]').length,
+          color:getComputedStyle(el).color,
+        }));
+        expect(data.css).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|::part|--ha-checkbox-|--ha-button-/iu);
+        expect(data.controls).toBe(0);
+        expect(data.speakerIcons).toBe(0);
+        expect(data.color).toBe(dark?'rgb(238, 238, 238)':'rgb(34, 34, 34)');
+        await expect(page.getByText(language==='de'?'Alle auswählen':'Select all',{exact:true})).toBeVisible();
+        await expect(page.getByText(/current volume|replaces any|aktuelle Lautstärke/)).toHaveCount(0);
+        await page.locator('.close').evaluate(el=>el.click());
+      }
+    });
   }
+}
+
+test('HA form loader imports native speaker controls once and removes its bootstrap form', async ({page}) => {
+  await page.setContent('<main></main>');
+  await page.addScriptTag({content:script});
+  const result=await page.evaluate(async () => {
+    let loads=0;
+    let schema;
+    customElements.define('ha-form',class extends HTMLElement {
+      connectedCallback(){
+        loads++;
+        schema=this.schema;
+        queueMicrotask(()=>{
+          customElements.define('ha-expansion-panel',class extends HTMLElement {});
+          customElements.define('ha-checkbox',class extends HTMLElement {});
+        });
+      }
+    });
+    const host=document.createElement('div');
+    host.attachShadow({mode:'open'});
+    document.querySelector('main').append(host);
+    await homeCallNativeSpeakerControls(host,{});
+    await homeCallNativeSpeakerControls(host,{});
+    return {loads,schema,remaining:host.shadowRoot.childElementCount};
+  });
+  expect(result.loads).toBe(1);
+  expect(result.schema.map(item=>item.type)).toEqual(['expandable','multi_select']);
+  expect(result.remaining).toBe(0);
+});
+
+test('pending test shows row progress, disables controls and cannot add until confirmed', async ({page}) => {
+  await fixture(page);
+  await page.evaluate(()=>{
+    const hass=document.querySelector('homecall-settings')._hass;
+    const original=hass.callApi;
+    hass.callApi=async (...args)=>{
+      if(args[2]?.action==='test') await new Promise(resolve=>window.finishTest=resolve);
+      return original(...args);
+    };
+  });
+  await page.locator('[data-page="dlna"]').click();
+  await page.locator('[data-test]').click();
+  await expect(page.locator('[data-test]')).toHaveAttribute('disabled','');
+  await expect(page.locator('.test-content ha-alert')).toContainText('Playing test');
+  await expect(page.locator('.confirm-test')).toHaveCount(0);
+  expect(await page.evaluate(()=>window.settings.tested_dlna)).toEqual([]);
+  await page.evaluate(()=>window.finishTest());
+  await expect(page.locator('.confirm-test')).toBeVisible();
+});
+
+test('discarding draft resume and selection edits leaves saved settings unchanged', async ({page}) => {
+  await fixture(page);
+  await addDlna(page);
+  await page.locator('[data-speaker-panel] button').click();
+  await toggle(page,'[data-resume]',true);
+  await toggle(page,'[data-visible]',false);
+  await page.locator('.close').evaluate(el=>el.click());
+  await page.locator('[data-page="dlna"]').click();
+  await expect(page.locator('[data-visible]')).toHaveAttribute('checked','');
+  await page.locator('[data-speaker-panel] button').click();
+  await expect(page.locator('[data-resume]')).not.toHaveAttribute('checked','');
+});
+
+test('Refresh is only available beside the expanded discovery list', async ({page}) => {
+  await fixture(page);
+  await page.locator('[data-page="dlna"]').click();
+  await expect(page.locator('.refresh-speakers')).toBeVisible();
+  await page.locator('[data-available-panel] button').click();
+  await expect(page.locator('.refresh-speakers')).not.toBeVisible();
+  await page.locator('[data-available-panel] button').click();
+  await page.locator('.refresh-speakers').click();
+  await expect(page.locator('[data-available-panel]')).toHaveAttribute('expanded','');
+  await expect(page.locator('[data-test]')).toBeVisible();
 });

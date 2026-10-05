@@ -14,18 +14,18 @@ HomeCall starts with two groups: **Alexa speakers** and **DLNA speakers**. You c
 
 ### Alexa speakers
 
-**All Alexa speakers** automatically includes new enabled Alexa `notify.*_speak` entities. **Custom selection** chooses the Alexa speakers shown in the card. Switching modes preserves the custom selection and the separate DLNA selection. Alexa does not require the DLNA sound test.
+Each speaker has a checkbox. **Select all** checks or clears the speakers currently listed and shows a partial-selection state when only some are checked. Press **Save changes** once for the page. Saving this list uses the current selection; speakers discovered later are not automatically added. Editing Alexa selection preserves the separate DLNA selection. Alexa does not require the DLNA sound test.
 
 ### DLNA speakers
 
 1. Configure the speaker through Home Assistant’s **DLNA Digital Media Renderer** integration.
-2. Open **HomeCall → Configure → DLNA speakers → Add speaker**.
-3. Choose a speaker and select **Play test sound**.
+2. Open **HomeCall → Configure → DLNA speakers → Available speakers**.
+3. Select **Test** beside an online speaker. Progress, errors, and confirmation appear under that row.
 4. Confirm **Yes, add speaker** only if you heard it.
 
 The test plays a three-second chime at the current speaker volume and replaces any current playback. HomeCall requires both a download of the test audio and your audible confirmation before adding the speaker. An accepted service call alone is insufficient. Failed, expired and offline tests never add a device.
 
-Added speakers have a **Show in the card** checkbox. Unchecking hides the speaker without discarding the successful test. **Remove** discards the test and visibility; re-adding requires a new test. New DLNA speakers never enter the card automatically.
+Added speakers have a checkbox controlling visibility in the card. Unchecking hides the speaker without discarding the successful test. Expand the speaker row to edit **Resume music after announcements** or use **Remove**. Visibility and resume edits remain pending until **Save changes** at the bottom of the page; refreshing discovery preserves pending edits. Adding and removing speakers take effect immediately. **Remove** discards the test and visibility; re-adding requires a new test. New DLNA speakers never enter the card automatically.
 
 Discovery uses the `dlna_dmr` entity platform and `PLAY_MEDIA` capability, not manufacturer names. Cast entities for the same physical device are excluded. Passing the test confirms basic MP3 playback, not music resumption or every announcement scenario.
 

@@ -28,4 +28,4 @@ The administrative settings UI has browser regression tests. Run `npm ci`, insta
 
 ## Integration UI conventions
 
-Use Home Assistant components for controls: `ha-form` with native selectors, `ha-button`, `ha-checkbox`, `ha-alert`, and HA list components. Let components inherit their default theme colours, typography, icon sizing, and header styles. Use theme variables for supporting text; never hardcode colours or restyle control internals. Custom CSS should handle layout and spacing only. Primary actions use the native brand variant; secondary actions use plain neutral buttons. Check long names and narrow screens before releasing.
+Use Home Assistant components for controls: `ha-form` with native selectors, `ha-button`, `ha-checkbox`, `ha-alert`, and HA list components. Let components inherit their default theme colours, typography, icon sizing, and header styles. Use theme variables for supporting text; never hardcode colours or restyle control internals. Custom CSS should handle layout and spacing only. Primary actions use the native brand variant; secondary actions use plain brand buttons. Check long names and narrow screens before releasing.

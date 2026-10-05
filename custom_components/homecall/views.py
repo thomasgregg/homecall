@@ -106,6 +106,19 @@ class SettingsView(HomeCallView):
             values["use_all"] = use_all
             # Keep the custom selection while switching to all-device mode.
             values["default_targets"] = list(dict.fromkeys(selected))
+            if "resume_dlna" in payload:
+                resume = payload["resume_dlna"]
+                if (
+                    not isinstance(resume, list)
+                    or not all(isinstance(x, str) for x in resume)
+                    or not set(resume).issubset(values["tested_dlna"])
+                ):
+                    raise web.HTTPBadRequest()
+                removed = set(values["resume_dlna"]) - set(resume)
+                values["resume_dlna"] = list(dict.fromkeys(resume))
+                if manager := self.hass.data[DOMAIN].get("resume_manager"):
+                    for entity_id in removed:
+                        manager.cancel(entity_id)
         else:
             raise web.HTTPBadRequest()
         self.hass.config_entries.async_update_entry(entry, options={**entry.options, **values})

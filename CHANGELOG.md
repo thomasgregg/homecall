@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0
+
+- Use matching compact Alexa and DLNA speaker lists with Select all and one page-level Save changes action.
+- Keep DLNA resume settings in native expandable speaker rows and test progress, confirmation, and failures under the tested candidate.
+- Remove repeated speaker icons, the separate Alexa selection-mode section, and the sound-interruption note.
+- Save DLNA visibility and resume settings together; preserve pending changes through discovery refresh and speaker registration.
+- Reuse HA cards, list rows, checkboxes, expansion panels, buttons, and alerts with theme-aware styling and English/German labels.
+- Place Refresh above the expanded discovery list; use normal-weight headings and consistent secondary actions.
+- Update DLNA setup instructions, playback limitations, and the architecture diagram for both delivery routes.
+
 ## 1.1.4
 
 - Let native HA headers, icons, and controls inherit default theme styling; remove unused custom row styles.
