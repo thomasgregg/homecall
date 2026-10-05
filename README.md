@@ -19,6 +19,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
 ## Contents
 
 - [Why HomeCall](#why-homecall)
+- [Screenshots](#screenshots)
 - [Before you start](#before-you-start)
 - [Install](#install)
 - [Use](#use)
@@ -34,6 +35,18 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
 - **Short-lived audio:** recordings are held in memory and delivery links expire after three minutes.
 - **Clear feedback:** distinguish request acceptance from audio retrieval.
 - **English and German:** setup and settings follow the Home Assistant language.
+
+## Screenshots
+
+HomeCall’s configuration screens in a real Home Assistant installation: connection overview, Alexa speaker selection, and DLNA speaker options.
+
+![HomeCall integration overview, Alexa speaker selection, and DLNA music restoration settings](docs/assets/ui-configuration.png)
+
+View the full-size screens: [overview](docs/assets/ui-overview.png), [Alexa speakers](docs/assets/ui-alexa.png), and [DLNA speakers](docs/assets/ui-dlna.png).
+
+The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card#screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
+
+[![HomeCall Card recording a real microphone waveform with speaker selection enabled](docs/assets/ui-card-recording.png)](https://github.com/thomasgregg/homecall-card#screenshots)
 
 ## Before you start
 
@@ -90,7 +103,6 @@ flowchart TD
     Speaker -.->|Playback state via HA| Resume[Optional resume manager]
     Resume -.->|Restore media after completion; seek if supported| Speaker
 ```
-
 
 Alexa and DLNA use different delivery addresses for the same in-memory clip and expiring token. DLNA playback stays on the local network; Alexa delivery uses Amazon’s service. The card is installed separately and communicates only with HomeCall’s authenticated API. Music restoration depends on renderer capabilities and playback-state events; it is not guaranteed by a successful sound test.
 
