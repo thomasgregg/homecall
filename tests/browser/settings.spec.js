@@ -411,7 +411,7 @@ for (const language of ['en', 'de']) {
   test(`Google Cast onboarding, testing and visibility (${language})`, async ({page}) => {
     await fixture(page, language, 'cast');
     await page.locator('[data-page="cast"]').click();
-    await expect(page.locator('ha-alert').first()).toContainText(language === 'en' ? 'interrupts music' : 'Musik wird unterbrochen');
+    await expect(page.locator('ha-alert')).toHaveCount(0);
     await page.locator('[data-add="media_player.jbl"]').click();
     await page.locator('[data-speaker-panel] button').click();
     await page.locator('[data-test="media_player.jbl"]').click();
