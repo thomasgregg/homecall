@@ -1,10 +1,14 @@
 {
   "domain": "homecall",
   "name": "HomeCall",
-  "version": "1.2.4",
+  "after_dependencies": [
+    "alexa_devices",
+    "dlna_dmr"
+  ],
+  "codeowners": [
+    "@thomasgregg"
+  ],
   "config_flow": true,
-  "documentation": "https://github.com/thomasgregg/homecall",
-  "issue_tracker": "https://github.com/thomasgregg/homecall/issues",
   "dependencies": [
     "http",
     "ffmpeg",
@@ -13,13 +17,9 @@
     "panel_custom",
     "media_player"
   ],
-  "codeowners": [
-    "@thomasgregg"
-  ],
-  "iot_class": "cloud_push",
+  "documentation": "https://github.com/thomasgregg/homecall",
   "integration_type": "service",
-  "after_dependencies": [
-    "alexa_devices",
-    "dlna_dmr"
-  ]
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/thomasgregg/homecall/issues",
+  "version": "1.2.4"
 }
