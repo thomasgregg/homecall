@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3
+
+- Use the native HA dropdown for speaker selection and an info alert with separated confirmation actions.
+
 ## 1.1.2
 
 - Use Available speakers as the section heading, reserving Add speaker for the action.

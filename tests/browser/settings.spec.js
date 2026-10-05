@@ -119,6 +119,11 @@ test("two groups and DLNA test confirmation before adding", async ({
   await expect(
     page.getByText("Did you hear the sound?", { exact: true }),
   ).toBeVisible();
+  expect(await page.locator("ha-form").evaluate(el => el.schema[0].selector.select.mode)).toBe("dropdown");
+  await expect(page.locator(".confirmation ha-alert")).toHaveAttribute("alert-type", "info");
+  await expect(page.locator(".retry-test")).toHaveAttribute("appearance", "plain");
+  const gap = await page.locator(".confirmation-actions").evaluate(el => getComputedStyle(el).gap);
+  expect(gap).toBe("12px");
   expect(await page.evaluate(() => window.settings.tested_dlna)).toEqual([]);
   await page.locator(".confirm-test").click();
   await expect(
