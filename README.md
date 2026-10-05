@@ -38,7 +38,7 @@ HomeCall turns microphone recordings into short speaker announcements. It handle
 
 HomeCall’s configuration screens in a real Home Assistant installation: connection overview, Alexa speaker selection, and DLNA speaker options.
 
-![HomeCall integration overview, Alexa speaker selection, and DLNA music restoration settings](docs/assets/ui-configuration.png)
+![HomeCall settings overview and Music Assistant speaker setup](docs/assets/ui-configuration.png)
 
 View the full-size screens: [overview](docs/assets/ui-overview.png), [Alexa speakers](docs/assets/ui-alexa.png), and [DLNA speakers](docs/assets/ui-dlna.png).
 
