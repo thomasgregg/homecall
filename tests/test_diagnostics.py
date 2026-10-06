@@ -1,16 +1,13 @@
 """Timings distinguish service acceptance from audio retrieval without sharing bearer links."""
 
 import asyncio
-import io
 import json
 import time
-import wave
 from unittest.mock import AsyncMock
 
 import pytest
 from aiohttp import web
 
-from custom_components.homecall.audio import timing_test_audio
 from custom_components.homecall.const import DOMAIN
 from custom_components.homecall.views import (
     AudioView,
@@ -64,26 +61,7 @@ async def test_timings_and_owner_scoped_retrieval(
         await StatusView(hass).get(status)
 
 
-@pytest.mark.parametrize("padded", [False, True])
-def test_markers_preserve_four_notes_and_optional_leading_silence(monkeypatch, padded):
-    monkeypatch.setattr("custom_components.homecall.audio.convert_wav", lambda data: data)
-    with wave.open(io.BytesIO(timing_test_audio(padded))) as wav:
-        import array
-
-        samples = array.array("h", wav.readframes(wav.getnframes()))
-        rate = wav.getframerate()
-    offset = 2 if padded else 0
-    assert len(samples) == rate * (4 + offset)
-    if padded:
-        assert not any(samples[: 2 * rate])
-    for note in range(4):
-        start = (offset + note) * rate
-        assert max(abs(value) for value in samples[start : start + rate // 4]) > 2000
-        assert not any(samples[start + rate // 4 : start + rate])
-
-
-@pytest.mark.parametrize("mode", ["markers", "markers_padded"])
-async def test_marker_clips_follow_normal_delivery(hass, http_request, devices, monkeypatch, mode):
+async def test_sound_test_follows_normal_delivery(hass, http_request, devices, monkeypatch):
     monkeypatch.setattr(SpeakerTestView, "context", lambda self, request: None)
     delivery = AsyncMock(wraps=deliver)
     monkeypatch.setattr("custom_components.homecall.views.deliver", delivery)
@@ -92,13 +70,13 @@ async def test_marker_clips_follow_normal_delivery(hass, http_request, devices, 
             {
                 "action": "test",
                 "entity_id": "notify.kitchen_speak",
-                "mode": mode,
+                "mode": "sound",
             }
         )
     )
     result = json.loads(response.body)
-    assert result["diagnostics"]["test_mode"] == mode
-    duration = 6 if mode == "markers_padded" else 4
+    assert result["diagnostics"]["test_mode"] == "sound"
+    duration = 3
     assert result["diagnostics"]["duration_seconds"] == duration
     assert delivery.call_args.kwargs["duration"] == duration
     assert result["diagnostics"]["deliveries"][0]["accepted"] is True
@@ -106,21 +84,22 @@ async def test_marker_clips_follow_normal_delivery(hass, http_request, devices, 
     assert result["receipt"] not in json.dumps(result["diagnostics"])
 
 
-async def test_unknown_marker_mode_is_rejected(hass, http_request, devices):
+@pytest.mark.parametrize("mode", ["markers", "markers_padded", "unknown"])
+async def test_removed_or_unknown_test_modes_are_rejected(hass, http_request, devices, mode):
     with pytest.raises(web.HTTPBadRequest):
         await SpeakerTestView(hass).post(
             http_request(
                 {
                     "action": "test",
                     "entity_id": "notify.kitchen_speak",
-                    "mode": "unknown",
+                    "mode": mode,
                 }
             )
         )
 
 
 @pytest.mark.parametrize("reload", [False, True])
-async def test_timing_test_cannot_retain_or_send_audio_after_unload_or_reload(
+async def test_sound_test_cannot_retain_or_send_audio_after_unload_or_reload(
     hass, http_request, devices, monkeypatch, reload
 ):
     monkeypatch.setattr(SpeakerTestView, "context", lambda self, request: None)
@@ -138,7 +117,7 @@ async def test_timing_test_cannot_retain_or_send_audio_after_unload_or_reload(
                 {
                     "action": "test",
                     "entity_id": "notify.kitchen_speak",
-                    "mode": "markers",
+                    "mode": "sound",
                 }
             )
         )

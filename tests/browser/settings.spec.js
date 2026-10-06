@@ -142,7 +142,7 @@ async function addDlna(page) {
 test('inline sound test confirms before registering, and removal stays per speaker', async ({page}) => {
   await fixture(page);
   await page.locator('[data-page="dlna"]').click();
-  await expect(page.locator('.save')).toHaveCount(1);
+  await expect(page.locator('.save')).toHaveCount(0);
   await page.locator('[data-test="media_player.jbl"]').click();
   await expect(page.getByText('Did you hear the sound?', {exact:true})).toBeVisible();
   expect(await page.evaluate(() => window.settings.tested_dlna)).toEqual([]);
@@ -185,7 +185,7 @@ test('resume and visibility remain drafts until one page-level Save', async ({pa
   expect(await page.evaluate(() => window.settings.resume_dlna)).toEqual([]);
   expect(await page.evaluate(() => window.settings.default_targets)).toEqual(['media_player.jbl']);
   await expect(page.locator('.save')).toHaveCount(1);
-  expect(await page.locator('.save').evaluate(el=>el.closest('ha-card'))).toBeNull();
+  expect(await page.locator('.save').evaluate(el=>!!el.closest('ha-card') && el.parentElement.classList.contains('card-actions'))).toBe(true);
   await page.locator('.save').click();
   expect(await page.evaluate(() => window.settings.resume_dlna)).toEqual(['media_player.jbl']);
   expect(await page.evaluate(() => window.settings.default_targets)).toEqual([]);
@@ -228,7 +228,7 @@ for (const language of ['en','de']) {
       },dark);
       for(const name of ['devices','dlna']) {
         await page.locator(`[data-page="${name}"]`).click();
-        await expect(page.locator('.save')).toHaveCount(1);
+        await expect(page.locator('.save')).toHaveCount(await page.locator('[data-visible]').count() ? 1 : 0);
         const data=await page.locator('homecall-settings').evaluate(el=>({
           css:el.shadowRoot.querySelector('style').textContent,
           controls:el.shadowRoot.querySelectorAll('button,input,select,textarea').length,
@@ -239,7 +239,7 @@ for (const language of ['en','de']) {
         expect(data.controls).toBe(0);
         expect(data.speakerIcons).toBe(0);
         expect(data.color).toBe(dark?'rgb(238, 238, 238)':'rgb(34, 34, 34)');
-        await expect(page.getByText(language==='de'?'Alle auswählen':'Select all',{exact:true})).toBeVisible();
+        await expect(page.locator('[data-select-all]')).toHaveCount(await page.locator('[data-visible]').count() ? 1 : 0);
         await expect(page.getByText(/current volume|replaces any|aktuelle Lautstärke/)).toHaveCount(0);
         await page.locator('.close').evaluate(el=>el.click());
       }
@@ -357,7 +357,8 @@ test('local platform pages filter discovery and preserve other platform selectio
   await page.locator('.refresh-speakers').click();
   await expect(page.locator('[data-test="media_player.jbl"]')).toBeVisible();
   await expect(page.locator('[data-visible="media_player.sonos"]')).toHaveCount(0);
-  await page.locator('.save').click();
+  await expect(page.locator('.save')).toHaveCount(0);
+  await page.locator('homecall-settings').evaluate(el => el._back());
   expect(await page.evaluate(() => window.settings.default_targets)).toContain('media_player.sonos');
   await page.locator('[data-page="sonos"]').click();
   await expect(page.locator('[data-visible="media_player.sonos"]')).toHaveAttribute('checked','');
@@ -431,7 +432,7 @@ for (const language of ['en', 'de']) {
   });
 }
 
-test('EchoMuse timing variants are explicit and diagnostics omit the audio receipt', async ({page}) => {
+test('EchoMuse sound tests preserve diagnostics without temporary timing controls', async ({page}) => {
   await fixture(page, 'en', 'echomuse');
   await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {
     writeText: async text => {window.copiedDiagnostics = text;},
@@ -439,21 +440,20 @@ test('EchoMuse timing variants are explicit and diagnostics omit the audio recei
   await page.locator('[data-page="echomuse"]').click();
   await page.locator('[data-add="media_player.jbl"]').click();
   await page.locator('[data-speaker-panel] button').click();
-  await page.locator('.timing-test summary').click();
-  await page.locator('[data-mode="markers"]').click();
+  await expect(page.locator('.timing-test, [data-timing-test]')).toHaveCount(0);
+  await page.locator('[data-test="media_player.jbl"]').click();
   await expect(page.locator('.test-diagnostics')).toBeVisible();
-  await page.locator('.timing-test summary').click();
-  await page.locator('[data-mode="markers_padded"]').click();
   const calls = await page.evaluate(() => window.calls.filter(call => call.data?.action === 'test'));
-  expect(calls.map(call => call.data.mode)).toEqual(['markers', 'markers_padded']);
-  await page.locator('.test-diagnostics summary').click();
+  expect(calls).toHaveLength(1);
+  expect(calls[0].data.mode).toBeUndefined();
+  await page.locator('.test-diagnostics ha-expansion-panel button').click();
   await page.locator('.copy-diagnostics').click();
   const copied = await page.evaluate(() => window.copiedDiagnostics);
   expect(JSON.parse(copied).audio_fetches).toBe(1);
   expect(copied).not.toContain('receipt');
 });
 
-test('timing diagnostics copy begins on the click while refresh is pending', async ({page}) => {
+test('sound test diagnostics copy begins on the click while refresh is pending', async ({page}) => {
   await fixture(page, 'en', 'echomuse');
   await page.locator('[data-page="echomuse"]').click();
   await page.locator('[data-add="media_player.jbl"]').click();
@@ -473,7 +473,7 @@ test('timing diagnostics copy begins on the click while refresh is pending', asy
       },
     }});
   });
-  await page.locator('.test-diagnostics summary').click();
+  await page.locator('.test-diagnostics ha-expansion-panel button').click();
   await page.locator('.copy-diagnostics').click();
   expect(await page.evaluate(() => window.clipboardWriteStarted)).toBe(true);
   expect(await page.evaluate(() => window.copiedDiagnostics)).toBeUndefined();
@@ -487,7 +487,7 @@ test('timing diagnostics copy begins on the click while refresh is pending', asy
   expect(await page.locator('homecall-settings').evaluate(el => el._diagnostics.diagnostic_id)).toBe('new-test');
 });
 
-test('a failed timing test clears diagnostics from the previous successful test', async ({page}) => {
+test('a failed sound test clears diagnostics from the previous successful test', async ({page}) => {
   await fixture(page, 'en', 'echomuse');
   await page.locator('[data-page="echomuse"]').click();
   await page.locator('[data-add="media_player.jbl"]').click();
@@ -543,5 +543,54 @@ for (const language of ['en', 'de']) {
     });
     await page.locator('.refresh-speakers').click();
     await expect(page.locator('ha-alert')).toContainText(language === 'de' ? 'über ESPHome' : 'through ESPHome');
+  });
+}
+
+for (const language of ['en', 'de']) {
+  test(`announcement settings defaults, discard and saved Cast exception (${language})`, async ({page}) => {
+    await fixture(page, language);
+    await page.locator('[data-page="announcements"]').click();
+    const form = page.locator('.chime-settings > ha-form');
+    const child = page.locator('.chime-subsetting ha-form');
+    expect(await form.evaluate(el => el.data)).toEqual({announcement_chime: false, skip_cast_chime: true});
+    expect(await form.evaluate(el => el.schema.map(s => s.name))).toEqual(['announcement_chime']);
+    expect(await form.evaluate(el => el.computeLabel(el.schema[0])))
+      .toBe(language === 'de' ? 'Signalton vor Nachrichten abspielen' : 'Play a chime before messages');
+    await form.evaluate(el => {
+      el.data = {...el.data, announcement_chime: true};
+      el.dispatchEvent(new CustomEvent('value-changed', {bubbles:true}));
+    });
+    expect(await child.evaluate(el => el.schema.map(s => s.name))).toEqual(['skip_cast_chime']);
+    expect(await child.evaluate(el => el.data.skip_cast_chime)).toBe(true);
+    expect(await form.evaluate(el => el.computeHelper)).toBeUndefined();
+    await child.evaluate(el => {
+      el.data = {...el.data, skip_cast_chime: false};
+      el.dispatchEvent(new CustomEvent('value-changed', {bubbles:true}));
+    });
+    await page.locator('homecall-settings').evaluate(el => el._back());
+    await page.locator('[data-page="announcements"]').click();
+    expect(await form.evaluate(el => el.data)).toEqual({announcement_chime: false, skip_cast_chime: true});
+    await form.evaluate(el => {
+      el.data = {...el.data, announcement_chime: true};
+      el.dispatchEvent(new CustomEvent('value-changed', {bubbles:true}));
+    });
+    await child.evaluate(el => {
+      el.data = {skip_cast_chime:false};
+      el.dispatchEvent(new CustomEvent('value-changed', {bubbles:true}));
+    });
+    await form.evaluate(el => {el.reportValidity = () => true;});
+    await page.locator('.save').click();
+    const call = await page.evaluate(() => window.calls.find(c => c.data?.page === 'announcements'));
+    expect(call.data).toEqual({page:'announcements', announcement_chime:true, skip_cast_chime:false});
+    await page.locator('[data-page="announcements"]').click();
+    expect(await form.evaluate(el => el.data)).toEqual({announcement_chime:true, skip_cast_chime:false});
+    // Hiding the exception preserves its saved value for the next enable.
+    for (const enabled of [false, true]) {
+      await form.evaluate((el, value) => {
+        el.data = {...el.data, announcement_chime:value};
+        el.dispatchEvent(new CustomEvent('value-changed', {bubbles:true}));
+      }, enabled);
+      expect(await form.evaluate(el => el.data.skip_cast_chime)).toBe(false);
+    }
   });
 }

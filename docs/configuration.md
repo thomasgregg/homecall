@@ -88,3 +88,15 @@ For detailed setup, network troubleshooting, hardware findings and recovery opti
 ## EchoMuse speakers
 
 Connect EchoMuse Dots through ESPHome in Home Assistant, then add and select them under **EchoMuse speakers**. Sound tests are optional. HomeCall uses local `media_player.play_media` announcements and delegates music handling to EchoMuse. Hardware playback remains unverified. See [EchoMuse setup and limitations](echomuse.md).
+
+## Announcement chime
+
+Open **HomeCall → Configure → Announcements** and enable **Play a chime before messages**. It is off by default. HomeCall plays the selected two-tone cue immediately before the complete recording in one combined audio file. No extra playback call or silent delay is added. The sound is bundled with the integration; no upload or external sound service is needed.
+
+When enabled, **Skip the chime on direct Google Cast speakers** appears and is on by default. Those recipients receive only the voice recording. Cast may still make its connection sound when a new receiver session starts; it does not necessarily make that sound before every message. Turn the exception off if you want the HomeCall chime before every direct-Cast message.
+
+The exception applies to speakers selected under **Google Cast**, not speakers or groups selected through **Music Assistant**. MA recipients receive the combined file with MA's additional pre-announcement sound explicitly disabled. HomeCall cannot reliably identify Cast protocols inside MA groups through the public HA entity information. A mixed broadcast may therefore use a voice-only file for direct Cast and a combined file for other routes, from one card upload. Playback is not guaranteed to start simultaneously across routes.
+
+Alexa continues using Speak for recorded audio. Sonos and EchoMuse retain their existing announcement routes. DLNA's optional restoration tracks the combined playback duration. Full-length recordings retain their final words after the cue. Speaker setup sound tests remain unchanged. Automated coverage does not establish audible behavior on every device or firmware; verify idle/active playback and groups on your hardware.
+
+The cue is [2-tone chime by mpaol2023](https://freesound.org/people/mpaol2023/sounds/370176/), licensed CC0; source details are in the bundled asset's attribution file.

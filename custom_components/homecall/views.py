@@ -10,7 +10,7 @@ from xml.sax.saxutils import quoteattr
 from aiohttp import web
 from homeassistant.components.http import HomeAssistantView
 
-from .audio import convert_wav, test_audio, timing_test_audio, validate_wav
+from .audio import chime_duration, convert_wav, test_audio, validate_wav
 from .const import DOMAIN, MAX_BYTES, TTL
 from .diagnostics import elapsed_ms, public_diagnostics, start_diagnostics
 from .helpers import allowed_targets, dlna_candidates, local_url, settings, system_url, targets
@@ -99,6 +99,12 @@ class SettingsView(HomeCallView):
             if not valid_local:
                 return self.json({"error": "invalid_local_url"}, status_code=400)
             values["local_url"] = local
+        elif page == "announcements":
+            for key in ("announcement_chime", "skip_cast_chime"):
+                value = payload.get(key)
+                if not isinstance(value, bool):
+                    raise web.HTTPBadRequest()
+                values[key] = value
         elif page == "devices":
             use_all = payload.get("use_all")
             selected = payload.get("default_targets", [])
@@ -184,7 +190,9 @@ class StatusView(HomeCallView):
                 "targets": allowed_targets(self.hass, store["entry"]),
                 "default_targets": [],
                 "max_seconds": 60,
-                "audio_fetches": clip[2] if clip else 0,
+                "audio_fetches": (clip[4]["audio_fetches"] if len(clip) > 4 else clip[2])
+                if clip
+                else 0,
                 "recorder_protocol": 1,
             }
         )
@@ -233,10 +241,25 @@ class UploadView(HomeCallView):
                     status_code=400,
                 )
             trace["timings_ms"]["validation"] = elapsed_ms(stage)
+            values = settings(store["entry"])
+            transports = {t["entity_id"]: t["transport"] for t in dlna_candidates(self.hass)}
+            chimed_targets = {
+                entity_id
+                for entity_id in selected
+                if values["announcement_chime"]
+                and not (values["skip_cast_chime"] and transports.get(entity_id) == "cast")
+            }
             stage = time.monotonic()
             try:
                 audio = await self.hass.async_add_executor_job(convert_wav, bytes(data))
-            except OSError, subprocess.SubprocessError:
+                chimed_audio = None
+                cue_duration = 0
+                if chimed_targets:
+                    chimed_audio = await self.hass.async_add_executor_job(
+                        convert_wav, bytes(data), True
+                    )
+                    cue_duration = await self.hass.async_add_executor_job(chime_duration)
+            except OSError, subprocess.SubprocessError, wave.Error:
                 return self.json(
                     {"error": "Audio konnte nicht umgewandelt werden."}, status_code=500
                 )
@@ -260,7 +283,7 @@ class UploadView(HomeCallView):
             for key, clip in list(store["clips"].items()):
                 if clip[0] <= now:
                     store["clips"].pop(key, None)
-            if len(store["clips"]) >= 20:
+            if len(store["clips"]) + (2 if chimed_audio is not None else 1) > 20:
                 return self.json(
                     {"error": "Zu viele Durchsagen. Bitte kurz warten."}, status_code=429
                 )
@@ -269,6 +292,11 @@ class UploadView(HomeCallView):
             trace["_expires"] = now + TTL
             store["clips"][token] = [now + TTL, audio, 0, None, trace]
             asyncio.get_running_loop().call_later(TTL, store["clips"].pop, token, None)
+            chimed_token = token
+            if chimed_audio is not None:
+                chimed_token = secrets.token_urlsafe(32)
+                store["clips"][chimed_token] = [now + TTL, chimed_audio, 0, None, trace]
+                asyncio.get_running_loop().call_later(TTL, store["clips"].pop, chimed_token, None)
 
             async def send(index, entity_id):
                 if not self.operation_active(store, generation):
@@ -277,9 +305,9 @@ class UploadView(HomeCallView):
                     self.hass,
                     store["entry"],
                     entity_id,
-                    token,
+                    chimed_token if entity_id in chimed_targets else token,
                     self.context(request),
-                    duration=duration,
+                    duration=duration + (cue_duration if entity_id in chimed_targets else 0),
                     diagnostics=trace,
                     target_index=index,
                 )
@@ -312,7 +340,7 @@ class AudioView(HomeCallView):
             clip[2] += 1
             if len(clip) > 4:
                 trace = clip[4]
-                trace["audio_fetches"] = clip[2]
+                trace["audio_fetches"] += 1
                 if "clip_to_first_fetch" not in trace["timings_ms"]:
                     trace["timings_ms"]["clip_to_first_fetch"] = elapsed_ms(trace["_clip_created"])
         return web.Response(
@@ -400,7 +428,7 @@ class SpeakerTestView(SettingsView):
         entity_id = payload.get("entity_id")
         action = payload.get("action")
         mode = payload.get("mode", "sound")
-        if action == "test" and mode not in ("sound", "markers", "markers_padded"):
+        if action == "test" and mode != "sound":
             raise web.HTTPBadRequest()
         if not isinstance(entity_id, str):
             raise web.HTTPBadRequest()
@@ -475,13 +503,12 @@ class SpeakerTestView(SettingsView):
                 return self.json({"error": "test_busy"}, status_code=429)
             trace = start_diagnostics(store, request)
             trace["test_mode"] = mode
-            duration = {"sound": 3, "markers": 4, "markers_padded": 6}[mode]
+            duration = 3
             trace["duration_seconds"] = duration
             stage = time.monotonic()
             try:
                 audio = await self.hass.async_add_executor_job(
-                    test_audio if mode == "sound" else timing_test_audio,
-                    *(() if mode == "sound" else (mode == "markers_padded",)),
+                    test_audio,
                 )
             except OSError, subprocess.SubprocessError:
                 return self.json({"error": "test_failed"}, status_code=500)

@@ -6,6 +6,14 @@ import tempfile
 import wave
 from pathlib import Path
 
+CHIME_FILE = Path(__file__).parent / "assets" / "announcement-chime.wav"
+
+
+def chime_duration():
+    """Read the duration of the bundled, user-selected cue."""
+    with wave.open(str(CHIME_FILE), "rb") as wav:
+        return wav.getnframes() / wav.getframerate()
+
 
 def validate_wav(data):
     with wave.open(io.BytesIO(data)) as wav:
@@ -22,11 +30,28 @@ def validate_wav(data):
         return duration
 
 
-def convert_wav(data):
+def convert_wav(data, prepend_chime=False):
     with tempfile.TemporaryDirectory(prefix="homecall-") as folder:
         source = Path(folder) / "input.wav"
         dest = Path(folder) / "output.mp3"
         source.write_bytes(data)
+        inputs = ["-i", str(source), "-t", "60"]
+        if prepend_chime:
+            # Decode both sources to the same PCM format before concatenation.
+            # The voice duration is validated separately; do not cap the combined
+            # output at 60 seconds and accidentally truncate the final words.
+            inputs = [
+                "-i",
+                str(CHIME_FILE),
+                "-i",
+                str(source),
+                "-filter_complex",
+                "[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[c];"
+                "[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[v];"
+                "[c][v]concat=n=2:v=0:a=1[out]",
+                "-map",
+                "[out]",
+            ]
         subprocess.run(
             [
                 "ffmpeg",
@@ -35,10 +60,7 @@ def convert_wav(data):
                 "error",
                 "-nostdin",
                 "-y",
-                "-i",
-                str(source),
-                "-t",
-                "60",
+                *inputs,
                 "-ac",
                 "1",
                 "-codec:a",
@@ -80,31 +102,4 @@ def test_audio():
                 struct.pack("<h", int(1800 * envelope * math.sin(2 * math.pi * 660 * t)))
             )
         wav.writeframes(b"".join(samples))
-    return convert_wav(buffer.getvalue())
-
-
-def timing_test_audio(padded=False):
-    """Four different notes at 0, 1, 2, 3 seconds; optional diagnostic-only silence."""
-    import math
-    import struct
-
-    rate = 24000
-    offset = 2 if padded else 0
-    buffer = io.BytesIO()
-    with wave.open(buffer, "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(rate)
-        samples = bytearray()
-        for i in range(rate * (4 + offset)):
-            t = i / rate - offset
-            note = int(t) if t >= 0 else -1
-            fraction = t - note
-            value = 0
-            if 0 <= note < 4 and fraction < 0.25:
-                # Start immediately. Only the ending is faded to avoid a click.
-                envelope = min(1, (0.25 - fraction) / 0.02)
-                value = int(2400 * envelope * math.sin(2 * math.pi * (440 + note * 220) * t))
-            samples.extend(struct.pack("<h", value))
-        wav.writeframes(samples)
     return convert_wav(buffer.getvalue())

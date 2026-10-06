@@ -65,6 +65,8 @@ def settings(entry, hass=None):
         "tested_dlna": values.get("tested_dlna", []),
         "resume_dlna": values.get("resume_dlna", []),
         "local_url": values.get("local_url", ""),
+        "announcement_chime": values.get("announcement_chime", False),
+        "skip_cast_chime": values.get("skip_cast_chime", True),
     }
 
 

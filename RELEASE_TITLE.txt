@@ -1,1 +1,1 @@
-Recording diagnostics and playback timing tests
+Optional announcement chime and cleaner settings

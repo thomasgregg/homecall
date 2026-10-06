@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.0
+
+- Add an optional global two-tone chime before recorded messages, off by default, with a direct Google Cast exception on by default. Keep one playback operation per recipient and disable Music Assistant's extra pre-announcement cue.
+- Bundle the selected CC0 Freesound chime locally. Preserve full-length voice after the cue, expiry/privacy of both audio variants, and DLNA restoration duration. Direct Cast exclusion does not apply to MA players or groups; hardware verification remains pending.
+
+- Remove the temporary four-note Playback timing test and its leading-silence variant from settings and the speaker-test API. Preserve the normal speaker sound test and private opt-in diagnostics.
+
+- Clean up settings with native HA rows, aligned selection controls, padded notices, native diagnostics expansion and clearer test actions. Hide selection and Save on empty lists while preserving pending removals.
+
 ## 1.7.0
 
 - Serve the AudioWorklet recorder used by HomeCall Card 1.2.0, with first-sample readiness, ordered capture and a complete final-buffer flush. Update both components, restart HA, then refresh the dashboard.
