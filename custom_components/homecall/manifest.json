@@ -25,5 +25,5 @@
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/thomasgregg/homecall/issues",
-  "version": "1.8.0"
+  "version": "1.8.1"
 }

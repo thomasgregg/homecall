@@ -27,11 +27,13 @@ All endpoints except the token-protected audio download require normal Home Assi
 | POST   | `/api/homecall/send?target=<entity_id>` | Authenticated  | Request acceptance per target, duration, receipt token             |
 | GET    | `/api/homecall/audio/<token>.mp3`       | Expiring token | MP3 bytes, `Cache-Control: no-store`                               |
 
-Repeat `target` for multiple recipients. Duplicate target IDs are collapsed. The upload body is a WAV file with one channel, 16-bit samples, sample rate 8–48kHz, and duration 0.2–60.5 seconds. The card caps capture at 60 seconds. Uploads are limited to 6,000,000 bytes, including streamed requests without a content length.
+Status filters targets through the requesting user's Home Assistant entity-read permissions. Send requests require read/control permissions as well as HomeCall's global allowlist; these are checked before reading audio and rechecked after conversion.
+
+Repeat `target` for multiple recipients. Duplicate target IDs are collapsed. The upload body is a WAV file with one channel, 16-bit samples, sample rate 8–48kHz, and duration 0.2–60.5 seconds. The card caps capture at 60 seconds. Uploads are limited to 6,000,000 bytes, including streamed requests without a content length. The complete upload body must arrive within 30 seconds, including trickling uploads.
 
 FFmpeg encodes mono MP3 at 24kHz and 48kbps, strips metadata, and has a 30-second subprocess timeout. Temporary conversion files are removed when encoding finishes. Encoded clips stay in memory for at most 180 seconds; at most 20 clips may coexist. Unloading the integration clears clips.
 
-Only one upload/conversion/delivery operation runs at a time. The lock ends after the service calls finish; it does not serialize complete speaker playback. A competing request receives `409`. Invalid targets or audio receive `400`; oversize uploads receive `413`; conversion failure receives `500`; missing setup receives `503`; a full clip store receives `429`. Settings requests without administrator access receive `403`. Invalid/expired audio tokens receive `404`.
+Only one upload/conversion/delivery operation runs at a time. Each speaker service call has a 30-second deadline. A timed-out call is reported as rejected; other targets retain their individual results. The lock ends after the service calls finish or time out; it does not serialize complete speaker playback. A competing request receives `409`. Invalid targets or audio receive `400`; oversize uploads receive `413`; upload deadline expiry receives `408`; conversion failure receives `500`; missing setup receives `503`; a full clip store receives `429`. Settings requests without administrator access receive `403`. Invalid/expired audio tokens receive `404`.
 
 ## Response example
 

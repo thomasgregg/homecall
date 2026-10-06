@@ -5,6 +5,8 @@ from urllib.parse import urlsplit
 DOMAIN = "homecall"
 MAX_BYTES = 6_000_000
 TTL = 180
+UPLOAD_TIMEOUT = 30
+DELIVERY_TIMEOUT = 30
 
 
 def valid_url(url):

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.1
+
+- Bound upload body reads and each speaker delivery service call to 30 seconds. Slow or stalled uploads return HTTP 408; timed-out deliveries are reported as rejected while successful peers retain their results. Release the shared send lock after timeout so subsequent messages and sound tests can proceed.
+- Filter status speaker metadata by the requesting user's Home Assistant entity-read permissions. Require read/control permissions before consuming an upload and recheck them after encoding; preserve administrator access and HomeCall's configured speaker allowlist.
+- Add 12 security regression cases covering stalled and trickling uploads, cancellation, delivery timeout and retry, sound-test cleanup, restricted status access, denied sends, permitted non-admin sends, and permissions revoked during encoding.
+- Keep the existing card protocol and speaker delivery routes. No HomeCall Card update is required for these fixes.
+
 ## 1.8.0
 
 - Add an optional global two-tone chime before recorded messages, off by default, with a direct Google Cast exception on by default. Keep one playback operation per recipient and disable Music Assistant's extra pre-announcement cue.

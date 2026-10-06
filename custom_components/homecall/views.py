@@ -8,10 +8,11 @@ import wave
 from xml.sax.saxutils import quoteattr
 
 from aiohttp import web
+from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.components.http import HomeAssistantView
 
 from .audio import chime_duration, convert_wav, test_audio, validate_wav
-from .const import DOMAIN, MAX_BYTES, TTL
+from .const import DELIVERY_TIMEOUT, DOMAIN, MAX_BYTES, TTL, UPLOAD_TIMEOUT
 from .diagnostics import elapsed_ms, public_diagnostics, start_diagnostics
 from .helpers import allowed_targets, dlna_candidates, local_url, settings, system_url, targets
 
@@ -19,6 +20,19 @@ from .helpers import allowed_targets, dlna_candidates, local_url, settings, syst
 class HomeCallView(HomeAssistantView):
     def __init__(self, hass):
         self.hass = hass
+
+    def user_targets(self, request, entry, *, control=False):
+        """Apply the user's HA permissions as well as HomeCall's global allowlist."""
+        devices = allowed_targets(self.hass, entry)
+        user = request["hass_user"]
+        if user.is_admin:
+            return devices
+        return [
+            device
+            for device in devices
+            if user.permissions.check_entity(device["entity_id"], POLICY_READ)
+            and (not control or user.permissions.check_entity(device["entity_id"], POLICY_CONTROL))
+        ]
 
     def operation_active(self, store, generation):
         return (
@@ -187,7 +201,7 @@ class StatusView(HomeCallView):
         clip = store["clips"].get(receipt) if receipt else None
         return self.json(
             {
-                "targets": allowed_targets(self.hass, store["entry"]),
+                "targets": self.user_targets(request, store["entry"]),
                 "default_targets": [],
                 "max_seconds": 60,
                 "audio_fetches": (clip[4]["audio_fetches"] if len(clip) > 4 else clip[2])
@@ -213,7 +227,7 @@ class UploadView(HomeCallView):
         selected = request.query.getall("target", [])
         available = {
             item["entity_id"]
-            for item in allowed_targets(self.hass, store["entry"])
+            for item in self.user_targets(request, store["entry"], control=True)
             if item["available"]
         }
         selected = list(dict.fromkeys(selected))
@@ -227,10 +241,16 @@ class UploadView(HomeCallView):
             trace = start_diagnostics(store, request)
             stage = time.monotonic()
             data = bytearray()
-            async for chunk in request.content.iter_chunked(65536):
-                data.extend(chunk)
-                if len(data) > MAX_BYTES:
-                    return self.json({"error": "Aufnahme ist zu groß."}, status_code=413)
+            try:
+                async with asyncio.timeout(UPLOAD_TIMEOUT):
+                    async for chunk in request.content.iter_chunked(65536):
+                        data.extend(chunk)
+                        if len(data) > MAX_BYTES:
+                            return self.json({"error": "Aufnahme ist zu groß."}, status_code=413)
+            except TimeoutError:
+                return self.json(
+                    {"error": "Zeitlimit beim Hochladen überschritten."}, status_code=408
+                )
             trace["timings_ms"]["upload_body_read"] = elapsed_ms(stage)
             stage = time.monotonic()
             try:
@@ -272,7 +292,7 @@ class UploadView(HomeCallView):
             # Availability and the admin allowlist can change during upload/encoding.
             available = {
                 item["entity_id"]
-                for item in allowed_targets(self.hass, store["entry"])
+                for item in self.user_targets(request, store["entry"], control=True)
                 if item["available"]
             }
             if not set(selected).issubset(available):
@@ -388,9 +408,10 @@ async def deliver(
                 manager.prepare(entity_id, url, duration, context)
             else:
                 manager.cancel(entity_id)
-        await hass.services.async_call(
-            domain, service, {"entity_id": entity_id, **data}, blocking=True, context=context
-        )
+        async with asyncio.timeout(DELIVERY_TIMEOUT):
+            await hass.services.async_call(
+                domain, service, {"entity_id": entity_id, **data}, blocking=True, context=context
+            )
         accepted = True
         return {"entity_id": entity_id, "accepted": True}
     except Exception:

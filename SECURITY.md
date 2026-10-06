@@ -4,7 +4,7 @@
 
 HomeCall Card buffers microphone audio in browser memory. It uploads only after Send; Discard stops capture and clears the local buffers. The integration converts audio in a temporary directory and retains MP3 bytes in memory for up to 180 seconds. Temporary files are removed after conversion; unloading clears stored clips.
 
-Status and send endpoints require Home Assistant authentication. Integration settings additionally require administrator access. All target IDs are validated against the configured allowlist and current availability.
+Status and send endpoints require Home Assistant authentication. Integration settings additionally require administrator access. All target IDs are validated against the configured allowlist and current availability. Status returns only speakers the requesting user can read. Sends require entity-read and entity-control permissions, checked before upload processing and again after conversion. Upload body reads and each speaker delivery service call have a 30-second deadline; timed-out operations release the shared send lock.
 
 Alexa cannot authenticate to HA. The audio endpoint therefore permits retrieval by anyone holding its random, expiring token URL. Treat that URL like a short-lived credential. For Alexa delivery, audio is transmitted to Amazon/Alexa; HomeCall’s local retention does not describe Amazon’s retention policy. DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use the local audio address; the relevant speaker, server or controller retrieves the clip. Playback integrations and their services may have their own data handling. Do not use it to distribute confidential recordings.
 
