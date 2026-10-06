@@ -173,39 +173,50 @@ An accepted request means the target’s Home Assistant service call completed s
 
 ```mermaid
 flowchart TD
-    Card[HomeCall Card] -->|Authenticated mono WAV + selected targets| API[HomeCall API]
-    API --> Validate[Validate audio and allowed targets]
-    Validate --> Encode[FFmpeg: encode one MP3]
-    Encode --> Store[In-memory clip: random token, 3-minute expiry]
-    Store --> Route{Selected targets}
+    Card[HomeCall Card] -->|Authenticated mono 16-bit PCM WAV + selected targets| API[HomeCall send API]
+    API --> Validate[Validate WAV, size and allowed online targets]
+    Validate --> Encode[FFmpeg: voice MP3 + optional chime-and-voice MP3]
+    Encode --> Store[In-memory variants: separate random tokens, 3-minute expiry]
+    Store --> Route{Revalidated targets: concurrent service calls}
     Route -->|Alexa| Notify[Alexa Devices: notify.send_message]
-    Notify -->|Public HTTPS audio URL| Amazon[Amazon Alexa service]
+    Notify -->|SSML with public HTTPS audio URL| Amazon[Amazon Alexa service]
     Route -->|Tested DLNA| Play[DLNA DMR: media_player.play_media]
-    Play -->|Local audio URL| Speaker[DLNA renderer]
-    Route -->|Sonos| SonosService[Sonos: media_player.play_media announce]
-    SonosService -->|Local audio URL| SonosPlayer[Sonos native announcement]
-    Route -->|Music Assistant| MAService[music_assistant.play_announcement]
+    Play -->|Local audio URL; type music| Speaker[DLNA renderer]
+    Route -->|Sonos| SonosService["Sonos: media_player.play_media<br/>announce: true"]
+    SonosService -->|Local audio URL; type music| SonosPlayer[Sonos native announcement]
+    Route -->|Music Assistant| MAService["music_assistant.play_announcement<br/>use_pre_announce: false"]
     MAService -->|Local audio URL| MAPlayer[Music Assistant managed player]
-    Amazon -->|Fetch MP3| Audio[Token-protected audio endpoint]
+    Amazon -->|Fetch MP3| Audio[Token-only audio endpoint: no HA login]
     Speaker -->|Fetch MP3| Audio
     SonosPlayer -->|Fetch MP3| Audio
-    MAPlayer -->|Fetch MP3| Audio
+    MAPlayer -->|Fetch MP3 directly or through provider| Audio
     Route -->|Google Cast| CastService[Cast: media_player.play_media]
-    CastService -->|Local audio URL| CastPlayer[Google Cast device]
+    CastService -->|Local audio URL; type audio/mpeg| CastPlayer[Google Cast device: direct playback]
     CastPlayer -->|Fetch MP3| Audio
-    Route -->|EchoMuse| EchoService[ESPHome: media_player.play_media announce]
+    Route -->|EchoMuse| EchoService["ESPHome: media_player.play_media<br/>announce: true; type audio/mpeg"]
     EchoService -->|Audio URL over ESPHome API| EchoController[EchoMuse controller]
-    EchoController -->|Fetch audio directly or through HA proxy| Audio
+    EchoController -->|Fetch MP3 directly when no proxy is used| Audio
+    EchoController -->|Fetch transcoded audio when needed| Proxy[HA ESPHome audio proxy]
+    Proxy -->|Fetch source MP3| Audio
     EchoController -->|Decoded audio stream| EchoDot[EchoMuse Dot]
     Store -.->|Clip bytes| Audio
-    Audio -->|Increment clip fetch count| Receipt[Receipt status]
-    Card -->|Authenticated receipt polling| Receipt
-    API -->|Per-target service acceptance + receipt| Card
-    Speaker -.->|Playback state via HA| Resume[Optional resume manager]
-    Resume -.->|Restore media after completion; seek if supported| Speaker
+    Audio -->|Count non-HEAD fetches across variants| Receipt[Status API: aggregate fetch count and diagnostics]
+    Card -->|Authenticated receipt or diagnostic polling| Receipt
+    API -->|Per-target service acceptance, receipt and diagnostics| Card
+    Play -.->|If resume enabled: snapshot before service call| Resume[Optional DLNA resume manager]
+    Speaker -.->|Playback state events via HA| Resume
+    Resume -.->|Attempt previous-item restoration after detected completion| Speaker
 ```
 
-Alexa uses the public HTTPS delivery address; DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use the local address for the same in-memory clip and expiring token. Sonos, Music Assistant and EchoMuse manage their announcement playback and restoration; HomeCall offers its own optional restoration only for DLNA. For EchoMuse, Home Assistant sends the announcement command through ESPHome to the EchoMuse controller, which fetches and decodes the audio and streams it to the Dot. Home Assistant may transcode the audio through its ESPHome proxy; the controller must also be able to reach that proxy URL. The card is installed separately and communicates only with HomeCall’s authenticated API. Music restoration depends on renderer capabilities and playback-state events; it is not guaranteed by a successful sound test.
+The voice-only MP3 is always encoded. When the optional HomeCall chime is enabled for any selected target, a second MP3 contains the chime followed by the voice; Google Cast skips this chime by default. Each variant has its own expiring token, and HomeCall selects the variant per target. Music Assistant's own pre-announcement is disabled. Both variants contribute to the same announcement's aggregate fetch count.
+
+Alexa uses the public HTTPS delivery address; DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use the local address. The audio endpoint requires possession of the random token URL rather than a Home Assistant login. Tokens expire three minutes after clip creation. The card is installed separately and uses authenticated upload and status APIs.
+
+Sonos, Music Assistant and EchoMuse receive native announcement commands; playback continuation is delegated to their integration, provider or firmware and is not guaranteed by HomeCall. Direct Google Cast playback replaces the current media without HomeCall restoration. For EchoMuse, Home Assistant sends the URL through ESPHome to the controller, which decodes audio and streams it to the Dot. When Home Assistant uses its ESPHome transcoding proxy, the controller fetches the proxy URL and the proxy fetches HomeCall's source MP3. The controller must be able to reach the URL it receives; see [EchoMuse delivery](docs/echomuse.md#delivery) and [ESPHome audio proxy support](https://esphome.io/components/media_player/speaker/).
+
+HomeCall's resume manager is used only for DLNA speakers with resume enabled. Before delivery, it captures reusable current media, position and playing/paused state. It attempts restoration only after matching playback events indicate that the announcement started and finished. User interruption, changed media, unavailable players or missing completion events cancel the attempt. It restores the previous item, seeks if supported, and restores a paused state where supported; it does not reconstruct a full queue or streaming-service session.
+
+Service calls are dispatched concurrently, without synchronized playback or a completion acknowledgement. Acceptance means the Home Assistant service call completed successfully. A fetch count means the audio endpoint served a non-HEAD request, possibly from a proxy; it does not prove audible playback, identify every successful speaker, or confirm restoration. Route-specific hardware verification and limitations are listed in the compatibility table above.
 
 ## Documentation
 
