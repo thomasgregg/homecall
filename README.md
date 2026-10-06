@@ -6,9 +6,13 @@
 <a href="https://hacs.xyz"><img src="https://img.shields.io/badge/HACS-custom_repository-41BDF5" alt="HACS custom repository"></a>
 </p>
 
-**Record a message in Home Assistant. Hear your own voice on your speakers.**
+**Your voice. Every room.**
 
-HomeCall turns microphone recordings into short speaker announcements. It handles authenticated uploads, audio conversion, speakers shown in the card, and temporary delivery links. The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card) provides the recording interface.
+Call everyone to dinner, send a quick reminder, or announce that guests have arrived—in your own voice. Record with [HomeCall Card](https://github.com/thomasgregg/homecall-card) in your Home Assistant dashboard, choose your speakers, and send. The HomeCall integration handles delivery.
+
+Install **HomeCall** and **HomeCall Card** together to get started.
+
+![HomeCall Card recording a message alongside the HomeCall integration settings](docs/assets/intro-screenshots.png)
 
 ## Contents
 
