@@ -36,9 +36,9 @@ HomeCall turns microphone recordings into short speaker announcements. It handle
 
 ## Screenshots
 
-Overview and Alexa speaker setup in the HomeCall integration.
+Overview and expanded DLNA speaker options in the HomeCall integration.
 
-[![HomeCall settings overview and Alexa speaker setup](docs/assets/ui-configuration.svg)](docs/assets/ui-configuration.svg)
+[![HomeCall settings overview and expanded DLNA speaker options](docs/assets/ui-configuration.svg)](docs/assets/ui-configuration.svg)
 
 The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card#screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
 
