@@ -12,7 +12,7 @@ HomeCall sends the recorded MP3 directly through `media_player.play_media`. The 
 
 ## Playback limits and verified results
 
-Direct Cast playback interrupts existing media and does not restore it automatically. A JBL Charge 5 Wi-Fi played HomeCall’s test chime after Google Cast was enabled in JBL One. A second test interrupted iPhone-started YouTube Music: the chime was audible, but music remained stopped. Reopening the YouTube Music receiver and sending Play did not recover the track. A Nest Hub may replace its current screen while receiving media. Service acceptance and an audio download do not prove audible playback. Nest hardware, microphone recordings through Cast and Cast groups have not yet been verified.
+Direct Cast playback interrupts existing media and does not restore it automatically. A JBL Charge 5 Wi-Fi played HomeCall’s test chime after Google Cast was enabled in JBL One. A second test interrupted iPhone-started YouTube Music: the chime was audible, but music remained stopped. Reopening the YouTube Music receiver and sending Play did not recover the track. A Nest Hub may replace its current screen while receiving media. Service acceptance and an audio download do not prove audible playback. A [Reddit user](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe3tau1/) reported successful message playback on Nest hardware, with no specific model supplied. The new combined chime/recording and Cast groups remain unverified.
 
 ## Additional hardware test findings
 
@@ -20,7 +20,7 @@ Direct Cast playback interrupts existing media and does not restore it automatic
 - With iPhone YouTube Music confirmed playing through Cast, HomeCall’s chime was audible but music stayed stopped. HA reported the Cast entity off afterward.
 - Reopening YouTube Music’s receiver and sending Play left it idle without the previous track. The receiver-launch service also returned an error; this did not establish a working recovery method.
 - The Onkyo TX-NR696 was discovered but offline, so it has no playback result.
-- MA over Cast, Nest devices, groups and microphone recordings through direct Cast remain untested on hardware.
+- MA over Cast, specific Nest models, Cast groups and the new combined chime/recording still need hardware verification. The Reddit Nest message-playback report does not establish these results.
 
 
 ## Music continuation: possible routes
