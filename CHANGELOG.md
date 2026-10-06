@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0
+
+- Serve the AudioWorklet recorder used by HomeCall Card 1.2.0, with first-sample readiness, ordered capture and a complete final-buffer flush. Update both components, restart HA, then refresh the dashboard.
+- Add short-lived, owner-scoped diagnostics for WAV validation, MP3 conversion, per-speaker service calls and first audio retrieval. Copied diagnostics contain no recorded audio, audio bearer token or speaker URL.
+- Add optional four-note playback timing tests and an explicitly separate variant with two seconds of leading silence. Normal messages receive no added silence, chime or fixed delay.
+- Recheck speaker availability and selection after encoding, and prevent pending uploads or tests from retaining or sending new audio after integration unload/reload.
+- Preserve existing Alexa, DLNA, Sonos, Music Assistant, Cast and EchoMuse delivery routes. Automated checks pass; the reported EchoMuse/MA clipping and startup delay still need retesting on affected hardware.
+
 ## 1.6.0
 
 - Add direct EchoMuse speaker discovery through ESPHome, setup, optional sound tests, explicit card visibility and local recorded-message announcements with `announce: true`. Music Assistant is not required.

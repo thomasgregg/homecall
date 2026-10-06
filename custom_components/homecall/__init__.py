@@ -14,6 +14,7 @@ from .views import AudioView, SettingsView, SpeakerTestView, StatusView, UploadV
 
 async def async_setup_entry(hass, entry):
     store = hass.data.setdefault(DOMAIN, {"lock": asyncio.Lock(), "clips": {}, "registered": False})
+    store["generation"] = store.get("generation", 0) + 1
     store["entry"] = entry
     if "resume_manager" not in store:
         store["resume_manager"] = ResumeManager(hass)
@@ -50,10 +51,12 @@ async def async_setup_entry(hass, entry):
 
 async def async_unload_entry(hass, entry):
     store = hass.data.get(DOMAIN, {})
+    store["generation"] = store.get("generation", 0) + 1
     manager = store.pop("resume_manager", None)
     if manager:
         manager.close()
     store.pop("entry", None)
     store.get("clips", {}).clear()
+    store.get("diagnostics", {}).clear()
     frontend.async_remove_panel(hass, "homecall", warn_if_unknown=False)
     return True

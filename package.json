@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:recorder": "node --test tests/recorder.test.cjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

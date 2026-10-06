@@ -99,6 +99,8 @@ For EchoMuse, connect your Dots through Home Assistant’s ESPHome integration, 
 
 ## Install
 
+For the new recorder, optional local preview and timing diagnostics, update **HomeCall to 1.7.0+** and **HomeCall Card to 1.2.0+** together. Restart Home Assistant after updating the integration, then refresh every dashboard tab or reset the Companion app's frontend cache.
+
 ### HACS
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=thomasgregg&repository=homecall&category=integration)

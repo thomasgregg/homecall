@@ -10,14 +10,22 @@ from xml.sax.saxutils import quoteattr
 from aiohttp import web
 from homeassistant.components.http import HomeAssistantView
 
-from .audio import convert_wav, test_audio, validate_wav
+from .audio import convert_wav, test_audio, timing_test_audio, validate_wav
 from .const import DOMAIN, MAX_BYTES, TTL
+from .diagnostics import elapsed_ms, public_diagnostics, start_diagnostics
 from .helpers import allowed_targets, dlna_candidates, local_url, settings, system_url, targets
 
 
 class HomeCallView(HomeAssistantView):
     def __init__(self, hass):
         self.hass = hass
+
+    def operation_active(self, store, generation):
+        return (
+            self.hass.data.get(DOMAIN) is store
+            and store.get("entry") is not None
+            and store.get("generation", 0) == generation
+        )
 
 
 class SettingsView(HomeCallView):
@@ -162,6 +170,13 @@ class StatusView(HomeCallView):
         store = self.hass.data.get(DOMAIN)
         if not store or not store.get("entry"):
             return self.json({"error": "HomeCall ist noch nicht eingerichtet."}, status_code=503)
+        identifier = request.query.get("diagnostic_id")
+        if identifier:
+            trace = store.get("diagnostics", {}).get(identifier)
+            owner = getattr(request["hass_user"], "id", None)
+            if not trace or trace["_expires"] <= time.monotonic() or trace["_owner"] != owner:
+                raise web.HTTPNotFound()
+            return self.json({"diagnostics": public_diagnostics(trace)})
         receipt = request.query.get("receipt")
         clip = store["clips"].get(receipt) if receipt else None
         return self.json(
@@ -170,6 +185,7 @@ class StatusView(HomeCallView):
                 "default_targets": [],
                 "max_seconds": 60,
                 "audio_fetches": clip[2] if clip else 0,
+                "recorder_protocol": 1,
             }
         )
 
@@ -183,6 +199,7 @@ class UploadView(HomeCallView):
         store = self.hass.data.get(DOMAIN)
         if not store or not store.get("entry"):
             return self.json({"error": "HomeCall ist noch nicht eingerichtet."}, status_code=503)
+        generation = store.get("generation", 0)
         if store["lock"].locked():
             return self.json({"error": "Eine Durchsage wird gerade gesendet."}, status_code=409)
         selected = request.query.getall("target", [])
@@ -199,11 +216,15 @@ class UploadView(HomeCallView):
         if request.content_length and request.content_length > MAX_BYTES:
             return self.json({"error": "Aufnahme ist zu groß."}, status_code=413)
         async with store["lock"]:
+            trace = start_diagnostics(store, request)
+            stage = time.monotonic()
             data = bytearray()
             async for chunk in request.content.iter_chunked(65536):
                 data.extend(chunk)
                 if len(data) > MAX_BYTES:
                     return self.json({"error": "Aufnahme ist zu groß."}, status_code=413)
+            trace["timings_ms"]["upload_body_read"] = elapsed_ms(stage)
+            stage = time.monotonic()
             try:
                 duration = await self.hass.async_add_executor_job(validate_wav, bytes(data))
             except ValueError, wave.Error, EOFError, ZeroDivisionError:
@@ -211,11 +232,29 @@ class UploadView(HomeCallView):
                     {"error": "Ungültige Aufnahme. Bitte 1 bis 60 Sekunden sprechen."},
                     status_code=400,
                 )
+            trace["timings_ms"]["validation"] = elapsed_ms(stage)
+            stage = time.monotonic()
             try:
                 audio = await self.hass.async_add_executor_job(convert_wav, bytes(data))
             except OSError, subprocess.SubprocessError:
                 return self.json(
                     {"error": "Audio konnte nicht umgewandelt werden."}, status_code=500
+                )
+            trace["timings_ms"]["conversion"] = elapsed_ms(stage)
+            trace["duration_seconds"] = round(duration, 3)
+            if not self.operation_active(store, generation):
+                return self.json(
+                    {"error": "HomeCall ist noch nicht eingerichtet."}, status_code=503
+                )
+            # Availability and the admin allowlist can change during upload/encoding.
+            available = {
+                item["entity_id"]
+                for item in allowed_targets(self.hass, store["entry"])
+                if item["available"]
+            }
+            if not set(selected).issubset(available):
+                return self.json(
+                    {"error": "Bitte erreichbare Lautsprecher auswählen."}, status_code=400
                 )
             now = time.monotonic()
             for key, clip in list(store["clips"].items()):
@@ -226,10 +265,14 @@ class UploadView(HomeCallView):
                     {"error": "Zu viele Durchsagen. Bitte kurz warten."}, status_code=429
                 )
             token = secrets.token_urlsafe(32)
-            store["clips"][token] = [now + TTL, audio, 0]
+            trace["_clip_created"] = now
+            trace["_expires"] = now + TTL
+            store["clips"][token] = [now + TTL, audio, 0, None, trace]
             asyncio.get_running_loop().call_later(TTL, store["clips"].pop, token, None)
 
-            async def send(entity_id):
+            async def send(index, entity_id):
+                if not self.operation_active(store, generation):
+                    return {"entity_id": entity_id, "accepted": False}
                 return await deliver(
                     self.hass,
                     store["entry"],
@@ -237,10 +280,21 @@ class UploadView(HomeCallView):
                     token,
                     self.context(request),
                     duration=duration,
+                    diagnostics=trace,
+                    target_index=index,
                 )
 
-            results = await asyncio.gather(*(send(entity_id) for entity_id in selected))
-            return self.json({"results": results, "duration": round(duration, 1), "receipt": token})
+            results = await asyncio.gather(
+                *(send(index, entity_id) for index, entity_id in enumerate(selected, 1))
+            )
+            return self.json(
+                {
+                    "results": results,
+                    "duration": round(duration, 1),
+                    "receipt": token,
+                    "diagnostics": public_diagnostics(trace),
+                }
+            )
 
 
 class AudioView(HomeCallView):
@@ -256,6 +310,11 @@ class AudioView(HomeCallView):
             raise web.HTTPNotFound()
         if request.method != "HEAD":
             clip[2] += 1
+            if len(clip) > 4:
+                trace = clip[4]
+                trace["audio_fetches"] = clip[2]
+                if "clip_to_first_fetch" not in trace["timings_ms"]:
+                    trace["timings_ms"]["clip_to_first_fetch"] = elapsed_ms(trace["_clip_created"])
         return web.Response(
             body=clip[1],
             content_type="audio/mpeg",
@@ -263,10 +322,16 @@ class AudioView(HomeCallView):
         )
 
 
-async def deliver(hass, entry, entity_id, token, context=None, duration=3):
+async def deliver(
+    hass, entry, entity_id, token, context=None, duration=3, diagnostics=None, target_index=1
+):
     """Route only previously validated targets through their actual HA platform."""
+    started = time.monotonic()
+    transport = "alexa"
+    accepted = False
     try:
         candidate = next((t for t in dlna_candidates(hass) if t["entity_id"] == entity_id), None)
+        transport = candidate.get("transport", "dlna") if candidate else "alexa"
         dlna = candidate is not None
         sonos = bool(candidate and candidate.get("transport") == "sonos")
         music_assistant = bool(candidate and candidate.get("transport") == "music_assistant")
@@ -298,12 +363,24 @@ async def deliver(hass, entry, entity_id, token, context=None, duration=3):
         await hass.services.async_call(
             domain, service, {"entity_id": entity_id, **data}, blocking=True, context=context
         )
+        accepted = True
         return {"entity_id": entity_id, "accepted": True}
     except Exception:
         manager = hass.data.get(DOMAIN, {}).get("resume_manager")
         if manager:
             manager.cancel(entity_id)
         return {"entity_id": entity_id, "accepted": False}
+    finally:
+        if diagnostics is not None:
+            diagnostics["deliveries"].append(
+                {
+                    "target": target_index,
+                    "transport": transport,
+                    "accepted": accepted,
+                    "service_call_ms": elapsed_ms(started),
+                }
+            )
+            diagnostics["deliveries"].sort(key=lambda item: item["target"])
 
 
 class SpeakerTestView(SettingsView):
@@ -322,9 +399,13 @@ class SpeakerTestView(SettingsView):
             raise web.HTTPBadRequest()
         entity_id = payload.get("entity_id")
         action = payload.get("action")
+        mode = payload.get("mode", "sound")
+        if action == "test" and mode not in ("sound", "markers", "markers_padded"):
+            raise web.HTTPBadRequest()
         if not isinstance(entity_id, str):
             raise web.HTTPBadRequest()
         store = self.hass.data[DOMAIN]
+        generation = store.get("generation", 0)
         values = settings(entry, self.hass)
         if action == "remove":
             values["tested_dlna"] = [x for x in values["tested_dlna"] if x != entity_id]
@@ -392,15 +473,42 @@ class SpeakerTestView(SettingsView):
                     store["clips"].pop(key, None)
             if len(store["clips"]) >= 20:
                 return self.json({"error": "test_busy"}, status_code=429)
+            trace = start_diagnostics(store, request)
+            trace["test_mode"] = mode
+            duration = {"sound": 3, "markers": 4, "markers_padded": 6}[mode]
+            trace["duration_seconds"] = duration
+            stage = time.monotonic()
             try:
-                audio = await self.hass.async_add_executor_job(test_audio)
+                audio = await self.hass.async_add_executor_job(
+                    test_audio if mode == "sound" else timing_test_audio,
+                    *(() if mode == "sound" else (mode == "markers_padded",)),
+                )
             except OSError, subprocess.SubprocessError:
                 return self.json({"error": "test_failed"}, status_code=500)
+            if not self.operation_active(store, generation):
+                raise web.HTTPServiceUnavailable()
             token = secrets.token_urlsafe(32)
-            store["clips"][token] = [time.monotonic() + TTL, audio, 0, entity_id]
+            trace["timings_ms"]["conversion"] = elapsed_ms(stage)
+            trace["_clip_created"] = time.monotonic()
+            trace["_expires"] = trace["_clip_created"] + TTL
+            store["clips"][token] = [trace["_clip_created"] + TTL, audio, 0, entity_id, trace]
             asyncio.get_running_loop().call_later(TTL, store["clips"].pop, token, None)
-            result = await deliver(self.hass, entry, entity_id, token, self.context(request))
+            result = await deliver(
+                self.hass,
+                entry,
+                entity_id,
+                token,
+                self.context(request),
+                duration=duration,
+                diagnostics=trace,
+            )
             if not result["accepted"]:
                 store["clips"].pop(token, None)
                 return self.json({"error": "test_failed"}, status_code=400)
-            return self.json({"receipt": token, "requires_confirmation": requires_confirmation})
+            return self.json(
+                {
+                    "receipt": token,
+                    "requires_confirmation": requires_confirmation,
+                    "diagnostics": public_diagnostics(trace),
+                }
+            )

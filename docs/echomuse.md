@@ -19,6 +19,12 @@ Home Assistant may transcode the MP3 through its ESPHome audio proxy to EchoMuse
 
 ## Verification and limits
 
+### Diagnose missing opening audio
+
+Expand a configured Dot and open **Playback timing test**. **Play four notes** sends notes at 0, 1, 2 and 3 seconds through the normal MP3/ESPHome announcement path. **Play notes with leading silence** sends the same sequence after two seconds of diagnostic-only silence. Compare which notes are audible. Complete notes after a pause indicate startup latency; missing immediate notes that return in the padded test indicate startup-related loss. Normal recordings receive no padding, chime or fixed delay.
+
+Use the card's optional **Review recording before sending** to inspect microphone capture separately. Copy **Diagnostics** after the test or send, and include the installed EchoMuse controller/firmware versions. Fetch counts can reflect HA's transcoding proxy, so they do not establish audible playback. EchoMuse's own `primeWait`, underrun and playback-completion logs can identify the next stage.
+
 Support is implemented but has not been verified on physical EchoMuse hardware. The implementation was checked against EchoMuse’s current main-branch announcement code; older installed releases may differ. Check the player’s announcement capability and run the sound test.
 
 Service acceptance does not confirm audible playback or completion. Audio retrieval is tracked separately and can reflect a proxy fetch. Multiple speakers receive commands concurrently; synchronized playback is not promised. The media-player service provides no completion acknowledgement, so successive announcements may overlap. Music restoration, Assist activity, mute behavior, ringing timers and controller reconnects require hardware testing. EchoMuse documents an announcement collision with a ringing timer.

@@ -93,10 +93,12 @@ async function fixture(page, language = "en", transport = "dlna") {
       language,
       callApi: async (method, path, data) => {
         window.calls.push({ method, path, data });
-        if (method === "GET") return structuredClone(window.settings);
+        if (method === "GET") return path.includes("diagnostic_id=")
+          ? {diagnostics: {diagnostic_id: "test-diagnostic", audio_fetches: 1, timings_ms: {clip_to_first_fetch: 30}}}
+          : structuredClone(window.settings);
         if (data.action === "test") {
           if (window.failTest) throw { body: { error: "test_failed" } };
-          return { receipt: "receipt" };
+          return { receipt: "receipt", diagnostics: {diagnostic_id: "test-diagnostic", test_mode: data.mode || "sound", audio_fetches: 0} };
         }
         if (data.action === "confirm") {
           window.settings.tested_dlna = [candidate.entity_id];
@@ -428,6 +430,75 @@ for (const language of ['en', 'de']) {
     await expect(page.locator('[data-visible="media_player.jbl"]')).toHaveCount(0);
   });
 }
+
+test('EchoMuse timing variants are explicit and diagnostics omit the audio receipt', async ({page}) => {
+  await fixture(page, 'en', 'echomuse');
+  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {
+    writeText: async text => {window.copiedDiagnostics = text;},
+  }}));
+  await page.locator('[data-page="echomuse"]').click();
+  await page.locator('[data-add="media_player.jbl"]').click();
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('.timing-test summary').click();
+  await page.locator('[data-mode="markers"]').click();
+  await expect(page.locator('.test-diagnostics')).toBeVisible();
+  await page.locator('.timing-test summary').click();
+  await page.locator('[data-mode="markers_padded"]').click();
+  const calls = await page.evaluate(() => window.calls.filter(call => call.data?.action === 'test'));
+  expect(calls.map(call => call.data.mode)).toEqual(['markers', 'markers_padded']);
+  await page.locator('.test-diagnostics summary').click();
+  await page.locator('.copy-diagnostics').click();
+  const copied = await page.evaluate(() => window.copiedDiagnostics);
+  expect(JSON.parse(copied).audio_fetches).toBe(1);
+  expect(copied).not.toContain('receipt');
+});
+
+test('timing diagnostics copy begins on the click while refresh is pending', async ({page}) => {
+  await fixture(page, 'en', 'echomuse');
+  await page.locator('[data-page="echomuse"]').click();
+  await page.locator('[data-add="media_player.jbl"]').click();
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await expect(page.locator('.test-diagnostics')).toBeVisible();
+  await page.locator('homecall-settings').evaluate(el => {
+    el._hass.callApi = () => new Promise(resolve => {window.finishDiagnosticFetch = resolve;});
+    window.ClipboardItem = class {
+      constructor(data) { this.data = data; }
+      getType(type) { return this.data[type]; }
+    };
+    Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {
+      write: async items => {
+        window.clipboardWriteStarted = true;
+        window.copiedDiagnostics = await (await items[0].getType('text/plain')).text();
+      },
+    }});
+  });
+  await page.locator('.test-diagnostics summary').click();
+  await page.locator('.copy-diagnostics').click();
+  expect(await page.evaluate(() => window.clipboardWriteStarted)).toBe(true);
+  expect(await page.evaluate(() => window.copiedDiagnostics)).toBeUndefined();
+  await page.locator('homecall-settings').evaluate(el => {
+    el._diagnostics = {diagnostic_id: 'new-test'};
+    window.finishDiagnosticFetch({diagnostics: {diagnostic_id: 'test-diagnostic', audio_fetches: 2}});
+  });
+  await expect.poll(() => page.evaluate(() => window.copiedDiagnostics)).toBeTruthy();
+  expect(JSON.parse(await page.evaluate(() => window.copiedDiagnostics)))
+    .toEqual({diagnostic_id: 'test-diagnostic', audio_fetches: 2});
+  expect(await page.locator('homecall-settings').evaluate(el => el._diagnostics.diagnostic_id)).toBe('new-test');
+});
+
+test('a failed timing test clears diagnostics from the previous successful test', async ({page}) => {
+  await fixture(page, 'en', 'echomuse');
+  await page.locator('[data-page="echomuse"]').click();
+  await page.locator('[data-add="media_player.jbl"]').click();
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await expect(page.locator('.test-diagnostics')).toBeVisible();
+  await page.evaluate(() => {window.failTest = true;});
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await expect(page.locator('ha-alert[alert-type="error"]')).toBeVisible();
+  await expect(page.locator('.test-diagnostics')).toHaveCount(0);
+});
 
 for (const language of ['en', 'de']) {
   test(`EchoMuse onboarding, testing and visibility (${language})`, async ({page}) => {

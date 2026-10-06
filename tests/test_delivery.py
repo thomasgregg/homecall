@@ -1,5 +1,6 @@
 """Upload, selection, locks, conversion failures and expiring audio delivery."""
 
+import asyncio
 import json
 import time
 
@@ -90,6 +91,42 @@ async def test_service_rejection_is_reported(hass, http_request, devices, wav_by
     assert json.loads(r.body)["results"] == [
         {"entity_id": "notify.kitchen_speak", "accepted": False}
     ]
+
+
+@pytest.mark.parametrize("change", ["unload", "reload", "selection", "offline"])
+async def test_upload_rechecks_lifecycle_and_recipients_after_encoding(
+    hass, entry, http_request, devices, wav_bytes, monkeypatch, change
+):
+    monkeypatch.setattr(UploadView, "context", lambda self, r: None)
+    encoding, proceed = asyncio.Event(), asyncio.Event()
+    executor = hass.async_add_executor_job
+
+    async def delayed_executor(fn, *args):
+        if fn.__name__ == "convert_wav":
+            encoding.set()
+            await proceed.wait()
+        return await executor(fn, *args)
+
+    hass.async_add_executor_job = delayed_executor
+    task = asyncio.create_task(
+        UploadView(hass).post(http_request(targets=["notify.kitchen_speak"], body=wav_bytes()))
+    )
+    await encoding.wait()
+    store = hass.data[DOMAIN]
+    if change == "unload":
+        store.pop("entry")
+        store["diagnostics"].clear()
+    elif change == "reload":
+        store["generation"] = store.get("generation", 0) + 1
+    elif change == "selection":
+        entry.options = {"use_all": False, "default_targets": []}
+    else:
+        devices[0]["available"] = False
+    proceed.set()
+    response = await task
+    assert response.status == (503 if change in ("unload", "reload") else 400)
+    assert not store["clips"]
+    hass.services.async_call.assert_not_awaited()
 
 
 @pytest.mark.parametrize("token", ["unknown", "expired"])

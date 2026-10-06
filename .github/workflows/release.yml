@@ -15,6 +15,13 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: pip install -r requirements-dev.txt
       - run: ruff check . && ruff format --check . && pytest
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:recorder && npm run test:browser
       - name: Verify tag and package the integration
         run: |
           python -c 'import json, os; assert os.environ["GITHUB_REF_NAME"] == "v" + json.load(open("custom_components/homecall/manifest.json"))["version"]'
@@ -22,7 +29,7 @@ jobs:
       - name: Publish release with standard notes
         run: |
           previous_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')
-          python3 scripts/release-notes.py --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" --previous-tag "$previous_tag" --validation "Ruff lint and formatting checks, integration tests, and package version checks passed in the release workflow." > release-notes.md
+          python3 scripts/release-notes.py --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" --previous-tag "$previous_tag" --validation "Ruff lint and formatting checks, integration tests, recorder tests, Chromium/WebKit browser checks, and package version checks passed in the release workflow." > release-notes.md
           gh release create "$GITHUB_REF_NAME" homecall.zip --verify-tag --title "$GITHUB_REF_NAME — $(cat RELEASE_TITLE.txt)" --notes-file release-notes.md
         env:
           GH_TOKEN: ${{ github.token }}
