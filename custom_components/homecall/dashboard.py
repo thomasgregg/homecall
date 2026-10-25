@@ -18,7 +18,10 @@ _LEGACY_PATHS = {
 
 def _is_card_url(url: str) -> bool:
     """Match only known local HomeCall URLs, never similarly named remote files."""
-    parsed = urlsplit(url)
+    try:
+        parsed = urlsplit(url)
+    except ValueError:
+        return False
     return (
         not parsed.scheme
         and not parsed.netloc

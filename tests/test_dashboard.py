@@ -75,6 +75,7 @@ async def test_duplicates_converge_without_deleting_resources(hass):
     [
         "https://example.com/local/homecall-card.js",
         "//example.com/local/homecall-card.js",
+        "https://[invalid/homecall-card.js",
         "/local/my-homecall-card.js",
         "/hacsfiles/other/homecall-card.js",
     ],
