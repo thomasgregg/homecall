@@ -19,11 +19,12 @@
     "notify",
     "frontend",
     "panel_custom",
-    "media_player"
+    "media_player",
+    "lovelace"
   ],
   "documentation": "https://github.com/thomasgregg/homecall",
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/thomasgregg/homecall/issues",
-  "version": "1.8.1"
+  "version": "1.9.0"
 }

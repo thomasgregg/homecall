@@ -16,7 +16,7 @@ Never include real credentials, recordings, delivery URLs, or personal dashboard
 
 ## Release checklist
 
-1. Update the version in `custom_components/homecall/manifest.json` and `pyproject.toml` and add a changelog entry.
+1. Update the version in `custom_components/homecall/manifest.json` and `pyproject.toml`, plus `card/package.json` and its lockfile, and add a changelog entry.
 2. Run all checks locally and confirm CI passes.
 3. Check native setup and actual playback on the affected speaker routes in HA. Record hardware checks performed and any unverified routes in the release validation.
 4. Tag `v<version>` and push the tag. The release workflow validates and publishes the distribution asset.
@@ -32,11 +32,15 @@ Use Home Assistant components for controls: `ha-form` with native selectors, `ha
 
 ## Release note format
 
-Use this format for every release in both HomeCall repositories. Titles are `v<version> — <short summary>`; update `RELEASE_TITLE.txt` with that summary before tagging. Notes always contain these sections, in this order:
+Use this format for every release for HomeCall. Titles are `v<version> — <short summary>`; update `RELEASE_TITLE.txt` with that summary before tagging. Notes always contain these sections, in this order:
 
 1. **Changes** — the version's changelog entry, describing user-visible behavior.
-2. **Installation** — HACS and manual asset instructions, including the separate card/integration installation.
+2. **Installation** — HACS and manual asset instructions, including bundled-card migration and YAML-managed resources.
 3. **Validation** — checks actually performed and any material validation limits. Never invent historical test results.
 4. **Full changelog** — a link comparing the previous published release with this tag, or the initial tag's commits.
 
 The release workflow generates notes with `scripts/release-notes.py`. Do not replace them with GitHub's generated changelog-only notes. If editing release notes afterward, preserve this structure and record any additional validation accurately.
+
+## Bundled card
+
+The card source and browser tests live in `card/`. Run `npm ci --prefix card`, then `npm run build:card`, `npm run format:card:check`, `npm run test:card` and `npm run test:card:browser` from the repository root. Commit the generated `custom_components/homecall/frontend/homecall-card.js` with the source. Its embedded version comes from the integration manifest. The release workflow verifies a clean rebuild and ships it inside `homecall.zip`.

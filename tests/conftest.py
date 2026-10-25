@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from homeassistant.components.lovelace.resources import ResourceStorageCollection
+from homeassistant.helpers.collection import DictStorageCollection
 from multidict import MultiDict
 
 from custom_components.homecall.const import DOMAIN
@@ -44,9 +46,17 @@ def hass(entry):
     async def executor(fn, *args):
         return fn(*args)
 
+    resources = ResourceStorageCollection.__new__(ResourceStorageCollection)
+    DictStorageCollection.__init__(
+        resources, Mock(async_load=AsyncMock(return_value={"items": []}))
+    )
+    resources.loaded = False
     store = {"entry": entry, "lock": asyncio.Lock(), "clips": {}, "registered": False}
     return SimpleNamespace(
-        data={DOMAIN: store},
+        data={
+            DOMAIN: store,
+            "lovelace": SimpleNamespace(resource_mode="storage", resources=resources),
+        },
         config=SimpleNamespace(external_url="https://ha.example.com"),
         config_entries=SimpleNamespace(async_update_entry=Mock()),
         services=SimpleNamespace(async_call=AsyncMock()),

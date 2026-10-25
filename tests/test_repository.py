@@ -18,6 +18,15 @@ def test_manifest_and_version():
     assert "alexa_devices" in manifest["after_dependencies"]
     assert manifest["codeowners"] == ["@thomasgregg"]
     assert (COMPONENT / "frontend" / "homecall-settings.js").is_file()
+    assert "lovelace" in manifest["dependencies"]
+    card_package = json.loads((ROOT / "card/package.json").read_text())
+    card_lock = json.loads((ROOT / "card/package-lock.json").read_text())
+    assert manifest["version"] == card_package["version"] == card_lock["version"]
+    assert card_lock["packages"][""]["version"] == manifest["version"]
+    assert (
+        f"HomeCall Card v{manifest['version']}"
+        in (COMPONENT / "frontend/homecall-card.js").read_text()
+    )
 
 
 def test_translation_parity():

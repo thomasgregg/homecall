@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.0
+
+- Bundle HomeCall Card with the integration so one installation and release supplies matching backend and frontend versions.
+- Register the dashboard module automatically for UI-managed resources, updating recognized legacy HomeCall resource URLs in place and preserving dashboard configuration.
+- Version the module URL by its content so integration updates refresh the card. Document migration and YAML resource setup.
+- Run the card build, distribution checks, unit tests and Chromium/WebKit browser tests in integration CI and releases.
+
 ## 1.8.1
 
 - Bound upload body reads and each speaker delivery service call to 30 seconds. Slow or stalled uploads return HTTP 408; timed-out deliveries are reported as rejected while successful peers retain their results. Release the shared send lock after timeout so subsequent messages and sound tests can proceed.

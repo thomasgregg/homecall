@@ -8,6 +8,7 @@ from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 
 from .const import DOMAIN
+from .dashboard import async_register_card
 from .resume import ResumeManager
 from .views import AudioView, SettingsView, SpeakerTestView, StatusView, UploadView
 
@@ -33,6 +34,7 @@ async def async_setup_entry(hass, entry):
             [StaticPathConfig("/homecall-assets", str(Path(__file__).parent / "frontend"), False)]
         )
         store["registered"] = True
+    await async_register_card(hass)
     if not frontend.async_panel_exists(hass, "homecall"):
         settings_file = Path(__file__).parent / "frontend" / "homecall-settings.js"
         settings_revision = await hass.async_add_executor_job(

@@ -17,18 +17,12 @@ def main():
     if marker not in changelog:
         parser.error(f"Missing changelog entry for {version}")
     changes = changelog.split(marker, 1)[1].split("\n## ", 1)[0].strip()
-    if args.repository.endswith("/homecall-card"):
-        installation = (
-            "Install or update HomeCall Card through HACS, then refresh the dashboard. "
-            "For manual installation, use `homecall-card.js`. "
-            "The HomeCall integration is installed separately."
-        )
-    else:
-        installation = (
-            "Install or update HomeCall through HACS, then restart Home Assistant. "
-            "For manual installation, extract `homecall.zip` into `custom_components/homecall`. "
-            "HomeCall Card is installed separately."
-        )
+    installation = (
+        "Install or update HomeCall through HACS, then restart Home Assistant and refresh the dashboard. "
+        "For manual installation, extract `homecall.zip` into `custom_components/homecall`. "
+        "HomeCall Card is included. Existing separate card installations must follow "
+        "the [migration guide](https://github.com/thomasgregg/homecall/blob/main/docs/card-migration.md)."
+    )
     base = f"https://github.com/{args.repository}"
     link = (
         f"{base}/compare/{args.previous_tag}...{args.tag}"

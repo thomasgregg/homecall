@@ -4,7 +4,11 @@
   "type": "module",
   "scripts": {
     "test:browser": "playwright test",
-    "test:recorder": "node --test tests/recorder.test.cjs"
+    "test:recorder": "node --test tests/recorder.test.cjs",
+    "build:card": "npm --prefix card run build",
+    "test:card": "npm --prefix card test",
+    "test:card:browser": "npm --prefix card run test:browser",
+    "format:card:check": "npm --prefix card run format:check"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

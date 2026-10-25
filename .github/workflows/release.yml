@@ -20,12 +20,16 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix card
+      - run: npm run build:card && npm run format:card:check && npm run test:card
+      - run: git diff --exit-code -- custom_components/homecall/frontend/homecall-card.js
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:recorder && npm run test:browser
+      - run: npm run test:recorder && npm run test:browser && npm run test:card:browser
       - name: Verify tag and package the integration
         run: |
           python -c 'import json, os; assert os.environ["GITHUB_REF_NAME"] == "v" + json.load(open("custom_components/homecall/manifest.json"))["version"]'
           git archive --format=zip HEAD:custom_components/homecall > homecall.zip
+          python scripts/check-package.py homecall.zip
       - name: Publish release with standard notes
         run: |
           previous_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')

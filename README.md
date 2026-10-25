@@ -8,9 +8,9 @@
 
 **Your voice. Every room.**
 
-Call everyone to dinner, send a quick reminder, or announce that guests have arrived—in your own voice. Record with [HomeCall Card](https://github.com/thomasgregg/homecall-card) in your Home Assistant dashboard, choose your speakers, and send. The HomeCall integration handles delivery.
+Call everyone to dinner, send a quick reminder, or announce that guests have arrived—in your own voice. Record with [HomeCall Card](card/README.md) in your Home Assistant dashboard, choose your speakers, and send. The HomeCall integration handles delivery.
 
-Install **HomeCall** and **HomeCall Card** together to get started.
+Install **HomeCall** to get the integration and dashboard card together.
 
 ![HomeCall Card recording a message alongside the HomeCall integration settings](docs/assets/intro-screenshots.png)
 
@@ -44,9 +44,9 @@ Overview and expanded DLNA speaker options in the HomeCall integration.
 
 [![HomeCall settings overview and expanded DLNA speaker options](docs/assets/ui-configuration.svg)](docs/assets/ui-configuration.svg)
 
-The separately installed [HomeCall Card](https://github.com/thomasgregg/homecall-card#screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
+The bundled [HomeCall Card](card/README.md#screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
 
-[![HomeCall Card recording a real microphone waveform with speaker selection enabled](docs/assets/ui-card-recording.png)](https://github.com/thomasgregg/homecall-card#screenshots)
+[![HomeCall Card recording a real microphone waveform with speaker selection enabled](docs/assets/ui-card-recording.png)](card/README.md#screenshots)
 
 ## Speaker compatibility
 
@@ -148,24 +148,24 @@ For EchoMuse, connect your Dots through Home Assistant’s ESPHome integration, 
 
 ## Install
 
-For the new recorder, optional local preview and timing diagnostics, update **HomeCall to 1.7.0+** and **HomeCall Card to 1.2.0+** together. Restart Home Assistant after updating the integration, then refresh every dashboard tab or reset the Companion app's frontend cache.
+From **HomeCall 1.9.0**, the dashboard card ships with the integration. Update HomeCall, restart Home Assistant, then refresh every dashboard tab or reset the Companion app's frontend cache. Existing users should follow the [bundled-card migration guide](docs/card-migration.md).
 
 ### HACS
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=thomasgregg&repository=homecall&category=integration)
 
-With HACS installed, click the button to open this custom repository in your Home Assistant instance. Add it when prompted, then choose **Download**. Install the integration and card separately.
+With HACS installed, click the button to open this custom repository in your Home Assistant instance. Add it when prompted, then choose **Download**. The dashboard card is included.
 
 1. In HACS, open **Custom repositories**.
 2. Add `https://github.com/thomasgregg/homecall` as an **Integration**.
 3. Download HomeCall and restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → HomeCall**.
 5. Choose **Alexa speakers**, **DLNA speakers**, **Sonos speakers** or **Music Assistant speakers** or **Google Cast speakers**. For Alexa, configure the public HTTPS address and speaker selection. For DLNA, finish setup, then open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
-6. Install [HomeCall Card](https://github.com/thomasgregg/homecall-card) separately.
+6. Refresh the dashboard and add **HomeCall** from the card picker. UI-managed dashboard resources are registered automatically; see the [migration guide](docs/card-migration.md) for YAML-managed resources.
 
 ### Manual
 
-Copy [`custom_components/homecall`](custom_components/homecall) into `<config>/custom_components/homecall`, restart Home Assistant, and follow steps 4–6 above. Do not place the dashboard card inside the integration directory.
+Copy [`custom_components/homecall`](custom_components/homecall) into `<config>/custom_components/homecall`, restart Home Assistant, and follow steps 4–6 above. The bundled card is already inside that directory; no separate JavaScript download is needed.
 
 ## Use
 
@@ -214,7 +214,7 @@ flowchart TD
 
 The voice-only MP3 is always encoded. When the optional HomeCall chime is enabled for any selected target, a second MP3 contains the chime followed by the voice; Google Cast skips this chime by default. Each variant has its own expiring token, and HomeCall selects the variant per target. Music Assistant's own pre-announcement is disabled. Both variants contribute to the same announcement's aggregate fetch count.
 
-Alexa uses the public HTTPS delivery address; DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use the local address. The audio endpoint requires possession of the random token URL rather than a Home Assistant login. Tokens expire three minutes after clip creation. The card is installed separately and uses authenticated upload and status APIs.
+Alexa uses the public HTTPS delivery address; DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use the local address. The audio endpoint requires possession of the random token URL rather than a Home Assistant login. Tokens expire three minutes after clip creation. The bundled card uses authenticated upload and status APIs.
 
 Sonos, Music Assistant and EchoMuse receive native announcement commands; playback continuation is delegated to their integration, provider or firmware and is not guaranteed by HomeCall. Direct Google Cast playback replaces the current media without HomeCall restoration. For EchoMuse, Home Assistant sends the URL through ESPHome to the controller, which decodes audio and streams it to the Dot. When Home Assistant uses its ESPHome transcoding proxy, the controller fetches the proxy URL and the proxy fetches HomeCall's source MP3. The controller must be able to reach the URL it receives; see [EchoMuse delivery](docs/echomuse.md#delivery) and [ESPHome audio proxy support](https://esphome.io/components/media_player/speaker/).
 
@@ -245,6 +245,14 @@ pip install -r requirements-dev.txt
 ruff check .
 ruff format --check .
 pytest --cov=custom_components.homecall --cov-report=term-missing
+npm ci
+npm ci --prefix card
+npm run build:card
+npm run test:recorder
+npm run test:card
+npx playwright install chromium webkit
+npm run test:browser
+npm run test:card:browser
 ```
 
 Tests import real Home Assistant modules and exercise WAV parsing, real FFmpeg conversion, HTTP handler behavior, settings permissions, device filtering, expiring tokens, and configuration flows. Service calls are mocked so tests do not contact Amazon or announce to real speakers. Audible playback and music handling require route-specific hardware acceptance checks; see the compatibility table for the checks actually performed.
