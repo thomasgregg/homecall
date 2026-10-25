@@ -21,7 +21,7 @@ HomeCall does not rewrite your YAML. Replace the old HomeCall card resource in y
   type: module
 ```
 
-Keep all other resource entries. Reload YAML resources using Home Assistant's `lovelace.reload_resources` action (or restart Home Assistant), then refresh the browser. The integration serves this file without HTTP caching; the versionless URL works across subsequent upgrades. The log reminds YAML resource users of this setup step.
+Keep all other resource entries. Reload YAML resources using Home Assistant's `lovelace.reload_resources` action (or restart Home Assistant), then refresh the browser. The integration serves this file without HTTP caching; the versionless URL works across subsequent upgrades. HomeCall logs a setup reminder until it finds one correctly configured bundled module entry.
 
 A YAML dashboard can still use UI-managed resources; automatic registration follows the **resource mode**, not an individual dashboard's mode.
 

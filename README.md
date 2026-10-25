@@ -8,7 +8,7 @@
 
 **Your voice. Every room.**
 
-Call everyone to dinner, send a quick reminder, or announce that guests have arrived—in your own voice. Record with [HomeCall Card](card/README.md) in your Home Assistant dashboard, choose your speakers, and send. The HomeCall integration handles delivery.
+Call everyone to dinner, send a quick reminder, or announce that guests have arrived—in your own voice. Record with [HomeCall Card](#dashboard-card) in your Home Assistant dashboard, choose your speakers, and send. The HomeCall integration handles delivery.
 
 Install **HomeCall** to get the integration and dashboard card together.
 
@@ -25,6 +25,7 @@ Install **HomeCall** to get the integration and dashboard card together.
   - [HACS](#hacs)
   - [Manual installation](#manual)
 - [Use](#use)
+- [Dashboard card](#dashboard-card)
 - [How it works](#how-it-works)
 - [Documentation](#documentation)
 - [Development](#development)
@@ -44,9 +45,9 @@ Overview and expanded DLNA speaker options in the HomeCall integration.
 
 [![HomeCall settings overview and expanded DLNA speaker options](docs/assets/ui-configuration.svg)](docs/assets/ui-configuration.svg)
 
-The bundled [HomeCall Card](card/README.md#screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
+The bundled [HomeCall Card](#card-screenshots) provides the recording interface, with a live waveform, countdown, and speaker picker.
 
-[![HomeCall Card recording a real microphone waveform with speaker selection enabled](docs/assets/ui-card-recording.png)](card/README.md#screenshots)
+[![HomeCall Card recording a real microphone waveform with speaker selection enabled](docs/assets/ui-card-recording.png)](#card-screenshots)
 
 ## Speaker compatibility
 
@@ -118,15 +119,15 @@ The Alexa resume test used soundbank audio through the same Speak/SSML mechanism
 
 ## Which setup should I use?
 
-| Use case                                                                                | Recommended route                                                                                                               | What to expect                                                                                                                                                                                                                       |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Streaming music or playlists should continue after messages                             | **Music Assistant**, with music started through MA and announcements sent to its MA entity.                                     | MA owns the queue and handles announcements. Our AirPlay 2 test passed; test your chosen provider. MA supports many [music services](https://www.music-assistant.io/music-providers/), subject to provider and account requirements. |
-| Occasional messages on Nest or another Cast speaker, with music interruption acceptable | **Google Cast**.                                                                                                                | Simple local MP3 delivery, no MA server required. Current playback is replaced and does not automatically return. Nest hardware still needs testing.                                                                                 |
-| Keep casting YouTube Music directly from a phone and preserve its session               | 🔴 No verified HomeCall route for an audio-only Cast speaker. For dependable queue control, start music through **MA** instead. | Direct Cast interrupted our phone session; reopening the receiver did not restore it.                                                                                                                                                |
-| Existing Echo speakers                                                                  | **Alexa Devices**.                                                                                                              | Recorded voice playback is verified; Amazon must reach the public HTTPS audio URL. TuneIn radio resumed in the Echo Show soundbank test; recorded-MP3 restoration and other sources still need verification.                         |
-| EchoMuse-flashed Dots                                                                   | **EchoMuse (ESPHome)**.                                                                                                         | Local announcement delivery without Music Assistant or Amazon’s Alexa service. Requires an EchoMuse controller and compatible ESPHome firmware; audible playback and continuation still need testing.                                |
-| Existing Sonos system without MA                                                        | **Sonos**.                                                                                                               | Uses Sonos’s native announcement support; direct playback, optional chime and music restoration still need a hardware test. If MA manages the music, use the MA entity.                                                                                   |
-| Basic local audio renderer without MA                                                   | **DLNA**.                                                                                                                       | Validate with the sound test. Optional resume handles a reusable current item where supported, rather than streaming-service sessions or full queues.                                                                                |
+| Use case                                                                                | Recommended route                                                                                                               | What to expect                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Streaming music or playlists should continue after messages                             | **Music Assistant**, with music started through MA and announcements sent to its MA entity.                                     | MA owns the queue and handles announcements. Our AirPlay 2 test passed; test your chosen provider. MA supports many [music services](https://www.music-assistant.io/music-providers/), subject to provider and account requirements.                                           |
+| Occasional messages on Nest or another Cast speaker, with music interruption acceptable | **Google Cast**.                                                                                                                | Simple local MP3 delivery, no MA server required. Current playback is replaced and does not automatically return. Specific Nest models and Cast groups require further tests.                                                                                                  |
+| Keep casting YouTube Music directly from a phone and preserve its session               | 🔴 No verified HomeCall route for an audio-only Cast speaker. For dependable queue control, start music through **MA** instead. | Direct Cast interrupted our phone session; reopening the receiver did not restore it.                                                                                                                                                                                          |
+| Existing Echo speakers                                                                  | **Alexa Devices**.                                                                                                              | Recorded voice playback is verified; Amazon must reach the public HTTPS audio URL. TuneIn radio resumed in the Echo Show soundbank test; recorded-MP3 restoration and other sources still need verification.                                                                   |
+| EchoMuse-flashed Dots                                                                   | **EchoMuse (ESPHome)**.                                                                                                         | Local announcement delivery without Music Assistant or Amazon’s Alexa service. Requires an EchoMuse controller and compatible ESPHome firmware; community message playback is reported, while installed firmware/controller versions and music continuation need verification. |
+| Existing Sonos system without MA                                                        | **Sonos**.                                                                                                                      | Uses Sonos’s native announcement support; direct playback, optional chime and music restoration still need a hardware test. If MA manages the music, use the MA entity.                                                                                                        |
+| Basic local audio renderer without MA                                                   | **DLNA**.                                                                                                                       | Validate with the sound test. Optional resume handles a reusable current item where supported, rather than streaming-service sessions or full queues.                                                                                                                          |
 
 Choose one HomeCall target per physical speaker. When MA manages the music, use its entity and hide the corresponding direct Cast/DLNA/Sonos entry from the card to avoid duplicate announcements. For MA groups, consult its [announcement group behavior](https://www.music-assistant.io/integration/announcements/#group-behaviour).
 
@@ -160,18 +161,92 @@ With HACS installed, click the button to open this custom repository in your Hom
 2. Add `https://github.com/thomasgregg/homecall` as an **Integration**.
 3. Download HomeCall and restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → HomeCall**.
-5. Choose **Alexa speakers**, **DLNA speakers**, **Sonos speakers** or **Music Assistant speakers** or **Google Cast speakers**. For Alexa, configure the public HTTPS address and speaker selection. For DLNA, finish setup, then open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
+5. Choose **Alexa speakers**, **DLNA speakers**, **Music Assistant**, **Google Cast speakers** or **EchoMuse speakers** in the setup menu. For Alexa, configure the public HTTPS address and speaker selection. For direct Sonos without Alexa, finish the local-only setup through **DLNA speakers**, then add your devices under **Configure → Sonos speakers**. For DLNA, open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
 6. Refresh the dashboard and add **HomeCall** from the card picker. UI-managed dashboard resources are registered automatically; see the [migration guide](docs/card-migration.md) for YAML-managed resources.
 
 ### Manual
 
-Copy [`custom_components/homecall`](custom_components/homecall) into `<config>/custom_components/homecall`, restart Home Assistant, and follow steps 4–6 above. The bundled card is already inside that directory; no separate JavaScript download is needed.
+Download `homecall.zip` from the [latest release](https://github.com/thomasgregg/homecall/releases/latest) and extract its contents into `<config>/custom_components/homecall`. Alternatively, copy [`custom_components/homecall`](custom_components/homecall) from the repository to that location. Restart Home Assistant and follow steps 4–6 above. The bundled card is already included; no separate JavaScript download or npm build on Home Assistant is needed.
 
 ## Use
 
-Add HomeCall Card to your dashboard. Tap the microphone to record. In HomeCall Card 1.1.0, the timer counts down from **1:00** and the recording ring fills clockwise. At **0:00**, recording stops and the outlined Send icon appears; nothing is sent automatically. Tap **Send** to announce to the selected speakers, or send earlier while recording. **Discard** stops recording and clears the local audio. Configure speakers shown in the card and the delivery address from the integration's settings page.
+Add HomeCall Card to your dashboard. Tap the microphone to record. The timer counts down from **1:00** and the recording ring fills clockwise. At **0:00**, recording stops and the outlined Send icon appears; nothing is sent automatically. Tap **Send** to announce to the selected speakers, or send earlier while recording. **Discard** stops recording and clears the local audio. Configure speakers shown in the card and the delivery address from the integration's settings page.
 
 An accepted request means the target’s Home Assistant service call completed successfully. An audio-fetch receipt means a client fetched the temporary audio URL. Neither receipt proves a speaker audibly played the message.
+
+## Dashboard card
+
+HomeCall includes its recording card. Install or update **HomeCall**, restart Home Assistant, and refresh the dashboard. UI-managed resources register automatically. Keep existing `type: custom:homecall-card` configurations; do not install the legacy HACS dashboard repository. See the [migration guide](docs/card-migration.md) for existing separate installations and YAML-managed resources.
+
+Use Home Assistant **2026.9 or newer** and open the dashboard through a trusted **HTTPS** address with microphone permission. Ordinary HTTP LAN addresses cannot capture microphone audio. Local speaker delivery can still use HTTP; a public HTTPS delivery address is required only for Alexa.
+
+### Card screenshots
+
+These screenshots were captured in Home Assistant using the card editor's preview and microphone audio. Available width and saved layout settings can change the displayed size.
+
+![HomeCall Card ready and recording](card/docs/assets/ui-states.png)
+
+![HomeCall Card in a compact dashboard row and with the speaker picker open](card/docs/assets/ui-layouts.png)
+
+![HomeCall Card configuration and layout editor](card/docs/assets/ui-editor-combined.png)
+
+### Recording and delivery
+
+1. Choose speakers, if the picker is visible.
+2. Tap the blue microphone and allow browser microphone access.
+3. A spinner immediately replaces the microphone while it prepares. Speak when the red microphone, recording dot, and ring appear. The timer starts only once microphone samples arrive; larger cards also show **Speak now**. The outer ring fills clockwise while the timer counts down from **1:00**.
+4. Tap **Send**, or use **Discard** to start again.
+
+At **0:00**, recording stops automatically and the button switches to a smaller outlined Send icon. It never sends automatically. Press **Send** or **Discard**; larger cards also show “Limit reached - ready to send.” After a fully accepted send, the card returns to ready after five seconds and preserves speaker selection. Partial failures stay visible for review. An audio-fetch receipt confirms retrieval, not audible playback.
+
+Unavailable or missing default recipients produce an amber warning, even with diagnostics off. The card sends the recording to the available speakers. Open the warning for details: before sending, it lists the speakers that will be skipped; afterward, it shows how many accepted the announcement and which were skipped. Partial delivery keeps the microphone action: one tap starts a fresh recording. It never resends the previous audio. A failed send shows **Retry**. Warnings and errors stay until you act on them; opened details close when clicking outside or pressing Escape.
+
+The speaker picker uses Home Assistant's native list controls. The second line shows the integration and availability, so two routes for the same physical speaker can be distinguished. Choose one route per physical speaker to avoid duplicate announcements. **Select all** chooses the currently available routes and clears the pending skipped-recipient warning. A recovered route is not automatically reselected.
+
+Tapping Send finishes capture and sends directly. There is no local recording-review step; an older saved `preview_before_send` option is ignored.
+
+### Card configuration
+
+| Option                   | Type         | Default                                              | Meaning                                                                                                                                                                    |
+| ------------------------ | ------------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                   | string       | Required                                             | `custom:homecall-card`                                                                                                                                                     |
+| `show_speaker_selection` | boolean      | `true`                                               | Show the recipient picker                                                                                                                                                  |
+| `default_targets`        | string array | Integration defaults, otherwise all allowed speakers | Initial selection, using allowed Alexa `notify.*_speak` or configured DLNA, Sonos, Music Assistant, Google Cast or EchoMuse `media_player.*` entity IDs; `[]` selects none |
+| `show_diagnostics`       | boolean      | `false`                                              | Optional timing details under Troubleshooting in the editor; delivery warnings and errors remain available when off                                                        |
+| `grid_options`           | object       | 6 columns × 1 row                                    | Standard Home Assistant sections sizing                                                                                                                                    |
+
+```yaml
+type: custom:homecall-card
+show_speaker_selection: false
+default_targets:
+  - notify.kitchen_speak
+  - notify.living_room_speak
+grid_options:
+  columns: 6
+  rows: 1
+```
+
+Defaults never bypass the integration's allowlist. Hiding the picker also hides the ability to change rooms in the card, so verify the default targets before hiding it.
+
+### Card sizing
+
+In a **Sections** dashboard, HomeCall defaults to **6 columns × 1 row** (half a section wide). The minimum supported height is **56px**. Set the size in the card editor's **Layout** tab, or use `grid_options` as above. Existing cards keep their saved dimensions until you resize them.
+
+At **1 row**, the microphone and discard icon sit at the card's middle height. The speaker icon is centered on its own until the countdown appears; then the visible icon and countdown form a centered group with a clear gap between them. When the speaker picker is hidden, the countdown and recording dot sit at middle height. The waveform leaves space around the side controls. Speaker selection and longer status messages open in popovers outside the short card.
+
+At **2 rows or more**, the card retains its taller layout, with the picker above and recording controls below. The text speaker selector uses a slimmer touch area. The main action scales to the available space; captions appear when there is enough room, with balanced bottom spacing and clearance for two lines. These layouts use the same Home Assistant icons, fonts, controls, and theme colors.
+
+The circle keeps the same diameter through preparation and recording for a given card size. It scales with the actual available space, so the editor preview and dashboard can differ when their widths differ. Two-row cards retain footer clearance through the 200px width boundary; window resizing preserves timer and discard alignment.
+
+Columns control width and rows control height. For example, use `columns: 12` and `rows: 3` for a larger card. Actual width depends on the dashboard and screen size. Masonry dashboards do not use `grid_options`; use a Sections view for the explicit 6 × 1 layout.
+
+### Optional announcement chime
+
+Enable **Play a chime before messages** under **HomeCall → Configure → Announcements** to play the bundled two-tone cue before your recording. It is off by default. **Skip the chime on direct Google Cast speakers** is on by default; turn it off to include the cue on those direct routes. Music Assistant targets still receive the HomeCall chime, while MA's own additional pre-announcement cue is disabled. Native Cast connection sounds may still play.
+
+The card uploads one recording; the integration combines the cue and voice when needed. Speaker sound tests are unchanged. Verified routes and remaining hardware limits are listed in [Speaker compatibility](#speaker-compatibility).
+
+For more detail, see [layout and recording states](card/docs/configuration.md) and [card troubleshooting](card/docs/troubleshooting.md). Developers can find the card source and checks in [card/](card/).
 
 ## How it works
 

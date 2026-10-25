@@ -10,8 +10,14 @@
 | `helpers.py`                    | Device discovery, effective settings, allowed targets                    |
 | `views.py`                      | HTTP endpoints and announcement delivery                                 |
 | `resume.py`                     | Per-speaker playback snapshots, completion tracking, guarded restoration |
+| `dashboard.py`                  | Bundled card resource registration and recognized legacy URL migration   |
+| `frontend/homecall-card.js`     | Built recording card and native card editor                              |
 | `config_flow.py`                | Native setup and options flows                                           |
 | `frontend/homecall-settings.js` | Native administrative settings UI                                        |
+
+## Dashboard resource
+
+The integration serves the built card and recorder from `/homecall-assets/`. At setup, `dashboard.py` registers a content-versioned `/homecall-assets/homecall-card.js?v=<hash>` module through Lovelace's resource collection. Recognized legacy local HomeCall resource URLs are updated in place. YAML-managed resources remain user-managed; see the [migration guide](card-migration.md). The card's source and build tests live under `card/` at the repository root.
 
 ## Endpoints
 

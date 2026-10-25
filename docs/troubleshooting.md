@@ -13,7 +13,11 @@
 
 First confirm the selected playback integration works independently of HomeCall. For Alexa, test a simple Alexa Devices announcement. Then test one short recording on one known speaker. Do not share bearer tokens, receipt URLs, recordings, or your public HA address in a public issue.
 
-Include HA version, install method, card version, browser/OS, selected mode, and sanitized errors in a bug report. Use the repository issue template.
+Include HA and HomeCall versions, install method, browser/OS, selected mode, and sanitized errors in a bug report. Use the repository issue template.
+
+## Bundled dashboard card
+
+HomeCall includes the card from version 1.9.0. Update HomeCall, restart HA and refresh every dashboard tab. If the card is missing or an old version remains visible, check the [migration and resource guide](card-migration.md) and [card troubleshooting](../card/docs/troubleshooting.md). There is no separate current card download.
 
 ## DLNA sound test
 
