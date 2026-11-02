@@ -3,7 +3,7 @@
 <p align="center">
 <a href="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml"><img src="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-<a href="https://hacs.xyz"><img src="https://img.shields.io/badge/HACS-custom_repository-41BDF5" alt="HACS custom repository"></a>
+<a href="https://hacs.xyz"><img src="https://img.shields.io/badge/HACS-Integration-41BDF5" alt="HACS integration"></a>
 </p>
 
 **Your voice. Every room.**
@@ -155,14 +155,22 @@ From **HomeCall 1.9.0**, the dashboard card ships with the integration. Update H
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=thomasgregg&repository=homecall&category=integration)
 
-With HACS installed, click the button to open this custom repository in your Home Assistant instance. Add it when prompted, then choose **Download**. The dashboard card is included.
+With HACS installed, search for **HomeCall** in HACS or use the button above to open it directly. The dashboard card is included.
 
-1. In HACS, open **Custom repositories**.
-2. Add `https://github.com/thomasgregg/homecall` as an **Integration**.
-3. Download HomeCall and restart Home Assistant.
+1. Open **HACS** and search for **HomeCall**.
+2. Open **HomeCall** and choose **Download**.
+3. Restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → HomeCall**.
 5. Choose **Alexa speakers**, **DLNA speakers**, **Music Assistant**, **Google Cast speakers** or **EchoMuse speakers** in the setup menu. For Alexa, configure the public HTTPS address and speaker selection. For direct Sonos without Alexa, finish the local-only setup through **DLNA speakers**, then add your devices under **Configure → Sonos speakers**. For DLNA, open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
 6. Refresh the dashboard and add **HomeCall** from the card picker. UI-managed dashboard resources are registered automatically; see the [migration guide](docs/card-migration.md) for YAML-managed resources.
+
+#### Fallback: custom repository
+
+If HomeCall does not appear in your HACS catalog:
+
+1. In HACS, open **Custom repositories** from the menu.
+2. Add `https://github.com/thomasgregg/homecall` with type **Integration**.
+3. Search for **HomeCall**, download it, then continue with steps 3–6 above.
 
 ### Manual
 
