@@ -8,6 +8,10 @@ from custom_components.homecall.const import DOMAIN
 
 
 async def test_setup_registers_routes_once_and_unload_clears_audio(hass, entry, monkeypatch):
+    monkeypatch.setattr(
+        "custom_components.homecall.Store",
+        lambda *args: SimpleNamespace(async_load=AsyncMock(return_value={}), async_save=AsyncMock()),
+    )
     hass.http = SimpleNamespace(register_view=Mock(), async_register_static_paths=AsyncMock())
     entry.async_on_unload = Mock()
     entry.add_update_listener = Mock(return_value=lambda: None)
@@ -16,9 +20,9 @@ async def test_setup_registers_routes_once_and_unload_clears_audio(hass, entry, 
     monkeypatch.setattr("custom_components.homecall.frontend.async_remove_panel", remove)
     assert await async_setup_entry(hass, entry)
     initial_generation = hass.data[DOMAIN]["generation"]
-    assert hass.http.register_view.call_count == 5
+    assert hass.http.register_view.call_count == 6
     assert await async_setup_entry(hass, entry)
-    assert hass.http.register_view.call_count == 5
+    assert hass.http.register_view.call_count == 6
     hass.data[DOMAIN]["clips"]["temporary"] = [10, b"clip", 0]
     assert await async_unload_entry(hass, entry)
     assert hass.data[DOMAIN]["generation"] > initial_generation
@@ -28,6 +32,10 @@ async def test_setup_registers_routes_once_and_unload_clears_audio(hass, entry, 
 
 
 async def test_admin_panel_and_option_listener(hass, entry, monkeypatch):
+    monkeypatch.setattr(
+        "custom_components.homecall.Store",
+        lambda *args: SimpleNamespace(async_load=AsyncMock(return_value={}), async_save=AsyncMock()),
+    )
     hass.http = SimpleNamespace(register_view=Mock(), async_register_static_paths=AsyncMock())
     entry.async_on_unload = Mock()
     entry.add_update_listener = Mock(return_value=lambda: None)

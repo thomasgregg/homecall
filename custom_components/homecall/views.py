@@ -181,6 +181,68 @@ class SettingsView(HomeCallView):
         )
 
 
+class PreferencesView(HomeCallView):
+    """Persist the selected speakers privately per Home Assistant user."""
+    url = "/api/homecall/preferences"
+    name = "api:homecall:preferences"
+    requires_auth = True
+
+    def user_key(self, request):
+        user_id = getattr(request["hass_user"], "id", None)
+        if not user_id:
+            raise web.HTTPUnauthorized()
+        return user_id
+
+    def storage(self):
+        store = self.hass.data.get(DOMAIN, {})
+        if not store.get("entry") or "preferences_store" not in store:
+            raise web.HTTPServiceUnavailable()
+        return store
+
+    async def get(self, request):
+        store = self.storage()
+        prefs = store["preferences"].get(self.user_key(request), {})
+        selected = prefs.get("selected_targets")
+        if selected is not None:
+            allowed = {
+                item["entity_id"]
+                for item in self.user_targets(request, store["entry"], control=True)
+            }
+            selected = [target for target in selected if target in allowed]
+        return self.json({"selected_targets": selected, "volume": prefs.get("volume", 60)})
+
+    async def post(self, request):
+        store = self.storage()
+        user_id = self.user_key(request)
+        try:
+            payload = await request.json()
+        except (ValueError, TypeError) as error:
+            raise web.HTTPBadRequest() from error
+        selected = payload.get("selected_targets") if isinstance(payload, dict) else None
+        if (
+            not isinstance(selected, list)
+            or len(selected) > 100
+            or any(not isinstance(value, str) for value in selected)
+        ):
+            raise web.HTTPBadRequest()
+        allowed = {
+            item["entity_id"]
+            for item in self.user_targets(request, store["entry"], control=True)
+        }
+        if not set(selected).issubset(allowed):
+            raise web.HTTPForbidden()
+        volume = payload.get("volume", 60)
+        if not isinstance(volume, int) or isinstance(volume, bool) or not 0 <= volume <= 100:
+            raise web.HTTPBadRequest()
+        async with store["preferences_lock"]:
+            prefs = dict(store["preferences"].get(user_id, {}))
+            prefs["selected_targets"] = list(dict.fromkeys(selected))
+            prefs["volume"] = volume
+            store["preferences"][user_id] = prefs
+            await store["preferences_store"].async_save(store["preferences"])
+        return self.json({"selected_targets": prefs["selected_targets"], "volume": volume})
+
+
 class StatusView(HomeCallView):
     url = "/api/homecall/status"
     name = "api:homecall:status"
@@ -225,6 +287,18 @@ class UploadView(HomeCallView):
         if store["lock"].locked():
             return self.json({"error": "Eine Durchsage wird gerade gesendet."}, status_code=409)
         selected = request.query.getall("target", [])
+        volume_raw = request.query.get("volume")
+        try:
+            volume = int(volume_raw) if volume_raw is not None else None
+        except ValueError:
+            volume = None
+        if volume_raw is not None and (
+            volume is None or not 0 <= volume <= 100 or str(volume) != volume_raw
+        ):
+            return self.json({"error": "Invalid announcement volume"}, status_code=400)
+        if volume is None:
+            user_id = getattr(request["hass_user"], "id", None)
+            volume = store.get("preferences", {}).get(user_id, {}).get("volume", 60)
         available = {
             item["entity_id"]
             for item in self.user_targets(request, store["entry"], control=True)
@@ -330,6 +404,7 @@ class UploadView(HomeCallView):
                     duration=duration + (cue_duration if entity_id in chimed_targets else 0),
                     diagnostics=trace,
                     target_index=index,
+                    volume=volume,
                 )
 
             results = await asyncio.gather(
@@ -371,7 +446,8 @@ class AudioView(HomeCallView):
 
 
 async def deliver(
-    hass, entry, entity_id, token, context=None, duration=3, diagnostics=None, target_index=1
+    hass, entry, entity_id, token, context=None, duration=3, diagnostics=None,
+    target_index=1, volume=None,
 ):
     """Route only previously validated targets through their actual HA platform."""
     started = time.monotonic()
@@ -402,6 +478,8 @@ async def deliver(
             data.update(media_content_type="audio/mpeg", announce=True)
         elif sonos:
             data["announce"] = True
+            if volume is not None:
+                data["extra"] = {"volume": volume}
         manager = hass.data[DOMAIN].get("resume_manager")
         if dlna and manager:
             if candidate.get("transport") == "dlna" and entity_id in settings(entry)["resume_dlna"]:
