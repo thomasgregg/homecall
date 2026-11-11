@@ -798,13 +798,26 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       if (session !== this._session) return;
       if (!response.ok)
         throw new Error(data.error || "HomeCall ist noch nicht bereit.");
+      let savedSelection = null;
+      try {
+        const saved = await this._hass.fetchWithAuth("/api/homecall/preferences");
+        if (saved.ok) {
+          const userPreferences = await saved.json();
+          if (Array.isArray(userPreferences.selected_targets))
+            savedSelection = userPreferences.selected_targets;
+        }
+      } catch {
+        // Keep playback available if preferences are unavailable.
+      }
+      if (session !== this._session) return;
       this._defaults =
-        this._nextSelection ||
+        this._nextSelection || savedSelection ||
         (Array.isArray(this.config.default_targets)
           ? this.config.default_targets
           : data.default_targets || []);
       this._defaultsAll =
         !this._nextSelection &&
+        !savedSelection &&
         !Array.isArray(this.config.default_targets) &&
         !this._defaults.length;
       this._nextSelection = null;
@@ -1137,6 +1150,32 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
     this._processor.port.postMessage({ type: "stop" });
     await this._recorderStopPromise;
   }
+  _savePreferences() {
+    const known = new Set((this._targets || []).map((target) => target.entity_id));
+    const selected = [
+      ...new Set([...(this._selection || []), ...(this._skippedTargets || [])]),
+    ].filter((id) => known.has(id));
+    this._pendingPreferences = { selected_targets: selected };
+    if (this._savingPreferences) return;
+    this._savingPreferences = (async () => {
+      while (this._pendingPreferences) {
+        const data = this._pendingPreferences;
+        this._pendingPreferences = null;
+        try {
+          await this._hass.fetchWithAuth("/api/homecall/preferences", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+        } catch {
+          // The UI remains usable if a preferences save fails.
+        }
+      }
+    })().finally(() => {
+      this._savingPreferences = null;
+      if (this._pendingPreferences) this._savePreferences();
+    });
+  }
   _fillTargets(targets) {
     this._targets = targets;
     this._selection = targets
@@ -1173,6 +1212,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
           ? [...new Set([...this._selection, id])]
           : this._selection.filter((value) => value !== id);
         this._updateSelection();
+        this._savePreferences();
       },
     );
     list.append(all, speakers);
@@ -1185,6 +1225,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       // Select all explicitly chooses the currently available routes.
       this._skippedTargets = [];
       this._updateSelection();
+      this._savePreferences();
     });
     this._updateSelection();
   }

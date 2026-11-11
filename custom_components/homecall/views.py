@@ -181,6 +181,64 @@ class SettingsView(HomeCallView):
         )
 
 
+class PreferencesView(HomeCallView):
+    """Persist the selected speakers privately per Home Assistant user."""
+    url = "/api/homecall/preferences"
+    name = "api:homecall:preferences"
+    requires_auth = True
+
+    def user_key(self, request):
+        user_id = getattr(request["hass_user"], "id", None)
+        if not user_id:
+            raise web.HTTPUnauthorized()
+        return user_id
+
+    def storage(self):
+        store = self.hass.data.get(DOMAIN, {})
+        if not store.get("entry") or "preferences_store" not in store:
+            raise web.HTTPServiceUnavailable()
+        return store
+
+    async def get(self, request):
+        store = self.storage()
+        prefs = store["preferences"].get(self.user_key(request), {})
+        selected = prefs.get("selected_targets")
+        if selected is not None:
+            allowed = {
+                item["entity_id"]
+                for item in self.user_targets(request, store["entry"], control=True)
+            }
+            selected = [target for target in selected if target in allowed]
+        return self.json({"selected_targets": selected})
+
+    async def post(self, request):
+        store = self.storage()
+        user_id = self.user_key(request)
+        try:
+            payload = await request.json()
+        except (ValueError, TypeError) as error:
+            raise web.HTTPBadRequest() from error
+        selected = payload.get("selected_targets") if isinstance(payload, dict) else None
+        if (
+            not isinstance(selected, list)
+            or len(selected) > 100
+            or any(not isinstance(value, str) for value in selected)
+        ):
+            raise web.HTTPBadRequest()
+        allowed = {
+            item["entity_id"]
+            for item in self.user_targets(request, store["entry"], control=True)
+        }
+        if not set(selected).issubset(allowed):
+            raise web.HTTPForbidden()
+        async with store["preferences_lock"]:
+            prefs = dict(store["preferences"].get(user_id, {}))
+            prefs["selected_targets"] = list(dict.fromkeys(selected))
+            store["preferences"][user_id] = prefs
+            await store["preferences_store"].async_save(store["preferences"])
+        return self.json({"selected_targets": prefs["selected_targets"]})
+
+
 class StatusView(HomeCallView):
     url = "/api/homecall/status"
     name = "api:homecall:status"

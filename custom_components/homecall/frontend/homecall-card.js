@@ -833,8 +833,19 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
         if (session !== this._session) return;
         if (!response.ok)
           throw new Error(data.error || "HomeCall ist noch nicht bereit.");
-        this._defaults = this._nextSelection || (Array.isArray(this.config.default_targets) ? this.config.default_targets : data.default_targets || []);
-        this._defaultsAll = !this._nextSelection && !Array.isArray(this.config.default_targets) && !this._defaults.length;
+        let savedSelection = null;
+        try {
+          const saved = await this._hass.fetchWithAuth("/api/homecall/preferences");
+          if (saved.ok) {
+            const prefs = await saved.json();
+            if (Array.isArray(prefs.selected_targets))
+              savedSelection = prefs.selected_targets;
+          }
+        } catch {
+        }
+        if (session !== this._session) return;
+        this._defaults = this._nextSelection || savedSelection || (Array.isArray(this.config.default_targets) ? this.config.default_targets : data.default_targets || []);
+        this._defaultsAll = !this._nextSelection && !savedSelection && !Array.isArray(this.config.default_targets) && !this._defaults.length;
         this._nextSelection = null;
         this._fillTargets(data.targets);
         this._phase = "ready";
@@ -1123,6 +1134,32 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       this._processor.port.postMessage({ type: "stop" });
       await this._recorderStopPromise;
     }
+    _savePreferences() {
+      const known = new Set((this._targets || []).map((target) => target.entity_id));
+      const selected = [
+        ...new Set([...(this._selection || []), ...(this._skippedTargets || [])]),
+      ].filter((id) => known.has(id));
+      this._pendingPreferences = { selected_targets: selected };
+      if (this._savingPreferences) return;
+      this._savingPreferences = (async () => {
+        while (this._pendingPreferences) {
+          const data = this._pendingPreferences;
+          this._pendingPreferences = null;
+          try {
+            await this._hass.fetchWithAuth("/api/homecall/preferences", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+          } catch {
+            // The UI remains usable if a preferences save fails.
+          }
+        }
+      })().finally(() => {
+        this._savingPreferences = null;
+        if (this._pendingPreferences) this._savePreferences();
+      });
+    }
     _fillTargets(targets) {
       this._targets = targets;
       this._selection = targets.filter(
@@ -1151,6 +1188,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
           );
           this._selection = checked ? [.../* @__PURE__ */ new Set([...this._selection, id])] : this._selection.filter((value) => value !== id);
           this._updateSelection();
+          this._savePreferences();
         }
       );
       list.append(all, speakers);
@@ -1158,6 +1196,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
         this._selection = all.checked ? this._targets.filter((target) => target.available).map((target) => target.entity_id) : [];
         this._skippedTargets = [];
         this._updateSelection();
+        this._savePreferences();
       });
       this._updateSelection();
     }
