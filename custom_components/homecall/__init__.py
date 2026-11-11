@@ -6,17 +6,22 @@ from pathlib import Path
 
 from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
 from .dashboard import async_register_card
 from .resume import ResumeManager
-from .views import AudioView, SettingsView, SpeakerTestView, StatusView, UploadView
+from .views import AudioView, PreferencesView, SettingsView, SpeakerTestView, StatusView, UploadView
 
 
 async def async_setup_entry(hass, entry):
     store = hass.data.setdefault(DOMAIN, {"lock": asyncio.Lock(), "clips": {}, "registered": False})
     store["generation"] = store.get("generation", 0) + 1
     store["entry"] = entry
+    if "preferences_store" not in store:
+        store["preferences_store"] = Store(hass, 1, "homecall.preferences")
+        store["preferences"] = await store["preferences_store"].async_load() or {}
+        store["preferences_lock"] = asyncio.Lock()
     if "resume_manager" not in store:
         store["resume_manager"] = ResumeManager(hass)
 
@@ -29,6 +34,7 @@ async def async_setup_entry(hass, entry):
         hass.http.register_view(UploadView(hass))
         hass.http.register_view(AudioView(hass))
         hass.http.register_view(SettingsView(hass))
+        hass.http.register_view(PreferencesView(hass))
         hass.http.register_view(SpeakerTestView(hass))
         await hass.http.async_register_static_paths(
             [StaticPathConfig("/homecall-assets", str(Path(__file__).parent / "frontend"), False)]
