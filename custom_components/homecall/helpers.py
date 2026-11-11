@@ -3,10 +3,23 @@
 from ipaddress import ip_address
 
 from homeassistant.components.media_player.const import MediaPlayerEntityFeature
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from yarl import URL
+
+
+def entity_area_name(hass, entity):
+    """Return the HA area assigned to the entity, or inherited from its device."""
+    area_id = entity.area_id
+    if not area_id and entity.device_id:
+        device = dr.async_get(hass).async_get(entity.device_id)
+        area_id = device.area_id if device else None
+    if not area_id:
+        return None
+    area = ar.async_get(hass).async_get_area(area_id)
+    return area.name if area else None
 
 
 def targets(hass):
@@ -27,6 +40,7 @@ def targets(hass):
             {
                 "entity_id": entity.entity_id,
                 "name": state.name.removesuffix(" Speak"),
+                "area_name": entity_area_name(hass, entity),
                 "available": state.state != "unavailable",
             }
         )
@@ -66,6 +80,7 @@ def settings(entry, hass=None):
         "resume_dlna": values.get("resume_dlna", []),
         "local_url": values.get("local_url", ""),
         "announcement_chime": values.get("announcement_chime", False),
+        "custom_chime_path": values.get("custom_chime_path", ""),
         "skip_cast_chime": values.get("skip_cast_chime", True),
     }
 
@@ -121,6 +136,7 @@ def dlna_candidates(hass):
             {
                 "entity_id": entity.entity_id,
                 "name": state.name,
+                "area_name": entity_area_name(hass, entity),
                 "available": state.state not in ("unavailable", "unknown"),
                 "transport": (
                     "echomuse"

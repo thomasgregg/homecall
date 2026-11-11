@@ -76,7 +76,7 @@ function homeCallSpeakerDescription(target, language) {
       : target.available
         ? "Available"
         : "Unavailable";
-  return [integration, status].filter(Boolean).join(" · ");
+  return [integration, status, target.area_name].filter(Boolean).join(" · ");
 }
 function homeCallSpeakerList(
   targets,

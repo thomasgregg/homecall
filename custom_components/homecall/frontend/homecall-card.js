@@ -244,7 +244,7 @@
   function homeCallSpeakerDescription(target, language) {
     const integration = homeCallSpeakerIntegration(target);
     const status = language === "de" ? target.available ? "Verf\xFCgbar" : "Nicht verf\xFCgbar" : target.available ? "Available" : "Unavailable";
-    return [integration, status].filter(Boolean).join(" \xB7 ");
+    return [integration, status, target.area_name].filter(Boolean).join(" \xB7 ");
   }
   function homeCallSpeakerList(targets, selected, language, allowUnavailable, onChange) {
     const list = document.createElement("ha-list");

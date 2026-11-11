@@ -213,6 +213,8 @@ Object.assign(HC_WORDS.en, {
   skip_cast_chime: "Skip the chime on direct Google Cast speakers",
   chimeHint: "Play the selected two-tone chime followed by your recorded message. Speaker sound tests are unchanged.",
   skipCastHint: "Send only your voice to speakers selected under Google Cast. Their connection sound may still play. Speakers selected through Music Assistant still receive the chime.",
+  custom_chime_path: "Custom chime file path (optional)",
+  invalid_chime_file: "The custom chime is missing, incompatible or longer than 10 seconds.",
   chimeOn: "Chime on",
   chimeOff: "Chime off",
 });
@@ -222,6 +224,8 @@ Object.assign(HC_WORDS.de, {
   skip_cast_chime: "Signalton bei direkten Google-Cast-Lautsprechern überspringen",
   chimeHint: "Den ausgewählten Zweiklang vor der aufgenommenen Nachricht abspielen. Lautsprechertests bleiben unverändert.",
   skipCastHint: "An Lautsprecher unter Google Cast nur die Stimme senden. Der Verbindungston kann weiterhin erklingen. Über Music Assistant ausgewählte Lautsprecher erhalten den Signalton weiterhin.",
+  custom_chime_path: "Eigener Signalton (Dateipfad, optional)",
+  invalid_chime_file: "Signalton ist nicht lesbar, inkompatibel oder länger als 10 Sekunden.",
   chimeOn: "Signalton an",
   chimeOff: "Signalton aus",
 });
@@ -337,6 +341,7 @@ class HomeCallSettings extends HTMLElement {
       this._draft.local_url = data.local_url || "";
     } else if (this._page === "announcements") {
       this._draft.announcement_chime = !!data.announcement_chime;
+      this._draft.custom_chime_path = data.custom_chime_path || "";
       const child = this.shadowRoot.querySelector(".chime-subsetting ha-form");
       if (child?.data) this._draft.skip_cast_chime = !!child.data.skip_cast_chime;
     }
@@ -347,6 +352,7 @@ class HomeCallSettings extends HTMLElement {
     this._draft = {
       ...this._data,
       announcement_chime: this._data.announcement_chime ?? false,
+      custom_chime_path: this._data.custom_chime_path || "",
       skip_cast_chime: this._data.skip_cast_chime ?? true,
       default_targets: [...this._data.default_targets],
       resume_dlna: [...(this._data.resume_dlna || [])],
@@ -391,6 +397,7 @@ class HomeCallSettings extends HTMLElement {
           ? {
               page: "announcements",
               announcement_chime: this._draft.announcement_chime,
+              custom_chime_path: this._draft.custom_chime_path || "",
               skip_cast_chime: this._draft.skip_cast_chime,
             }
           : this._page === "connection"
@@ -596,7 +603,7 @@ class HomeCallSettings extends HTMLElement {
     const rows = speakers.map(t => {
       const id = hcEscape(t.entity_id);
       const checkbox = `<ha-checkbox slot="start" data-visible="${id}" aria-label="${hcEscape(t.name)}"></ha-checkbox>`;
-      return `<ha-expansion-panel data-speaker-panel="${id}" ><ha-list-item-base slot="header">${checkbox}<div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${this._t(t.available ? "online" : "offline")}</div></ha-list-item-base><ha-list-base>${this._page !== "dlna" ? "" : `<ha-list-item-base><div slot="headline">${this._t("resume")}</div><ha-checkbox slot="end" id="resume-${id}" data-resume="${id}" aria-label="${hcEscape(this._t("resume"))}"></ha-checkbox></ha-list-item-base>`}<ha-list-item-base><div slot="headline">${this._t("testHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-test="${id}" ${!t.available || this._busy || this._test ? "disabled" : ""}>${this._t(this._chosenDlna === t.entity_id && this._busy ? "testing" : "test")}</ha-button></ha-list-item-base><ha-list-item-base><div slot="headline">${this._t("removeHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-remove="${id}" ${disabled}>${this._t("remove")}</ha-button></ha-list-item-base></ha-list-base></ha-expansion-panel>`;
+      return `<ha-expansion-panel data-speaker-panel="${id}" ><ha-list-item-base slot="header">${checkbox}<div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${this._t(t.available ? "online" : "offline")}${t.area_name ? " · " + hcEscape(t.area_name) : ""}</div></ha-list-item-base><ha-list-base>${this._page !== "dlna" ? "" : `<ha-list-item-base><div slot="headline">${this._t("resume")}</div><ha-checkbox slot="end" id="resume-${id}" data-resume="${id}" aria-label="${hcEscape(this._t("resume"))}"></ha-checkbox></ha-list-item-base>`}<ha-list-item-base><div slot="headline">${this._t("testHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-test="${id}" ${!t.available || this._busy || this._test ? "disabled" : ""}>${this._t(this._chosenDlna === t.entity_id && this._busy ? "testing" : "test")}</ha-button></ha-list-item-base><ha-list-item-base><div slot="headline">${this._t("removeHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-remove="${id}" ${disabled}>${this._t("remove")}</ha-button></ha-list-item-base></ha-list-base></ha-expansion-panel>`;
     }).join("");
     let body = `<ha-card class="speaker-section" header="${hcEscape(this._t("connectedSpeakers"))}">${heading}${all}<ha-list-base>${rows || `<ha-list-item-base><div slot="headline">${this._t("noAdded")}</div><div slot="supporting-text">${this._t("noAddedHint")}</div></ha-list-item-base>`}</ha-list-base>${speakers.length || this._speakerList(this._data).length || (this._page === "devices" && this._data.use_all && this._speakerCandidates(this._data).length) ? `<footer class="footer card-actions"><ha-button class="save" appearance="accent" variant="brand" ${this._busy || this._test ? "disabled" : ""}>${this._t(this._busy ? "saving" : "save")}</ha-button></footer>` : ""}</ha-card>`;
     {
@@ -606,7 +613,7 @@ class HomeCallSettings extends HTMLElement {
         const chosen = this._chosenDlna === t.entity_id;
         const confirmation = this._page === "dlna" && chosen && this._test ? `<div class="confirmation card-content"><ha-alert alert-type="info">${this._t("heard")}</ha-alert><div class="confirmation-actions card-actions"><ha-button class="retry-test" appearance="plain" variant="brand" ${disabled}>${this._t("no")}</ha-button><ha-button class="confirm-test" appearance="accent" variant="brand" ${disabled}>${this._t("yes")}</ha-button></div></div>` : "";
         const progress = chosen && this._busy ? `<div class="test-content card-content"><ha-alert alert-type="info" role="status">${this._t("testing")}</ha-alert></div>` : "";
-        return `<ha-list-item-base><div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${this._t(t.available ? "online" : "offline")}</div><ha-button slot="end" class="test-sound" data-${this._page === "dlna" ? "test" : "add"}="${hcEscape(t.entity_id)}" appearance="plain" variant="brand" ${(this._page === "dlna" && !t.available) || this._busy || this._test ? "disabled" : ""}>${this._t(this._page === "dlna" ? chosen && this._busy ? "testing" : "test" : "add")}</ha-button></ha-list-item-base>${progress}${confirmation}${chosen && this._error ? `<div class="test-content card-content"><ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert></div>` : ""}`;
+        return `<ha-list-item-base><div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${this._t(t.available ? "online" : "offline")}${t.area_name ? " · " + hcEscape(t.area_name) : ""}</div><ha-button slot="end" class="test-sound" data-${this._page === "dlna" ? "test" : "add"}="${hcEscape(t.entity_id)}" appearance="plain" variant="brand" ${(this._page === "dlna" && !t.available) || this._busy || this._test ? "disabled" : ""}>${this._t(this._page === "dlna" ? chosen && this._busy ? "testing" : "test" : "add")}</ha-button></ha-list-item-base>${progress}${confirmation}${chosen && this._error ? `<div class="test-content card-content"><ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert></div>` : ""}`;
       }).join("");
       body += `<ha-card><ha-expansion-panel data-available-panel><span slot="header" class="discovery-label">${this._t("availableSpeakers")}</span><ha-list-item-base><ha-button slot="end" class="refresh-speakers" appearance="plain" variant="brand" ${disabled}>${this._t("refresh")}</ha-button></ha-list-item-base><ha-list-base>${availableRows}</ha-list-base>${!choices.length ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t(this._speakerCandidates(values).length ? "allAdded" : this._page === "devices" ? "emptyAlexa" : this._page === "sonos" ? "emptySonos" : this._page === "music_assistant" ? "emptyMusicAssistant" : this._page === "cast" ? "emptyCast" : this._page === "echomuse" ? "emptyEchoMuse" : "emptyDlna")}</ha-alert></div>` : this._page === "dlna" && choices.every(t => !t.available) ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t("offlineDlna")}</ha-alert></div>` : ""}</ha-expansion-panel></ha-card>`;
     }
@@ -664,8 +671,12 @@ class HomeCallSettings extends HTMLElement {
         form.data = {
           announcement_chime: values.announcement_chime ?? false,
           skip_cast_chime: values.skip_cast_chime ?? true,
+          custom_chime_path: values.custom_chime_path || "",
         };
-        form.schema = [{name: "announcement_chime", selector: {boolean: {}}}];
+        form.schema = [
+          {name: "announcement_chime", selector: {boolean: {}}},
+          {name: "custom_chime_path", selector: {text: {}}},
+        ];
         form.computeLabel = schema => this._t(schema.name);
         const child = this.shadowRoot.querySelector(".chime-subsetting ha-form");
         if (child) {

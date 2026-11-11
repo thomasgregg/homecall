@@ -11,7 +11,15 @@ from aiohttp import web
 from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.components.http import HomeAssistantView
 
-from .audio import chime_duration, convert_wav, test_audio, validate_wav
+from .audio import (
+    chime_duration,
+    convert_wav,
+    decoded_chime_duration,
+    resolve_chime_path,
+    test_audio,
+    validate_wav,
+    validated_chime_duration,
+)
 from .const import DELIVERY_TIMEOUT, DOMAIN, MAX_BYTES, TTL, UPLOAD_TIMEOUT
 from .diagnostics import elapsed_ms, public_diagnostics, start_diagnostics
 from .helpers import allowed_targets, dlna_candidates, local_url, settings, system_url, targets
@@ -119,6 +127,20 @@ class SettingsView(HomeCallView):
                 if not isinstance(value, bool):
                     raise web.HTTPBadRequest()
                 values[key] = value
+            custom = payload.get("custom_chime_path", values.get("custom_chime_path", ""))
+            if not isinstance(custom, str):
+                raise web.HTTPBadRequest()
+            custom = custom.strip()
+            if custom:
+                try:
+                    await self.hass.async_add_executor_job(
+                        validated_chime_duration,
+                        custom,
+                        self.hass.config.path("homecall", "chimes"),
+                    )
+                except (ValueError, OSError, subprocess.SubprocessError):
+                    return self.json({"error": "invalid_chime_file"}, status_code=400)
+            values["custom_chime_path"] = custom
         elif page == "devices":
             use_all = payload.get("use_all")
             selected = payload.get("default_targets", [])
@@ -337,6 +359,17 @@ class UploadView(HomeCallView):
             trace["timings_ms"]["validation"] = elapsed_ms(stage)
             values = settings(store["entry"])
             transports = {t["entity_id"]: t["transport"] for t in dlna_candidates(self.hass)}
+            custom_chime = None
+            if values["announcement_chime"] and values["custom_chime_path"]:
+                try:
+                    custom_chime = await self.hass.async_add_executor_job(
+                        resolve_chime_path,
+                        values["custom_chime_path"],
+                        self.hass.config.path("homecall", "chimes"),
+                    )
+                    await self.hass.async_add_executor_job(decoded_chime_duration, custom_chime)
+                except (ValueError, OSError, subprocess.SubprocessError):
+                    return self.json({"error": "Custom chime is unavailable"}, status_code=400)
             chimed_targets = {
                 entity_id
                 for entity_id in selected
@@ -349,10 +382,18 @@ class UploadView(HomeCallView):
                 chimed_audio = None
                 cue_duration = 0
                 if chimed_targets:
-                    chimed_audio = await self.hass.async_add_executor_job(
-                        convert_wav, bytes(data), True
-                    )
-                    cue_duration = await self.hass.async_add_executor_job(chime_duration)
+                    if custom_chime:
+                        chimed_audio = await self.hass.async_add_executor_job(
+                            convert_wav, bytes(data), True, custom_chime
+                        )
+                        cue_duration = await self.hass.async_add_executor_job(
+                            decoded_chime_duration, custom_chime
+                        )
+                    else:
+                        chimed_audio = await self.hass.async_add_executor_job(
+                            convert_wav, bytes(data), True
+                        )
+                        cue_duration = await self.hass.async_add_executor_job(chime_duration)
             except OSError, subprocess.SubprocessError, wave.Error:
                 return self.json(
                     {"error": "Audio konnte nicht umgewandelt werden."}, status_code=500
