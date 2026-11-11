@@ -213,6 +213,8 @@ Object.assign(HC_WORDS.en, {
   skip_cast_chime: "Skip the chime on direct Google Cast speakers",
   chimeHint: "Play the selected two-tone chime followed by your recorded message. Speaker sound tests are unchanged.",
   skipCastHint: "Send only your voice to speakers selected under Google Cast. Their connection sound may still play. Speakers selected through Music Assistant still receive the chime.",
+  custom_chime_path: "Custom chime file path (optional)",
+  invalid_chime_file: "The custom chime is missing, incompatible or longer than 10 seconds.",
   chimeOn: "Chime on",
   chimeOff: "Chime off",
 });
@@ -222,6 +224,8 @@ Object.assign(HC_WORDS.de, {
   skip_cast_chime: "Signalton bei direkten Google-Cast-Lautsprechern überspringen",
   chimeHint: "Den ausgewählten Zweiklang vor der aufgenommenen Nachricht abspielen. Lautsprechertests bleiben unverändert.",
   skipCastHint: "An Lautsprecher unter Google Cast nur die Stimme senden. Der Verbindungston kann weiterhin erklingen. Über Music Assistant ausgewählte Lautsprecher erhalten den Signalton weiterhin.",
+  custom_chime_path: "Eigener Signalton (Dateipfad, optional)",
+  invalid_chime_file: "Signalton ist nicht lesbar, inkompatibel oder länger als 10 Sekunden.",
   chimeOn: "Signalton an",
   chimeOff: "Signalton aus",
 });
@@ -337,6 +341,7 @@ class HomeCallSettings extends HTMLElement {
       this._draft.local_url = data.local_url || "";
     } else if (this._page === "announcements") {
       this._draft.announcement_chime = !!data.announcement_chime;
+      this._draft.custom_chime_path = data.custom_chime_path || "";
       const child = this.shadowRoot.querySelector(".chime-subsetting ha-form");
       if (child?.data) this._draft.skip_cast_chime = !!child.data.skip_cast_chime;
     }
@@ -347,6 +352,7 @@ class HomeCallSettings extends HTMLElement {
     this._draft = {
       ...this._data,
       announcement_chime: this._data.announcement_chime ?? false,
+      custom_chime_path: this._data.custom_chime_path || "",
       skip_cast_chime: this._data.skip_cast_chime ?? true,
       default_targets: [...this._data.default_targets],
       resume_dlna: [...(this._data.resume_dlna || [])],
@@ -391,6 +397,7 @@ class HomeCallSettings extends HTMLElement {
           ? {
               page: "announcements",
               announcement_chime: this._draft.announcement_chime,
+              custom_chime_path: this._draft.custom_chime_path || "",
               skip_cast_chime: this._draft.skip_cast_chime,
             }
           : this._page === "connection"
@@ -664,8 +671,12 @@ class HomeCallSettings extends HTMLElement {
         form.data = {
           announcement_chime: values.announcement_chime ?? false,
           skip_cast_chime: values.skip_cast_chime ?? true,
+          custom_chime_path: values.custom_chime_path || "",
         };
-        form.schema = [{name: "announcement_chime", selector: {boolean: {}}}];
+        form.schema = [
+          {name: "announcement_chime", selector: {boolean: {}}},
+          {name: "custom_chime_path", selector: {text: {}}},
+        ];
         form.computeLabel = schema => this._t(schema.name);
         const child = this.shadowRoot.querySelector(".chime-subsetting ha-form");
         if (child) {
