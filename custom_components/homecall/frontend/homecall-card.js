@@ -481,7 +481,7 @@
 ha-card{display:flex;position:relative;flex-direction:column;box-sizing:border-box;height:100%;min-height:56px;min-width:0;padding:var(--homecall-padding);color:var(--primary-text-color);--homecall-tone:var(--ha-color-fill-primary-loud-resting,var(--primary-color))}
 ha-card[data-tone="red"]{--homecall-tone:var(--ha-color-fill-danger-loud-resting,var(--error-color))}[hidden]{display:none!important}.header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px;position:absolute;top:var(--homecall-selector-top);inset-inline:var(--homecall-padding);z-index:2;pointer-events:none}
 .targets{margin:0 0 0 auto;max-width:100%;flex:none;pointer-events:auto;color:var(--secondary-text-color);font-size:var(--ha-font-size-m)}.targets summary{display:flex;align-items:center;justify-content:flex-end;gap:4px;cursor:pointer;list-style:none;min-height:32px;min-width:44px;max-width:100%;border-radius:var(--homecall-control-radius);padding-inline:6px;margin-inline-end:calc(var(--homecall-content-inset) - 6px);-webkit-tap-highlight-color:transparent}.targets summary span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.targets summary::-webkit-details-marker{display:none}.targets summary:focus-visible{outline:2px solid var(--ha-color-focus);outline-offset:2px}.targets summary ha-icon{--mdc-icon-size:18px;flex:none}.targets .speaker-icon{display:none}.targets[open] .chevron{transform:rotate(180deg)}.targets summary[aria-disabled="true"]{color:var(--disabled-text-color);cursor:default}
-.list,.status-popover{position:fixed;inset:auto;margin:0;box-sizing:border-box;color:var(--primary-text-color);font:var(--ha-font-size-m)/var(--ha-line-height-normal) var(--primary-font-family,Roboto,sans-serif);padding:8px 12px;overflow:auto;overscroll-behavior:contain;background:var(--ha-card-background,var(--card-background-color));border:1px solid var(--divider-color);border-radius:var(--ha-border-radius-lg);box-shadow:var(--ha-box-shadow-l)}.list{overflow-x:hidden}.status-popover{padding:16px;overflow-wrap:anywhere}.list ha-checkbox.all{display:flex;min-height:44px;border-bottom:1px solid var(--divider-color);margin-bottom:4px;padding-bottom:4px}
+.list,.status-popover{position:fixed;inset:auto;margin:0;box-sizing:border-box;color:var(--primary-text-color);font:var(--ha-font-size-m)/var(--ha-line-height-normal) var(--primary-font-family,Roboto,sans-serif);padding:8px 12px;overflow:auto;overscroll-behavior:contain;background:var(--ha-card-background,var(--card-background-color));border:1px solid var(--divider-color);border-radius:var(--ha-border-radius-lg);box-shadow:var(--ha-box-shadow-l)}.list{overflow-x:hidden}.status-popover{padding:16px;overflow-wrap:anywhere}.list ha-checkbox.all{display:flex;min-height:44px;border-bottom:1px solid var(--divider-color);margin-bottom:4px;padding-bottom:4px}.announcement-volume{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--divider-color);font-size:var(--ha-font-size-s,12px)}.announcement-volume input{grid-column:1/-1;width:100%;margin:0;accent-color:var(--primary-color)}
 .action{display:flex;position:absolute;inset:0;pointer-events:none;flex-direction:column;align-items:center;justify-content:center}.visual{transform:translateY(var(--homecall-action-offset,0px));position:relative;display:flex;align-items:center;justify-content:center;width:calc(100% - 2*var(--homecall-padding));height:var(--homecall-visual-height,calc(var(--homecall-button-size)*1.44));max-height:calc(100% - 2*var(--homecall-padding));flex:none;isolation:isolate}.halo{position:absolute;width:calc(var(--homecall-button-size)*1.18);height:calc(var(--homecall-button-size)*1.18);border-radius:50%;background:var(--homecall-tone);opacity:.18;pointer-events:none;z-index:-1}.wave{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;z-index:-2}ha-card[data-phase="recording"] .wave,ha-card[data-phase="recorded"] .wave{opacity:.24}
 ha-card[data-phase="starting"] .halo{opacity:.08}ha-card[data-phase="recording"] .halo{opacity:1;background:none;mask:radial-gradient(circle,transparent 60%,black 61%)}ha-card[data-phase="recording"] .halo::before,ha-card[data-phase="recording"] .halo::after{content:"";position:absolute;inset:0;border-radius:inherit}ha-card[data-phase="recording"] .halo::before{background:var(--homecall-tone);opacity:.16}ha-card[data-phase="recording"] .halo::after{background:conic-gradient(var(--homecall-tone) var(--homecall-recording-progress,0deg),transparent 0);opacity:.46}
 .main{pointer-events:auto;--ha-button-height:var(--homecall-button-size);--ha-button-border-radius:50%;--ha-button-box-shadow:none;flex:none}.main::part(base){width:var(--homecall-button-size);padding:0}.main::part(label){display:flex;align-items:center;justify-content:center}.main::part(spinner){font-size:var(--homecall-icon-size)}.main ha-icon{--mdc-icon-size:var(--homecall-icon-size)}.main[data-kind="send-outline"] ha-icon{--mdc-icon-size:calc(var(--homecall-icon-size)*.75)}.action-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:var(--ha-font-size-m);font-weight:var(--ha-font-weight-medium,500);line-height:16px;max-width:var(--homecall-label-space);text-align:center;color:var(--primary-text-color);white-space:normal;flex:none}
@@ -834,12 +834,15 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
         if (!response.ok)
           throw new Error(data.error || "HomeCall ist noch nicht bereit.");
         let savedSelection = null;
+        this._volume = 60;
         try {
           const saved = await this._hass.fetchWithAuth("/api/homecall/preferences");
           if (saved.ok) {
             const prefs = await saved.json();
             if (Array.isArray(prefs.selected_targets))
               savedSelection = prefs.selected_targets;
+            if (Number.isInteger(prefs.volume) && prefs.volume >= 0 && prefs.volume <= 100)
+              this._volume = prefs.volume;
           }
         } catch {
         }
@@ -1139,7 +1142,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       const selected = [
         ...new Set([...(this._selection || []), ...(this._skippedTargets || [])]),
       ].filter((id) => known.has(id));
-      this._pendingPreferences = { selected_targets: selected };
+      this._pendingPreferences = { selected_targets: selected, volume: this._volume ?? 60 };
       if (this._savingPreferences) return;
       this._savingPreferences = (async () => {
         while (this._pendingPreferences) {
@@ -1191,7 +1194,28 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
           this._savePreferences();
         }
       );
-      list.append(all, speakers);
+      const volume = document.createElement("label");
+      volume.className = "announcement-volume";
+      const title = document.createElement("span");
+      title.textContent = this._lang === "de" ? "Durchsagelautstärke" : "Announcement volume";
+      const output = document.createElement("output");
+      output.textContent = `${this._volume ?? 60}%`;
+      const slider = document.createElement("input");
+      slider.type = "range";
+      slider.min = "0";
+      slider.max = "100";
+      slider.step = "1";
+      slider.value = String(this._volume ?? 60);
+      slider.setAttribute("aria-label", title.textContent);
+      slider.addEventListener("input", () => {
+        output.textContent = `${slider.value}%`;
+      });
+      slider.addEventListener("change", () => {
+        this._volume = Number(slider.value);
+        this._savePreferences();
+      });
+      volume.append(title, output, slider);
+      list.append(all, volume, speakers);
       all.addEventListener("change", () => {
         this._selection = all.checked ? this._targets.filter((target) => target.available).map((target) => target.entity_id) : [];
         this._skippedTargets = [];
@@ -1415,6 +1439,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
           throw new Error("Bitte mindestens einen Lautsprecher ausw\xE4hlen.");
         const query = new URLSearchParams();
         targets.forEach((t) => query.append("target", t));
+        query.set("volume", String(this._volume ?? 60));
         const requestStarted = performance.now();
         const response = await this._hass.fetchWithAuth(
           "/api/homecall/send?" + query,
