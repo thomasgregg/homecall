@@ -1,16 +1,25 @@
 """Global cue defaults, mixed delivery, expiry/privacy and complete audio."""
 
+import array
 import asyncio
 import io
 import json
 import subprocess
 import time
 import wave
+from unittest.mock import Mock
 
 import pytest
 from aiohttp import web
+from homeassistant.components.media_source.const import DATA_LOCAL_SOURCE
+from homeassistant.components.media_source.local_source import async_get_media_source
 
-from custom_components.homecall.audio import CHIME_FILE, chime_duration, convert_wav
+from custom_components.homecall.audio import (
+    CHIME_FILE,
+    async_custom_chime,
+    chime_duration,
+    convert_wav,
+)
 from custom_components.homecall.const import DOMAIN
 from custom_components.homecall.helpers import settings
 from custom_components.homecall.views import AudioView, SettingsView, StatusView, UploadView
@@ -19,6 +28,146 @@ from custom_components.homecall.views import AudioView, SettingsView, StatusView
 def test_defaults(entry):
     assert settings(entry)["announcement_chime"] is False
     assert settings(entry)["skip_cast_chime"] is True
+    assert settings(entry)["custom_chime"] is None
+
+
+@pytest.fixture
+async def local_chime(hass, tmp_path):
+    root = tmp_path / "My media"
+    root.mkdir()
+    (root / "Chimes").mkdir()
+    path = root / "Chimes" / "soft bell.MP3"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=700:duration=0.42",
+            "-f",
+            "mp3",
+            str(path),
+        ],
+        check=True,
+        timeout=10,
+    )
+    hass.config.media_dirs = {"media": str(root)}
+    hass.config.top_level_components = {"media_source"}
+    hass.data[DATA_LOCAL_SOURCE] = await async_get_media_source(hass)
+    return path, "media-source://media_source/media/Chimes/soft bell.MP3"
+
+
+async def test_save_local_mp3_disable_preserve_and_reset(
+    hass, entry, devices, http_request, local_chime
+):
+    path, media_id = local_chime
+    hass.config_entries.async_update_entry.side_effect = lambda entry, *, options: setattr(
+        entry, "options", options
+    )
+    payload = {"page": "announcements", "announcement_chime": True, "skip_cast_chime": True}
+    view = SettingsView(hass)
+    saved = await view.post(http_request({**payload, "custom_chime": media_id}))
+    assert saved.status == 200
+    assert json.loads(saved.body)["custom_chime"] == media_id
+    assert json.loads(saved.body)["custom_chime_unavailable"] is False
+    path.unlink()
+    assert json.loads((await view.get(http_request())).body)["custom_chime_unavailable"] is True
+    # Older settings clients can change the toggle without removing a configured sound.
+    await view.post(http_request({**payload, "announcement_chime": False}))
+    assert entry.options["custom_chime"] == media_id
+    assert json.loads((await view.get(http_request())).body)["custom_chime_unavailable"] is False
+    await view.post(http_request({**payload, "custom_chime": None}))
+    assert entry.options["custom_chime"] is None
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        "https://example.com/sound.mp3",
+        "media-source://radio_browser/stream.mp3",
+        "media-source://media_source/media/absent.mp3",
+        "media-source://media_source/media/../outside.mp3",
+        "media-source://media_source/media/outside-link.mp3",
+        "media-source://media_source/media/invalid.mp3",
+        "media-source://media_source/media/long.mp3",
+        "media-source://media_source/media/large.mp3",
+    ],
+)
+async def test_invalid_custom_chime_does_not_save(
+    hass, http_request, devices, local_chime, wav_bytes, selection
+):
+    path, _ = local_chime
+    root = path.parents[1]
+    if selection.endswith("outside-link.mp3"):
+        outside = root.parent / "outside.mp3"
+        outside.write_bytes(path.read_bytes())
+        (root / "outside-link.mp3").symlink_to(outside)
+    if selection.endswith("invalid.mp3"):
+        (root / "invalid.mp3").write_bytes(wav_bytes())
+    if selection.endswith("long.mp3"):
+        (root / "long.mp3").write_bytes(convert_wav(wav_bytes(11)))
+    if selection.endswith("large.mp3"):
+        (root / "large.mp3").write_bytes(b"0" * (2 * 1024 * 1024 + 1))
+    response = await SettingsView(hass).post(
+        http_request(
+            {
+                "page": "announcements",
+                "announcement_chime": True,
+                "skip_cast_chime": True,
+                "custom_chime": selection,
+            }
+        )
+    )
+    assert response.status == 400
+    assert json.loads(response.body)["error"] == "invalid_custom_chime"
+    hass.config_entries.async_update_entry.assert_not_called()
+
+
+@pytest.mark.parametrize("available", [True, False])
+async def test_custom_chime_is_prepended_and_counted_in_dlna_duration(
+    hass, entry, http_request, local_chime, wav_bytes, monkeypatch, available
+):
+    path, media_id = local_chime
+    _, expected_duration = await async_custom_chime(hass, media_id)
+    if not available:
+        path.unlink()
+        expected_duration = chime_duration()
+    speaker = {"entity_id": "media_player.dlna", "transport": "dlna", "available": True}
+    entry.options = {
+        "announcement_chime": True,
+        "custom_chime": media_id,
+        "resume_dlna": [speaker["entity_id"]],
+    }
+    monkeypatch.setattr("custom_components.homecall.views.allowed_targets", lambda h, e: [speaker])
+    monkeypatch.setattr("custom_components.homecall.views.dlna_candidates", lambda h: [speaker])
+    monkeypatch.setattr("custom_components.homecall.views.local_url", lambda h, e: "http://ha:8123")
+    monkeypatch.setattr(UploadView, "context", lambda self, r: None)
+    manager = hass.data[DOMAIN]["resume_manager"] = Mock()
+    response = await UploadView(hass).post(
+        http_request(targets=[speaker["entity_id"]], body=wav_bytes())
+    )
+    assert response.status == 200
+    hass.services.async_call.assert_awaited_once()
+    assert manager.prepare.call_args.args[2] == pytest.approx(1 + expected_duration, abs=0.015)
+    url = hass.services.async_call.call_args.args[2]["media_content_id"]
+    token = url.rsplit("/", 1)[1].removesuffix(".mp3")
+    sent = (await AudioView(hass).get(http_request(), token)).body
+    if not available:
+        assert sent == convert_wav(wav_bytes(), True)
+    else:
+        pcm = subprocess.run(
+            ["ffmpeg", "-v", "error", "-i", "pipe:0", "-f", "s16le", "pipe:1"],
+            input=sent,
+            capture_output=True,
+            check=True,
+            timeout=10,
+        ).stdout
+        samples = array.array("h", pcm)
+        assert len(samples) / 24000 == pytest.approx(1.42, abs=0.1)
+        assert max(abs(sample) for sample in samples[:9600]) > 1000
+        assert max(abs(sample) for sample in samples[-12000:]) < 20
 
 
 async def test_save_chime_preserves_speakers_and_connection(hass, entry, devices, http_request):

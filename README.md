@@ -111,7 +111,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
   </tr>
 </table>
 
-Results apply to the tested setup, not every model or firmware version. The optional announcement chime column refers to the new two-tone cue combined with a recording, not the standalone speaker sound test. The latest Music Assistant combined-audio test and Alexa optional-chime playback were confirmed by the user on 6 October 2026. The Alexa chime test does not establish music restoration. Reddit reports confirm limited EchoMuse and Nest message playback; they do not verify the new chime on those routes. The Sonos report was clarified as Sonos One SL through Music Assistant 2.10.6, with chime playback and restoration of MA-managed music at its previous volume confirmed. It does not verify the direct Sonos route; the recording was reported too loud. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
+Results apply to the tested setup, not every model or firmware version. The optional announcement chime column refers to the bundled two-tone cue combined with a recording. Custom MP3 chimes are covered by automated audio tests. The latest Music Assistant combined-audio test and Alexa optional-chime playback were confirmed by the user on 6 October 2026. The Alexa chime test does not establish music restoration. Reddit reports confirm limited EchoMuse and Nest message playback; they do not verify the new chime on those routes. The Sonos report was clarified as Sonos One SL through Music Assistant 2.10.6, with chime playback and restoration of MA-managed music at its previous volume confirmed. It does not verify the direct Sonos route; the recording was reported too loud. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
 
 User reports: [Music Assistant Sync Group](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe579qq/), [EchoMuse cutoff fix](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe7g2wf/), [Nest playback](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe3tau1/).
 
@@ -250,7 +250,9 @@ Columns control width and rows control height. For example, use `columns: 12` an
 
 ### Optional announcement chime
 
-Enable **Play a chime before messages** under **HomeCall → Configure → Announcements** to play the bundled two-tone cue before your recording. It is off by default. **Skip the chime on direct Google Cast speakers** is on by default; turn it off to include the cue on those direct routes. Music Assistant targets still receive the HomeCall chime, while MA's own additional pre-announcement cue is disabled. Native Cast connection sounds may still play.
+Enable **Play a chime before messages** under **HomeCall → Configure → Announcements**. It is off by default. HomeCall uses its built-in two-tone chime until you choose a file under **Chime sound → Pick media**. Select a local MP3 of up to 10 seconds and 2 MiB from **My media**, then select **Save**. For setup and fallback details, see [Announcement chime configuration](docs/configuration.md#announcement-chime).
+
+**Skip the chime on direct Google Cast speakers** is on by default. Turn it off to include the cue on those direct routes. Music Assistant targets still receive the HomeCall chime, and HomeCall disables Music Assistant's own pre-announcement cue. Native Cast connection sounds may still play.
 
 The card uploads one recording; the integration combines the cue and voice when needed. Speaker sound tests are unchanged. Verified routes and remaining hardware limits are listed in [Speaker compatibility](#speaker-compatibility).
 

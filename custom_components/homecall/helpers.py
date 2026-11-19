@@ -67,6 +67,7 @@ def settings(entry, hass=None):
         "local_url": values.get("local_url", ""),
         "announcement_chime": values.get("announcement_chime", False),
         "skip_cast_chime": values.get("skip_cast_chime", True),
+        "custom_chime": values.get("custom_chime"),
     }
 
 
