@@ -207,7 +207,7 @@ async def test_mixed_broadcast_has_one_playback_per_route(
     hass, entry, http_request, devices, wav_bytes, monkeypatch, enabled, skip_cast
 ):
     candidates = [
-        {"entity_id": "media_player." + route, "transport": route, "available": True}
+        {"entity_id": "media_player." + route, "name": route, "transport": route, "available": True}
         for route in ("dlna", "sonos", "music_assistant", "cast", "echomuse")
     ]
     recipients = [devices[0], *candidates]

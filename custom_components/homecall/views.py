@@ -14,7 +14,15 @@ from homeassistant.components.http import HomeAssistantView
 from .audio import async_custom_chime, chime_duration, convert_wav, test_audio, validate_wav
 from .const import DELIVERY_TIMEOUT, DOMAIN, MAX_BYTES, TTL, UPLOAD_TIMEOUT
 from .diagnostics import elapsed_ms, public_diagnostics, start_diagnostics
-from .helpers import allowed_targets, dlna_candidates, local_url, settings, system_url, targets
+from .helpers import (
+    allowed_targets,
+    distinguish_speakers,
+    dlna_candidates,
+    local_url,
+    settings,
+    system_url,
+    targets,
+)
 
 
 class HomeCallView(HomeAssistantView):
@@ -73,8 +81,8 @@ class SettingsView(HomeCallView):
                 **values,
                 "custom_chime_unavailable": unavailable,
                 "system_url": system_url(self.hass),
-                "targets": targets(self.hass),
-                "dlna_candidates": dlna_candidates(self.hass),
+                "targets": distinguish_speakers(targets(self.hass)),
+                "dlna_candidates": distinguish_speakers(dlna_candidates(self.hass)),
                 "detected_local_url": local_url(self.hass, entry),
             }
         )
@@ -220,7 +228,7 @@ class StatusView(HomeCallView):
         clip = store["clips"].get(receipt) if receipt else None
         return self.json(
             {
-                "targets": self.user_targets(request, store["entry"]),
+                "targets": distinguish_speakers(self.user_targets(request, store["entry"])),
                 "default_targets": [],
                 "max_seconds": 60,
                 "audio_fetches": (clip[4]["audio_fetches"] if len(clip) > 4 else clip[2])

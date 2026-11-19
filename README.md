@@ -209,7 +209,9 @@ At **0:00**, recording stops automatically and the button switches to a smaller 
 
 Unavailable or missing default recipients produce an amber warning, even with diagnostics off. The card sends the recording to the available speakers. Open the warning for details: before sending, it lists the speakers that will be skipped; afterward, it shows how many accepted the announcement and which were skipped. Partial delivery keeps the microphone action: one tap starts a fresh recording. It never resends the previous audio. A failed send shows **Retry**. Warnings and errors stay until you act on them; opened details close when clicking outside or pressing Escape.
 
-The speaker picker uses Home Assistant's native list controls. The second line shows the integration and availability, so two routes for the same physical speaker can be distinguished. Choose one route per physical speaker to avoid duplicate announcements. **Select all** chooses the currently available routes and clears the pending skipped-recipient warning. A recovered route is not automatically reselected.
+The speaker picker uses Home Assistant's native list controls. Each row shows the speaker's Home Assistant name, with its area and availability below it. Two speakers named **Sonos** can appear with **Kitchen** and **Living room** on their second lines. If the name and area are still the same, HomeCall also shows the entity ID. To give two speakers in one room distinct names, rename them in Home Assistant. The card editor and HomeCall speaker settings show the same name and area details.
+
+The speaker picker also identifies the integration when the speaker name doesn't already identify it. Choose one route per physical speaker to avoid duplicate announcements. **Select all** chooses the currently available routes and clears the pending skipped-recipient warning. A recovered route is not automatically reselected.
 
 Tapping Send finishes capture and sends directly. There is no local recording-review step; an older saved `preview_before_send` option is ignored.
 

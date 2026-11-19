@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.0
+
+- Show Home Assistant speaker names with their areas in the card, card editor, and speaker settings. Show the entity ID when speakers still share a name and area, including speakers without an assigned area. ([#11](https://github.com/thomasgregg/homecall/issues/11))
+
 ## 1.10.1
 
 - Pick an MP3 from Home Assistant's My media as your announcement chime. The existing Announcements screen shows the selected file and lets you switch back to the built-in chime.

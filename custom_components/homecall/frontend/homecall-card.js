@@ -1,4 +1,4 @@
-/*! HomeCall Card v1.10.1 | MIT License | github.com/thomasgregg/homecall */
+/*! HomeCall Card v1.11.0 | MIT License | github.com/thomasgregg/homecall */
 (() => {
   // src/layout.js
   function homeCallLayout(width, height, hasSelector = true, selectorWidth = 100, footerWidths = null) {
@@ -243,8 +243,15 @@
   }
   function homeCallSpeakerDescription(target, language) {
     const integration = homeCallSpeakerIntegration(target);
+    const name = target.name.toLowerCase();
+    const route = integration.toLowerCase();
     const status = language === "de" ? target.available ? "Verf\xFCgbar" : "Nicht verf\xFCgbar" : target.available ? "Available" : "Unavailable";
-    return [integration, status].filter(Boolean).join(" \xB7 ");
+    return [
+      target.area_name,
+      target.show_entity_id && target.entity_id,
+      name !== route && !name.startsWith(route + " ") && integration,
+      status
+    ].filter(Boolean).join(" \xB7 ");
   }
   function homeCallSpeakerList(targets, selected, language, allowUnavailable, onChange) {
     const list = document.createElement("ha-list");
@@ -260,6 +267,7 @@
       row.value = target.entity_id;
       row.left = true;
       row.twoline = true;
+      row.toggleAttribute("multiline-secondary", !!target.show_entity_id);
       const name = document.createElement("span");
       name.textContent = target.name;
       const description = document.createElement("span");
@@ -949,7 +957,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       this._recordingTargets = [...this._selection];
       this._recordingSkippedTargets = [...this._skippedTargets || []];
       this._diagnostics = {
-        card_version: false ? "development" : "1.10.1",
+        card_version: false ? "development" : "1.11.0",
         browser_timings_ms: {}
       };
       const tapped = performance.now();
@@ -1188,7 +1196,12 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
         const target = this._targets?.find((target2) => target2.entity_id === id);
         if (!target) return id;
         const integration = homeCallSpeakerIntegration(target);
-        return target.name + (integration ? " (" + integration + ")" : "");
+        const context = [
+          target.area_name,
+          target.show_entity_id && target.entity_id,
+          integration
+        ].filter(Boolean).join(" \xB7 ");
+        return target.name + (context ? " (" + context + ")" : "");
       });
       return this._t(
         pending ? "Diese Lautsprecher werden \xFCbersprungen: {speakers}." : "\xDCbersprungen: {speakers}.",

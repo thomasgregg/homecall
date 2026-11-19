@@ -7,7 +7,7 @@ const script = await readFile(
   ),
   "utf8",
 );
-async function fixture(page, language = "en", transport = "dlna", pickerLayout = "nested") {
+async function fixture(page, language = "en", transport = "dlna", pickerLayout = "nested", speakerSettings = {}) {
   await page.setContent(
     "<style>body{font:16px Arial;background:#f5f5f5;--primary-text-color:#222;--secondary-text-color:#666;--divider-color:#ddd;--secondary-background-color:#f4f4f4}ha-card{display:block;background:white;border:1px solid #ddd;border-radius:16px}ha-list-item-button{display:flex;padding:20px;gap:14px;cursor:pointer}ha-button{display:inline-block;padding:12px;background:#009ac0;color:white;border-radius:10px;cursor:pointer}ha-button[disabled]{pointer-events:none;opacity:.5}ha-icon{width:24px}ha-list-item-base{display:block;padding:20px}</style><main></main>",
   );
@@ -97,7 +97,7 @@ async function fixture(page, language = "en", transport = "dlna", pickerLayout =
     );
   }, pickerLayout);
   await page.addScriptTag({ content: script });
-  await page.evaluate(({language, transport}) => {
+  await page.evaluate(({language, transport, speakerSettings}) => {
     window.calls = [];
     window.failTest = false;
     const candidate = {
@@ -118,6 +118,7 @@ async function fixture(page, language = "en", transport = "dlna", pickerLayout =
         { entity_id: "notify.kitchen_speak", name: "Kitchen", available: true },
       ],
       dlna_candidates: [candidate],
+      ...speakerSettings,
     };
     const el = document.createElement("homecall-settings");
     el.hass = {
@@ -156,7 +157,7 @@ async function fixture(page, language = "en", transport = "dlna", pickerLayout =
       },
     };
     document.querySelector("main").append(el);
-  }, {language, transport});
+  }, {language, transport, speakerSettings});
   await expect(page.getByText(language === "de" ? "Alexa-Lautsprecher" : "Alexa speakers", { exact: true })).toBeVisible();
 }
 async function toggle(page, selector, checked) {
@@ -170,6 +171,24 @@ async function addDlna(page) {
   await page.locator('[data-test="media_player.jbl"]').click();
   await page.locator('.confirm-test').click();
 }
+test('speaker settings show room and entity ID in connected and available rows', async ({page}) => {
+  await fixture(page, "en", "sonos", "nested", {
+    added_speakers: ["media_player.window"],
+    dlna_candidates: [
+      {entity_id: "media_player.window", available: true},
+      {entity_id: "media_player.door", available: false},
+    ].map(target => ({
+      name: "Sonos", transport: "sonos", area_name: "Living & dining", show_entity_id: true,
+      ...target,
+    })),
+  });
+  await page.locator('[data-page="sonos"]').click();
+  const connected = page.locator('[data-speaker-panel="media_player.window"] ha-list-item-base[slot="header"]');
+  await expect(connected.locator('[slot="supporting-text"]')).toHaveText('Living & dining · media_player.window · Online');
+  await expect(connected.locator('ha-checkbox')).toHaveAttribute('aria-label', 'Sonos · Living & dining · media_player.window · Online');
+  const available = page.locator('ha-list-item-base').filter({has: page.locator('[data-add="media_player.door"]')});
+  await expect(available.locator('[slot="supporting-text"]')).toHaveText('Living & dining · media_player.door · offline');
+});
 test('inline sound test confirms before registering, and removal stays per speaker', async ({page}) => {
   await fixture(page);
   await page.locator('[data-page="dlna"]').click();

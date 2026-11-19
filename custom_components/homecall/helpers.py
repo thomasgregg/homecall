@@ -1,12 +1,48 @@
 """Device discovery and integration settings."""
 
+from collections import Counter
 from ipaddress import ip_address
 
 from homeassistant.components.media_player.const import MediaPlayerEntityFeature
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from yarl import URL
+
+
+def _speaker_label(hass, entity, state, device):
+    """Describe a speaker using the Home Assistant name and area registries."""
+    name = state.name
+    # HA 2026.11 and later can retain an old friendly name for compatibility.
+    if hasattr(entity, "entity_name"):
+        name = er.async_get_full_entity_name(hass, entity) or name
+    if entity.domain == "notify":
+        name = name.removesuffix(" Speak")
+
+    label = {"name": name}
+    area_id = entity.area_id
+    if area_id is None and device is not None:
+        area_id = dr.async_get_effective_area_id(hass, device)
+    if area_id and (area := ar.async_get(hass).async_get_area(area_id)):
+        label["area_name"] = area.name
+    return label
+
+
+def distinguish_speakers(speakers):
+    """Show entity IDs when the visible name and area still collide."""
+    labels = {
+        speaker["entity_id"]: (
+            speaker["name"].casefold(),
+            speaker.get("area_name", "").casefold(),
+        )
+        for speaker in speakers
+    }
+    counts = Counter(labels.values())
+    return [
+        {**speaker, "show_entity_id": True} if counts[labels[speaker["entity_id"]]] > 1 else speaker
+        for speaker in speakers
+    ]
 
 
 def targets(hass):
@@ -23,10 +59,11 @@ def targets(hass):
         state = hass.states.get(entity.entity_id)
         if state is None:
             continue
+        device = dr.async_get(hass).async_get(entity.device_id) if entity.device_id else None
         result.append(
             {
                 "entity_id": entity.entity_id,
-                "name": state.name.removesuffix(" Speak"),
+                **_speaker_label(hass, entity, state, device),
                 "available": state.state != "unavailable",
             }
         )
@@ -92,6 +129,7 @@ def dlna_candidates(hass):
     result = []
     for entity in er.async_get(hass).entities.values():
         echomuse = False
+        device = None
         if entity.platform == "esphome" and entity.domain == "media_player":
             device = dr.async_get(hass).async_get(entity.device_id) if entity.device_id else None
             echomuse = bool(device and (device.manufacturer or "").casefold() == "echomuse")
@@ -118,10 +156,12 @@ def dlna_candidates(hass):
             & MediaPlayerEntityFeature.MEDIA_ANNOUNCE
         ):
             continue
+        if not echomuse and entity.device_id:
+            device = dr.async_get(hass).async_get(entity.device_id)
         result.append(
             {
                 "entity_id": entity.entity_id,
-                "name": state.name,
+                **_speaker_label(hass, entity, state, device),
                 "available": state.state not in ("unavailable", "unknown"),
                 "transport": (
                     "echomuse"
