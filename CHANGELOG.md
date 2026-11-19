@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.10.0
+## 1.10.1
 
 - Pick an MP3 from Home Assistant's My media as your announcement chime. The existing Announcements screen shows the selected file and lets you switch back to the built-in chime.
 - Play the chime and recording in a single clip. If the selected file becomes unavailable, announcements use the built-in chime and settings show a warning. The direct Google Cast exception still applies.

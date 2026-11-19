@@ -29,7 +29,7 @@ async function homeCallNativeSettingsRow(element) {
 const HC_CHIME_SELECTOR = {media: {accept: ["audio/mpeg"]}};
 const HC_CHIME_SOURCE = "media-source://media_source";
 async function homeCallNativeChimePicker(element, hass) {
-  if (customElements.get("ha-media-item-picker")) return;
+  if (customElements.get("ha-selector-media")) return;
   const form = document.createElement("ha-form");
   form.hidden = true;
   form.hass = hass;
@@ -39,7 +39,7 @@ async function homeCallNativeChimePicker(element, hass) {
   let timeout;
   try {
     await Promise.race([
-      customElements.whenDefined("ha-media-item-picker"),
+      customElements.whenDefined("ha-selector-media"),
       new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error("Media picker is unavailable.")), 10000); }),
     ]);
   } finally {
@@ -439,8 +439,8 @@ class HomeCallSettings extends HTMLElement {
     try {
       await homeCallNativeChimePicker(this, this._hass);
       if (!button.isConnected || this._draft !== draft || this._busy) return;
-      this.shadowRoot.querySelector("ha-media-item-picker")?.remove();
-      const picker = document.createElement("ha-media-item-picker");
+      this.shadowRoot.querySelector("ha-selector-media")?.remove();
+      const picker = document.createElement("ha-selector-media");
       picker.hidden = true;
       picker.hass = this._hass;
       picker.selector = HC_CHIME_SELECTOR;
@@ -458,9 +458,12 @@ class HomeCallSettings extends HTMLElement {
       });
       this.shadowRoot.append(picker);
       await picker.updateComplete;
-      if (!picker.isConnected || this._busy) return;
       // Invoke the native picker's action so HA owns the dialog and its imports.
-      const trigger = picker.shadowRoot?.querySelector('[role="button"]');
+      // HA 2026.9 renders the action directly, newer releases use an inner picker.
+      const control = picker.shadowRoot?.querySelector("ha-media-item-picker") ?? picker;
+      await control.updateComplete;
+      if (!picker.isConnected || this._busy) return;
+      const trigger = control.shadowRoot?.querySelector('[role="button"]');
       if (!trigger) throw new Error("Native media picker action is unavailable.");
       trigger.click();
     } catch {
