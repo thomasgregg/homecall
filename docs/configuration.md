@@ -43,6 +43,16 @@ Open **Settings → Devices & services → HomeCall → Configure**. The native 
 
 No YAML entry is required. HomeCall supports one configuration entry per instance.
 
+## Announcement chime
+
+1. Open **HomeCall → Configure → Announcements** and enable **Play a chime before messages**.
+2. Under **Chime sound**, select **Pick media** and choose a readable MP3 from Home Assistant's **My media**. The file may be up to 10 seconds and 2 MiB. The default media folder and any folders configured in `homeassistant.media_dirs` are available through the picker. See [Home Assistant's media setup guide](https://www.home-assistant.io/integrations/media_source/#using-custom-or-additional-media-folders).
+3. Select **Save**, then send a recording from the HomeCall card to hear the chime before your message.
+
+The row shows the selected filename. Use **Change** to select a different file, or **Use built-in chime** to restore the two-tone sound, then select **Save**. Turning chimes off remembers your selection. If your selected file is moved, deleted, or becomes unreadable, HomeCall uses the built-in chime and shows a warning in Announcements settings.
+
+The direct Google Cast exception is on by default. Music Assistant targets use the HomeCall chime when enabled. HomeCall uses the chime and recording in one clip, and the speaker setup sound test uses its own test tone.
+
 ## Resume music after announcements
 
 Each added DLNA speaker has an optional **Resume music after announcements** setting, off by default. It remembers the current media URL, playback position and playing/paused state. After an announcement has actually played and finished, it restarts that media and seeks to the saved position if the speaker supports seeking. Without seeking support it restarts at the beginning. Paused media is restored to paused when the device advertises pause support; idle players are never started.

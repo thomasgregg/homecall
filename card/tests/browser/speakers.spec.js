@@ -33,7 +33,12 @@ const targets = [
     available: true,
   },
 ];
-async function setup(page, language = "en", editor = false) {
+async function setup(
+  page,
+  language = "en",
+  editor = false,
+  speakerTargets = targets,
+) {
   await page.setContent(
     `<style>body{margin:8px;font:14px Arial;--ha-font-size-m:14px;--ha-font-size-s:12px;--ha-space-3:12px;--ha-space-4:16px;--primary-color:#009ac0;--primary-text-color:#222;--secondary-text-color:#666;--ha-card-background:white;--divider-color:#ddd;--ha-line-height-normal:1.5}homecall-card{display:block;width:200px;height:120px}homecall-card-editor{display:block;max-width:400px}</style><main></main>`,
   );
@@ -72,9 +77,11 @@ async function setup(page, language = "en", editor = false) {
       };
       document.querySelector("main").append(element);
     },
-    { targets, language, editor },
+    { targets: speakerTargets, language, editor },
   );
-  await expect(page.locator("ha-check-list-item")).toHaveCount(4);
+  await expect(page.locator("ha-check-list-item")).toHaveCount(
+    speakerTargets.length,
+  );
   if (editor)
     await page
       .getByRole("button", {
@@ -84,6 +91,48 @@ async function setup(page, language = "en", editor = false) {
       .click();
   else await page.locator("homecall-card summary").click();
   await expect(page.locator("ha-list")).toBeVisible();
+}
+
+for (const editor of [false, true]) {
+  test(`speaker ${editor ? "editor" : "picker"} shows rooms and IDs for ambiguous names`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    const speakers = [
+      { entity_id: "media_player.kitchen", area_name: "Kitchen" },
+      {
+        entity_id: "media_player.window",
+        area_name: "Living room",
+        show_entity_id: true,
+      },
+      {
+        entity_id: "media_player.door",
+        area_name: "Living room",
+        show_entity_id: true,
+        available: false,
+      },
+    ].map((target) => ({
+      name: "Sonos",
+      transport: "sonos",
+      available: true,
+      ...target,
+    }));
+    await setup(page, "en", editor, speakers);
+    const rows = page.locator("ha-check-list-item");
+    await expect(rows.nth(0).locator('[slot="secondary"]')).toHaveText(
+      "Kitchen · Available",
+    );
+    await expect(rows.nth(1).locator('[slot="secondary"]')).toHaveText(
+      "Living room · media_player.window · Available",
+    );
+    await expect(rows.nth(2).locator('[slot="secondary"]')).toHaveText(
+      "Living room · media_player.door · Unavailable",
+    );
+    await expect(rows.nth(2)).toHaveAttribute(
+      "title",
+      "Sonos · Living room · media_player.door · Unavailable",
+    );
+  });
 }
 for (const width of [320, 360, 414])
   for (const editor of [false, true]) {
