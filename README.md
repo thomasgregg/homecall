@@ -3,7 +3,7 @@
 <p align="center">
 <a href="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml"><img src="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-<a href="https://hacs.xyz"><img src="https://img.shields.io/badge/HACS-custom_repository-41BDF5" alt="HACS custom repository"></a>
+<a href="https://hacs.xyz"><img src="https://img.shields.io/badge/HACS-Integration-41BDF5" alt="HACS integration"></a>
 </p>
 
 **Your voice. Every room.**
@@ -111,7 +111,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
   </tr>
 </table>
 
-Results apply to the tested setup, not every model or firmware version. The optional announcement chime column refers to the new two-tone cue combined with a recording, not the standalone speaker sound test. The latest Music Assistant combined-audio test and Alexa optional-chime playback were confirmed by the user on 6 October 2026. The Alexa chime test does not establish music restoration. Reddit reports confirm limited EchoMuse and Nest message playback; they do not verify the new chime on those routes. The Sonos report was clarified as Sonos One SL through Music Assistant 2.10.6, with chime playback and restoration of MA-managed music at its previous volume confirmed. It does not verify the direct Sonos route; the recording was reported too loud. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
+Results apply to the tested setup, not every model or firmware version. The optional announcement chime column refers to the bundled two-tone cue combined with a recording. Custom MP3 chimes are covered by automated audio tests. The latest Music Assistant combined-audio test and Alexa optional-chime playback were confirmed by the user on 6 October 2026. The Alexa chime test does not establish music restoration. Reddit reports confirm limited EchoMuse and Nest message playback; they do not verify the new chime on those routes. The Sonos report was clarified as Sonos One SL through Music Assistant 2.10.6, with chime playback and restoration of MA-managed music at its previous volume confirmed. It does not verify the direct Sonos route; the recording was reported too loud. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
 
 User reports: [Music Assistant Sync Group](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe579qq/), [EchoMuse cutoff fix](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe7g2wf/), [Nest playback](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe3tau1/).
 
@@ -155,14 +155,22 @@ From **HomeCall 1.9.0**, the dashboard card ships with the integration. Update H
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=thomasgregg&repository=homecall&category=integration)
 
-With HACS installed, click the button to open this custom repository in your Home Assistant instance. Add it when prompted, then choose **Download**. The dashboard card is included.
+With HACS installed, search for **HomeCall** in HACS or use the button above to open it directly. The dashboard card is included.
 
-1. In HACS, open **Custom repositories**.
-2. Add `https://github.com/thomasgregg/homecall` as an **Integration**.
-3. Download HomeCall and restart Home Assistant.
+1. Open **HACS** and search for **HomeCall**.
+2. Open **HomeCall** and choose **Download**.
+3. Restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → HomeCall**.
 5. Choose **Alexa speakers**, **DLNA speakers**, **Music Assistant**, **Google Cast speakers** or **EchoMuse speakers** in the setup menu. For Alexa, configure the public HTTPS address and speaker selection. For direct Sonos without Alexa, finish the local-only setup through **DLNA speakers**, then add your devices under **Configure → Sonos speakers**. For DLNA, open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
 6. Refresh the dashboard and add **HomeCall** from the card picker. UI-managed dashboard resources are registered automatically; see the [migration guide](docs/card-migration.md) for YAML-managed resources.
+
+#### Fallback: custom repository
+
+If HomeCall does not appear in your HACS catalog:
+
+1. In HACS, open **Custom repositories** from the menu.
+2. Add `https://github.com/thomasgregg/homecall` with type **Integration**.
+3. Search for **HomeCall**, download it, then continue with steps 3–6 above.
 
 ### Manual
 
@@ -201,7 +209,9 @@ At **0:00**, recording stops automatically and the button switches to a smaller 
 
 Unavailable or missing default recipients produce an amber warning, even with diagnostics off. The card sends the recording to the available speakers. Open the warning for details: before sending, it lists the speakers that will be skipped; afterward, it shows how many accepted the announcement and which were skipped. Partial delivery keeps the microphone action: one tap starts a fresh recording. It never resends the previous audio. A failed send shows **Retry**. Warnings and errors stay until you act on them; opened details close when clicking outside or pressing Escape.
 
-The speaker picker uses Home Assistant's native list controls. The second line shows the integration and availability, so two routes for the same physical speaker can be distinguished. Choose one route per physical speaker to avoid duplicate announcements. **Select all** chooses the currently available routes and clears the pending skipped-recipient warning. A recovered route is not automatically reselected.
+The speaker picker uses Home Assistant's native list controls. Each row shows the speaker's Home Assistant name, with its area and availability below it. Two speakers named **Sonos** can appear with **Kitchen** and **Living room** on their second lines. If the name and area are still the same, HomeCall also shows the entity ID. To give two speakers in one room distinct names, rename them in Home Assistant. The card editor and HomeCall speaker settings show the same name and area details.
+
+The speaker picker also identifies the integration when the speaker name doesn't already identify it. Choose one route per physical speaker to avoid duplicate announcements. **Select all** chooses the currently available routes and clears the pending skipped-recipient warning. A recovered route is not automatically reselected.
 
 Tapping Send finishes capture and sends directly. There is no local recording-review step; an older saved `preview_before_send` option is ignored.
 
@@ -242,7 +252,9 @@ Columns control width and rows control height. For example, use `columns: 12` an
 
 ### Optional announcement chime
 
-Enable **Play a chime before messages** under **HomeCall → Configure → Announcements** to play the bundled two-tone cue before your recording. It is off by default. **Skip the chime on direct Google Cast speakers** is on by default; turn it off to include the cue on those direct routes. Music Assistant targets still receive the HomeCall chime, while MA's own additional pre-announcement cue is disabled. Native Cast connection sounds may still play.
+Enable **Play a chime before messages** under **HomeCall → Configure → Announcements**. It is off by default. HomeCall uses its built-in two-tone chime until you choose a file under **Chime sound → Pick media**. Select a local MP3 of up to 10 seconds and 2 MiB from **My media**, then select **Save**. For setup and fallback details, see [Announcement chime configuration](docs/configuration.md#announcement-chime).
+
+**Skip the chime on direct Google Cast speakers** is on by default. Turn it off to include the cue on those direct routes. Music Assistant targets still receive the HomeCall chime, and HomeCall disables Music Assistant's own pre-announcement cue. Native Cast connection sounds may still play.
 
 The card uploads one recording; the integration combines the cue and voice when needed. Speaker sound tests are unchanged. Verified routes and remaining hardware limits are listed in [Speaker compatibility](#speaker-compatibility).
 

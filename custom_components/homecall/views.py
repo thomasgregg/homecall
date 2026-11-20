@@ -11,10 +11,18 @@ from aiohttp import web
 from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.components.http import HomeAssistantView
 
-from .audio import chime_duration, convert_wav, test_audio, validate_wav
+from .audio import async_custom_chime, chime_duration, convert_wav, test_audio, validate_wav
 from .const import DELIVERY_TIMEOUT, DOMAIN, MAX_BYTES, TTL, UPLOAD_TIMEOUT
 from .diagnostics import elapsed_ms, public_diagnostics, start_diagnostics
-from .helpers import allowed_targets, dlna_candidates, local_url, settings, system_url, targets
+from .helpers import (
+    allowed_targets,
+    distinguish_speakers,
+    dlna_candidates,
+    local_url,
+    settings,
+    system_url,
+    targets,
+)
 
 
 class HomeCallView(HomeAssistantView):
@@ -57,12 +65,24 @@ class SettingsView(HomeCallView):
 
     async def get(self, request):
         entry = self.entry(request)
+        return await self.settings_response(entry, settings(entry, self.hass))
+
+    async def settings_response(self, entry, values, *, saved=False, chime_validated=False):
+        media_id = values["custom_chime"]
+        unavailable = bool(
+            values["announcement_chime"]
+            and media_id
+            and not chime_validated
+            and await async_custom_chime(self.hass, media_id) is None
+        )
         return self.json(
             {
-                **settings(entry, self.hass),
+                **({"success": True} if saved else {}),
+                **values,
+                "custom_chime_unavailable": unavailable,
                 "system_url": system_url(self.hass),
-                "targets": targets(self.hass),
-                "dlna_candidates": dlna_candidates(self.hass),
+                "targets": distinguish_speakers(targets(self.hass)),
+                "dlna_candidates": distinguish_speakers(dlna_candidates(self.hass)),
                 "detected_local_url": local_url(self.hass, entry),
             }
         )
@@ -77,6 +97,7 @@ class SettingsView(HomeCallView):
             raise web.HTTPBadRequest()
         values = settings(entry, self.hass)
         page = payload.get("page")
+        chime_validated = False
         if page == "connection":
             from .const import valid_url
 
@@ -114,11 +135,24 @@ class SettingsView(HomeCallView):
                 return self.json({"error": "invalid_local_url"}, status_code=400)
             values["local_url"] = local
         elif page == "announcements":
-            for key in ("announcement_chime", "skip_cast_chime"):
-                value = payload.get(key)
-                if not isinstance(value, bool):
-                    raise web.HTTPBadRequest()
-                values[key] = value
+            enabled = payload.get("announcement_chime")
+            skip_cast = payload.get("skip_cast_chime")
+            media_id = payload.get("custom_chime", values["custom_chime"])
+            if not isinstance(enabled, bool) or not isinstance(skip_cast, bool):
+                raise web.HTTPBadRequest()
+            if media_id is not None and not isinstance(media_id, str):
+                raise web.HTTPBadRequest()
+            if media_id is not None and media_id != values["custom_chime"]:
+                if await async_custom_chime(self.hass, media_id) is None:
+                    return self.json({"error": "invalid_custom_chime"}, status_code=400)
+                chime_validated = True
+                if self.entry(request) is not entry:
+                    raise web.HTTPServiceUnavailable()
+                # Keep changes to other settings made while the MP3 was being decoded.
+                values = settings(entry, self.hass)
+            values.update(
+                announcement_chime=enabled, skip_cast_chime=skip_cast, custom_chime=media_id
+            )
         elif page == "devices":
             use_all = payload.get("use_all")
             selected = payload.get("default_targets", [])
@@ -169,15 +203,8 @@ class SettingsView(HomeCallView):
         else:
             raise web.HTTPBadRequest()
         self.hass.config_entries.async_update_entry(entry, options={**entry.options, **values})
-        return self.json(
-            {
-                "success": True,
-                **values,
-                "system_url": system_url(self.hass),
-                "targets": targets(self.hass),
-                "dlna_candidates": dlna_candidates(self.hass),
-                "detected_local_url": local_url(self.hass, entry),
-            }
+        return await self.settings_response(
+            entry, values, saved=True, chime_validated=chime_validated
         )
 
 
@@ -201,7 +228,7 @@ class StatusView(HomeCallView):
         clip = store["clips"].get(receipt) if receipt else None
         return self.json(
             {
-                "targets": self.user_targets(request, store["entry"]),
+                "targets": distinguish_speakers(self.user_targets(request, store["entry"])),
                 "default_targets": [],
                 "max_seconds": 60,
                 "audio_fetches": (clip[4]["audio_fetches"] if len(clip) > 4 else clip[2])
@@ -271,14 +298,25 @@ class UploadView(HomeCallView):
             }
             stage = time.monotonic()
             try:
-                audio = await self.hass.async_add_executor_job(convert_wav, bytes(data))
+                recording = bytes(data)
+                audio = await self.hass.async_add_executor_job(convert_wav, recording)
                 chimed_audio = None
                 cue_duration = 0
                 if chimed_targets:
-                    chimed_audio = await self.hass.async_add_executor_job(
-                        convert_wav, bytes(data), True
+                    media_id = values["custom_chime"]
+                    custom_chime = (
+                        await async_custom_chime(self.hass, media_id) if media_id else None
                     )
-                    cue_duration = await self.hass.async_add_executor_job(chime_duration)
+                    if custom_chime is None:
+                        chimed_audio = await self.hass.async_add_executor_job(
+                            convert_wav, recording, True
+                        )
+                        cue_duration = await self.hass.async_add_executor_job(chime_duration)
+                    else:
+                        cue, cue_duration = custom_chime
+                        chimed_audio = await self.hass.async_add_executor_job(
+                            convert_wav, recording, True, cue
+                        )
             except OSError, subprocess.SubprocessError, wave.Error:
                 return self.json(
                     {"error": "Audio konnte nicht umgewandelt werden."}, status_code=500

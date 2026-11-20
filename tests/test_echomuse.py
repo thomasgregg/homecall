@@ -121,12 +121,13 @@ def test_discovery_identity_capabilities_and_offline(hass, entry, monkeypatch):
             platform="esphome",
             disabled_by=disabled,
             device_id=name,
+            area_id=None,
         )
         states[eid] = SimpleNamespace(
             name=name, state=state, attributes={"supported_features": features}
         )
         if manufacturer:
-            devices[name] = SimpleNamespace(manufacturer=manufacturer)
+            devices[name] = SimpleNamespace(manufacturer=manufacturer, area_id=None)
     monkeypatch.setattr(
         "custom_components.homecall.helpers.er.async_get",
         lambda h: SimpleNamespace(entities=entities),

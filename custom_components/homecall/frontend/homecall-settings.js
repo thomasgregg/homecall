@@ -1,11 +1,13 @@
-async function homeCallNativePage(element) {
-  if (customElements.get("hass-subpage")) return;
-  // HA exposes page-module loaders on its router. Reuse them instead of
-  // copying a header or depending on version-specific hashed bundle URLs.
+function homeCallRoutes(element) {
   let parent = element;
   while (parent && parent.localName !== "partial-panel-resolver")
     parent = parent.parentElement || parent.getRootNode().host;
-  const loadConfig = parent?.routerOptions?.routes?.config?.load;
+  return parent?.routerOptions?.routes;
+}
+async function homeCallNativePage(element) {
+  if (customElements.get("hass-subpage")) return;
+  // Reuse HA's router loaders instead of depending on hashed bundle URLs.
+  const loadConfig = homeCallRoutes(element)?.config?.load;
   if (typeof loadConfig !== "function")
     throw new Error("Home Assistant page components are unavailable.");
   await loadConfig();
@@ -16,6 +18,34 @@ async function homeCallNativePage(element) {
   await loadInfo();
   if (!customElements.get("hass-subpage"))
     throw new Error("Home Assistant page components are unavailable.");
+}
+async function homeCallNativeSettingsRow(element) {
+  if (customElements.get("ha-settings-row")) return;
+  await homeCallRoutes(element)?.profile?.load?.();
+  if (customElements.get("ha-settings-row")) return;
+  const routes = document.createElement("ha-panel-profile").routerOptions?.routes;
+  await (routes?.preferences ?? routes?.general ?? routes?.dashboard)?.load?.();
+}
+const HC_CHIME_SELECTOR = {media: {accept: ["audio/mpeg"]}};
+const HC_CHIME_SOURCE = "media-source://media_source";
+async function homeCallNativeChimePicker(element, hass) {
+  if (customElements.get("ha-selector-media")) return;
+  const form = document.createElement("ha-form");
+  form.hidden = true;
+  form.hass = hass;
+  form.data = {};
+  form.schema = [{name: "chime", selector: HC_CHIME_SELECTOR}];
+  element.shadowRoot.append(form);
+  let timeout;
+  try {
+    await Promise.race([
+      customElements.whenDefined("ha-selector-media"),
+      new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error("Media picker is unavailable.")), 10000); }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+    form.remove();
+  }
 }
 async function homeCallNativeForms() {
   if (customElements.get("ha-form")) return;
@@ -211,7 +241,14 @@ Object.assign(HC_WORDS.en, {
   announcements: "Announcements",
   announcement_chime: "Play a chime before messages",
   skip_cast_chime: "Skip the chime on direct Google Cast speakers",
-  chimeHint: "Play the selected two-tone chime followed by your recorded message. Speaker sound tests are unchanged.",
+  chimeSound: "Chime sound",
+  builtInChime: "Built-in chime",
+  pickChime: "Pick media",
+  changeChime: "Change",
+  resetChime: "Use built-in chime",
+  chimePickerFailed: "Could not open the media browser. Try again.",
+  invalid_custom_chime: "Choose a readable MP3 from My media, up to 10 seconds and 2 MiB.",
+  chimeUnavailable: "The selected chime is unavailable. HomeCall is using the built-in chime. Choose another file or use the built-in chime.",
   skipCastHint: "Send only your voice to speakers selected under Google Cast. Their connection sound may still play. Speakers selected through Music Assistant still receive the chime.",
   chimeOn: "Chime on",
   chimeOff: "Chime off",
@@ -220,7 +257,14 @@ Object.assign(HC_WORDS.de, {
   announcements: "Durchsagen",
   announcement_chime: "Signalton vor Nachrichten abspielen",
   skip_cast_chime: "Signalton bei direkten Google-Cast-Lautsprechern überspringen",
-  chimeHint: "Den ausgewählten Zweiklang vor der aufgenommenen Nachricht abspielen. Lautsprechertests bleiben unverändert.",
+  chimeSound: "Signalton",
+  builtInChime: "Integrierter Signalton",
+  pickChime: "Medien auswählen",
+  changeChime: "Ändern",
+  resetChime: "Integrierten Signalton verwenden",
+  chimePickerFailed: "Die Medienübersicht konnte nicht geöffnet werden. Versuche es erneut.",
+  invalid_custom_chime: "Wähle eine lesbare MP3-Datei aus „Meine Medien“ mit höchstens 10 Sekunden und 2 MiB.",
+  chimeUnavailable: "Der ausgewählte Signalton ist nicht verfügbar. HomeCall verwendet den integrierten Signalton. Wähle eine andere Datei oder bleibe beim integrierten Signalton.",
   skipCastHint: "An Lautsprecher unter Google Cast nur die Stimme senden. Der Verbindungston kann weiterhin erklingen. Über Music Assistant ausgewählte Lautsprecher erhalten den Signalton weiterhin.",
   chimeOn: "Signalton an",
   chimeOff: "Signalton aus",
@@ -315,7 +359,10 @@ class HomeCallSettings extends HTMLElement {
     this._loading = true;
     try {
       await Promise.all([homeCallNativeForms(), homeCallNativePage(this)]);
-      await homeCallNativeSpeakerControls(this, this._hass);
+      await Promise.all([
+        homeCallNativeSpeakerControls(this, this._hass),
+        homeCallNativeSettingsRow(this).catch(() => {}),
+      ]);
       this._data = await this._hass.callApi("GET", "homecall/settings");
       if (this._draft) this._mergeSpeakerData(this._data);
       this._error = "";
@@ -373,6 +420,62 @@ class HomeCallSettings extends HTMLElement {
     this._error = "";
     this._render();
   }
+  _setChime(mediaId) {
+    this._capture();
+    this._draft.custom_chime = mediaId;
+    this._draft.custom_chime_unavailable = mediaId === this._data.custom_chime
+      && this._data.custom_chime_unavailable;
+    this._error = "";
+    this._render();
+    const button = this.shadowRoot.querySelector(".pick-chime");
+    Promise.resolve(button?.updateComplete).then(() => {
+      if (button?.isConnected) button.focus();
+    });
+  }
+  async _pickChime(button) {
+    if (button.disabled) return;
+    const draft = this._draft;
+    button.disabled = true;
+    try {
+      await homeCallNativeChimePicker(this, this._hass);
+      if (!button.isConnected || this._draft !== draft || this._busy) return;
+      this.shadowRoot.querySelector("ha-selector-media")?.remove();
+      const picker = document.createElement("ha-selector-media");
+      picker.hidden = true;
+      picker.hass = this._hass;
+      picker.selector = HC_CHIME_SELECTOR;
+      if (draft.custom_chime) {
+        picker.value = {media_content_id: draft.custom_chime, media_content_type: "audio/mpeg"};
+      }
+      picker.addEventListener("value-changed", event => {
+        if (this._draft !== draft || this._busy) return;
+        const mediaId = event.detail.value?.media_content_id;
+        if (typeof mediaId === "string" && mediaId.startsWith(`${HC_CHIME_SOURCE}/`)) this._setChime(mediaId);
+      });
+      picker.addEventListener("show-dialog", event => {
+        event.detail.dialogParams.navigateIds = [{media_content_id: HC_CHIME_SOURCE}];
+        event.detail.dialogParams.minimumNavigateLevel = 1;
+      });
+      this.shadowRoot.append(picker);
+      await picker.updateComplete;
+      // Invoke the native picker's action so HA owns the dialog and its imports.
+      // HA 2026.9 renders the action directly, newer releases use an inner picker.
+      const control = picker.shadowRoot?.querySelector("ha-media-item-picker") ?? picker;
+      await control.updateComplete;
+      if (!picker.isConnected || this._busy) return;
+      const trigger = control.shadowRoot?.querySelector('[role="button"]');
+      if (!trigger) throw new Error("Native media picker action is unavailable.");
+      trigger.click();
+    } catch {
+      if (this._draft === draft && !this._busy) {
+        this._capture();
+        this._error = this._t("chimePickerFailed");
+        this._render();
+      }
+    } finally {
+      button.disabled = this._busy;
+    }
+  }
   _close() {
     if (this._busy) return;
     history.pushState(null, "", "/config/integrations/integration/homecall");
@@ -392,6 +495,7 @@ class HomeCallSettings extends HTMLElement {
               page: "announcements",
               announcement_chime: this._draft.announcement_chime,
               skip_cast_chime: this._draft.skip_cast_chime,
+              custom_chime: this._draft.custom_chime ?? null,
             }
           : this._page === "connection"
           ? {
@@ -488,6 +592,13 @@ class HomeCallSettings extends HTMLElement {
       candidates.find(t => t.entity_id === id) ||
       (!(values.dlna_candidates || []).some(t => t.entity_id === id) && this._page === "dlna"
         ? {entity_id: id, name: id, available: false} : null)).filter(Boolean);
+  }
+  _speakerDescription(target) {
+    return [
+      target.area_name,
+      target.show_entity_id && target.entity_id,
+      this._t(target.available ? "online" : "offline"),
+    ].filter(Boolean).join(" · ");
   }
   _bindSpeakers(values) {
     const speakers = this._speakerList(values);
@@ -595,8 +706,10 @@ class HomeCallSettings extends HTMLElement {
     const all = speakers.length ? `<ha-list-base><ha-list-item-base><ha-checkbox slot="start" data-select-all aria-label="${this._t("selectAll")}"></ha-checkbox><div slot="headline">${this._t("selectAll")}</div></ha-list-item-base></ha-list-base>` : "";
     const rows = speakers.map(t => {
       const id = hcEscape(t.entity_id);
-      const checkbox = `<ha-checkbox slot="start" data-visible="${id}" aria-label="${hcEscape(t.name)}"></ha-checkbox>`;
-      return `<ha-expansion-panel data-speaker-panel="${id}" ><ha-list-item-base slot="header">${checkbox}<div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${this._t(t.available ? "online" : "offline")}</div></ha-list-item-base><ha-list-base>${this._page !== "dlna" ? "" : `<ha-list-item-base><div slot="headline">${this._t("resume")}</div><ha-checkbox slot="end" id="resume-${id}" data-resume="${id}" aria-label="${hcEscape(this._t("resume"))}"></ha-checkbox></ha-list-item-base>`}<ha-list-item-base><div slot="headline">${this._t("testHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-test="${id}" ${!t.available || this._busy || this._test ? "disabled" : ""}>${this._t(this._chosenDlna === t.entity_id && this._busy ? "testing" : "test")}</ha-button></ha-list-item-base><ha-list-item-base><div slot="headline">${this._t("removeHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-remove="${id}" ${disabled}>${this._t("remove")}</ha-button></ha-list-item-base></ha-list-base></ha-expansion-panel>`;
+      const description = this._speakerDescription(t);
+      const label = hcEscape(t.name + " · " + description);
+      const checkbox = `<ha-checkbox slot="start" data-visible="${id}" aria-label="${label}"></ha-checkbox>`;
+      return `<ha-expansion-panel data-speaker-panel="${id}" ><ha-list-item-base slot="header" wrap-supporting-text title="${label}">${checkbox}<div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${hcEscape(description)}</div></ha-list-item-base><ha-list-base>${this._page !== "dlna" ? "" : `<ha-list-item-base><div slot="headline">${this._t("resume")}</div><ha-checkbox slot="end" id="resume-${id}" data-resume="${id}" aria-label="${hcEscape(this._t("resume"))}"></ha-checkbox></ha-list-item-base>`}<ha-list-item-base><div slot="headline">${this._t("testHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-test="${id}" ${!t.available || this._busy || this._test ? "disabled" : ""}>${this._t(this._chosenDlna === t.entity_id && this._busy ? "testing" : "test")}</ha-button></ha-list-item-base><ha-list-item-base><div slot="headline">${this._t("removeHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-remove="${id}" ${disabled}>${this._t("remove")}</ha-button></ha-list-item-base></ha-list-base></ha-expansion-panel>`;
     }).join("");
     let body = `<ha-card class="speaker-section" header="${hcEscape(this._t("connectedSpeakers"))}">${heading}${all}<ha-list-base>${rows || `<ha-list-item-base><div slot="headline">${this._t("noAdded")}</div><div slot="supporting-text">${this._t("noAddedHint")}</div></ha-list-item-base>`}</ha-list-base>${speakers.length || this._speakerList(this._data).length || (this._page === "devices" && this._data.use_all && this._speakerCandidates(this._data).length) ? `<footer class="footer card-actions"><ha-button class="save" appearance="accent" variant="brand" ${this._busy || this._test ? "disabled" : ""}>${this._t(this._busy ? "saving" : "save")}</ha-button></footer>` : ""}</ha-card>`;
     {
@@ -604,9 +717,10 @@ class HomeCallSettings extends HTMLElement {
       const choices = this._speakerCandidates(values).filter(t => !added.has(t.entity_id));
       const availableRows = choices.map(t => {
         const chosen = this._chosenDlna === t.entity_id;
+        const description = this._speakerDescription(t);
         const confirmation = this._page === "dlna" && chosen && this._test ? `<div class="confirmation card-content"><ha-alert alert-type="info">${this._t("heard")}</ha-alert><div class="confirmation-actions card-actions"><ha-button class="retry-test" appearance="plain" variant="brand" ${disabled}>${this._t("no")}</ha-button><ha-button class="confirm-test" appearance="accent" variant="brand" ${disabled}>${this._t("yes")}</ha-button></div></div>` : "";
         const progress = chosen && this._busy ? `<div class="test-content card-content"><ha-alert alert-type="info" role="status">${this._t("testing")}</ha-alert></div>` : "";
-        return `<ha-list-item-base><div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${this._t(t.available ? "online" : "offline")}</div><ha-button slot="end" class="test-sound" data-${this._page === "dlna" ? "test" : "add"}="${hcEscape(t.entity_id)}" appearance="plain" variant="brand" ${(this._page === "dlna" && !t.available) || this._busy || this._test ? "disabled" : ""}>${this._t(this._page === "dlna" ? chosen && this._busy ? "testing" : "test" : "add")}</ha-button></ha-list-item-base>${progress}${confirmation}${chosen && this._error ? `<div class="test-content card-content"><ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert></div>` : ""}`;
+        return `<ha-list-item-base wrap-supporting-text title="${hcEscape(t.name + " · " + description)}"><div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${hcEscape(description)}</div><ha-button slot="end" class="test-sound" data-${this._page === "dlna" ? "test" : "add"}="${hcEscape(t.entity_id)}" appearance="plain" variant="brand" ${(this._page === "dlna" && !t.available) || this._busy || this._test ? "disabled" : ""}>${this._t(this._page === "dlna" ? chosen && this._busy ? "testing" : "test" : "add")}</ha-button></ha-list-item-base>${progress}${confirmation}${chosen && this._error ? `<div class="test-content card-content"><ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert></div>` : ""}`;
       }).join("");
       body += `<ha-card><ha-expansion-panel data-available-panel><span slot="header" class="discovery-label">${this._t("availableSpeakers")}</span><ha-list-item-base><ha-button slot="end" class="refresh-speakers" appearance="plain" variant="brand" ${disabled}>${this._t("refresh")}</ha-button></ha-list-item-base><ha-list-base>${availableRows}</ha-list-base>${!choices.length ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t(this._speakerCandidates(values).length ? "allAdded" : this._page === "devices" ? "emptyAlexa" : this._page === "sonos" ? "emptySonos" : this._page === "music_assistant" ? "emptyMusicAssistant" : this._page === "cast" ? "emptyCast" : this._page === "echomuse" ? "emptyEchoMuse" : "emptyDlna")}</ha-alert></div>` : this._page === "dlna" && choices.every(t => !t.available) ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t("offlineDlna")}</ha-alert></div>` : ""}</ha-expansion-panel></ha-card>`;
     }
@@ -632,12 +746,20 @@ class HomeCallSettings extends HTMLElement {
     } else if (this._isLocalSpeakerPage() || this._page === "devices") {
       body = this._renderSpeakers(values, disabled);
     } else if (this._page === "announcements") {
-      body = `<div class="chime-settings"><ha-form></ha-form>${values.announcement_chime ? '<div class="chime-subsetting"><ha-form></ha-form></div>' : ""}</div>`;
+      const sound = values.custom_chime;
+      const name = sound?.split("/").at(-1) || this._t("builtInChime");
+      const actions = `<span class="chime-actions"><ha-button class="pick-chime" appearance="plain" size="s" ${disabled}>${this._t(sound ? "changeChime" : "pickChime")}</ha-button>${sound ? `<ha-button class="reset-chime" appearance="plain" size="s" ${disabled}>${this._t("resetChime")}</ha-button>` : ""}</span>`;
+      const row = customElements.get("ha-settings-row")
+        ? `<ha-settings-row slim wrap-heading><span slot="heading">${this._t("chimeSound")}</span><span slot="description" class="chime-name">${hcEscape(name)}</span>${actions}</ha-settings-row>`
+        : `<ha-list-item-base><span slot="headline">${this._t("chimeSound")}</span><span slot="supporting-text">${hcEscape(name)}</span><span slot="end">${actions}</span></ha-list-item-base>`;
+      const warning = values.custom_chime_unavailable ? `<ha-alert alert-type="warning">${this._t("chimeUnavailable")}</ha-alert>` : "";
+      body = `<div class="chime-settings"><ha-form></ha-form>${values.announcement_chime ? `<div class="chime-subsetting"><ha-form></ha-form>${row}${warning}</div>` : ""}</div>`;
     } else {
       body = "<ha-form></ha-form>";
     }
     this.shadowRoot.innerHTML = `<style>
 :host{display:block;height:100%;color:var(--primary-text-color);font-family:var(--primary-font-family)}.content{max-width:600px;margin:0 auto;padding:var(--ha-space-6,24px) var(--ha-space-4,16px);display:grid;gap:var(--ha-space-4,16px)}ha-card{overflow:hidden}ha-expansion-panel[data-speaker-panel]{--expansion-panel-summary-padding:0 8px 0 0;--expansion-panel-content-padding:0}ha-list-item-base[slot="header"]{font-weight:var(--ha-font-weight-normal,400)}ha-icon,ha-icon-next,.speaker-status{color:var(--secondary-text-color)}.footer{display:flex;justify-content:flex-end}.test-content.card-content,.confirmation.card-content{padding:var(--ha-space-4,16px)}.diagnostic-content{padding:var(--ha-space-4,16px)}.confirmation-actions{display:flex;justify-content:flex-end;gap:var(--ha-space-2,8px);padding-top:var(--ha-space-4,16px)}.chime-subsetting{margin-inline-start:var(--ha-space-4,16px)}.test-diagnostics pre{white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
+.chime-actions{display:flex;flex-wrap:wrap;justify-content:flex-end}.chime-name{overflow-wrap:anywhere}
 </style><hass-subpage header="${home ? "HomeCall" : this._t(this._page)}" back-path="/config/integrations/integration/homecall"><ha-icon-button class="close" slot="toolbar-icon" label="${home ? this._t("close") : this._t("cancel")}" ${disabled}></ha-icon-button><main class="content">${home || this._isLocalSpeakerPage() || this._page === "devices" ? body : `<ha-card class="surface"><div class="card-content">${body}${this._error ? `<ha-alert class="error" alert-type="error">${hcEscape(this._error)}</ha-alert>` : ""}</div>${this._isLocalSpeakerPage() ? "" : `<footer class="footer card-actions"><ha-button class="save" appearance="accent" variant="brand" ${disabled}>${this._busy ? this._t("saving") : this._t("save")}</ha-button></footer>`}</ha-card>`}</main></hass-subpage>`;
     const page = this.shadowRoot.querySelector("hass-subpage");
     page.hass = this._hass;
@@ -677,6 +799,10 @@ class HomeCallSettings extends HTMLElement {
           child.addEventListener("value-changed", event => {
             if (event.target === child) this._capture();
           });
+          const pick = this.shadowRoot.querySelector(".pick-chime");
+          pick.onclick = () => this._pickChime(pick);
+          const reset = this.shadowRoot.querySelector(".reset-chime");
+          if (reset) reset.onclick = () => this._setChime(null);
         }
         form.addEventListener("value-changed", event => {
           if (event.target !== form) return;

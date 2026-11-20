@@ -129,7 +129,12 @@ def test_platform_discovery_and_confirmation(hass, entry, monkeypatch):
     ]:
         eid = "media_player." + name
         entities[eid] = SimpleNamespace(
-            entity_id=eid, domain="media_player", platform=platform, disabled_by=disabled
+            entity_id=eid,
+            domain="media_player",
+            platform=platform,
+            disabled_by=disabled,
+            device_id=None,
+            area_id=None,
         )
         states[eid] = SimpleNamespace(
             name=name, state=state, attributes={"supported_features": features}
@@ -281,7 +286,12 @@ def test_sonos_requires_confirmation_and_explicit_visibility(hass, entry, monkey
     from custom_components.homecall.helpers import allowed_targets
 
     entity = SimpleNamespace(
-        entity_id="media_player.sonos", domain="media_player", platform=platform, disabled_by=None
+        entity_id="media_player.sonos",
+        domain="media_player",
+        platform=platform,
+        disabled_by=None,
+        device_id=None,
+        area_id=None,
     )
     monkeypatch.setattr(
         "custom_components.homecall.helpers.er.async_get",

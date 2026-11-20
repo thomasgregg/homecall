@@ -7,12 +7,43 @@ const script = await readFile(
   ),
   "utf8",
 );
-async function fixture(page, language = "en", transport = "dlna") {
+async function fixture(page, language = "en", transport = "dlna", pickerLayout = "nested", speakerSettings = {}) {
   await page.setContent(
     "<style>body{font:16px Arial;background:#f5f5f5;--primary-text-color:#222;--secondary-text-color:#666;--divider-color:#ddd;--secondary-background-color:#f4f4f4}ha-card{display:block;background:white;border:1px solid #ddd;border-radius:16px}ha-list-item-button{display:flex;padding:20px;gap:14px;cursor:pointer}ha-button{display:inline-block;padding:12px;background:#009ac0;color:white;border-radius:10px;cursor:pointer}ha-button[disabled]{pointer-events:none;opacity:.5}ha-icon{width:24px}ha-list-item-base{display:block;padding:20px}</style><main></main>",
   );
-  await page.evaluate(() => {
+  await page.evaluate((layout) => {
     customElements.define("hass-subpage", class extends HTMLElement {});
+    customElements.define("ha-settings-row", class extends HTMLElement {});
+    class MockMediaPicker extends HTMLElement {
+      connectedCallback() {
+        this.attachShadow({mode:"open"});
+        this.shadowRoot.innerHTML = '<button type="button" role="button">Pick</button>';
+        this.shadowRoot.querySelector('button').onclick = () => {
+          this.dispatchEvent(new CustomEvent('show-dialog', {
+            bubbles: true, composed: true,
+            detail: {dialogParams: {accept: this.selector.media.accept, currentId: this.value?.media_content_id,
+              mediaPickedCallback: (mediaContentId) => this.dispatchEvent(new CustomEvent('value-changed', {
+                bubbles: true, composed: true, detail: {value: {media_content_id: mediaContentId}},
+              })),
+            }},
+          }));
+        };
+      }
+    }
+    if (layout === 'direct') {
+      customElements.define('ha-selector-media', MockMediaPicker);
+    } else {
+      customElements.define('ha-media-item-picker', MockMediaPicker);
+      customElements.define('ha-selector-media', class extends HTMLElement {
+        connectedCallback() {
+          const picker = document.createElement('ha-media-item-picker');
+          picker.selector = this.selector;
+          picker.value = this.value;
+          this.attachShadow({mode:'open'}).append(picker);
+        }
+      });
+    }
+    window.addEventListener('show-dialog', event => { window.homecallDialog = event.detail.dialogParams; });
     customElements.define("ha-expansion-panel", class extends HTMLElement {
       connectedCallback() {
         this.attachShadow({mode:"open"});
@@ -60,13 +91,13 @@ async function fixture(page, language = "en", transport = "dlna") {
           return this._schema;
         }
         reportValidity() {
-          return !!this.data.speaker;
+          return this._schema[0]?.name !== 'speaker' || !!this.data.speaker;
         }
       },
     );
-  });
+  }, pickerLayout);
   await page.addScriptTag({ content: script });
-  await page.evaluate(({language, transport}) => {
+  await page.evaluate(({language, transport, speakerSettings}) => {
     window.calls = [];
     window.failTest = false;
     const candidate = {
@@ -87,6 +118,7 @@ async function fixture(page, language = "en", transport = "dlna") {
         { entity_id: "notify.kitchen_speak", name: "Kitchen", available: true },
       ],
       dlna_candidates: [candidate],
+      ...speakerSettings,
     };
     const el = document.createElement("homecall-settings");
     el.hass = {
@@ -125,7 +157,7 @@ async function fixture(page, language = "en", transport = "dlna") {
       },
     };
     document.querySelector("main").append(el);
-  }, {language, transport});
+  }, {language, transport, speakerSettings});
   await expect(page.getByText(language === "de" ? "Alexa-Lautsprecher" : "Alexa speakers", { exact: true })).toBeVisible();
 }
 async function toggle(page, selector, checked) {
@@ -139,6 +171,24 @@ async function addDlna(page) {
   await page.locator('[data-test="media_player.jbl"]').click();
   await page.locator('.confirm-test').click();
 }
+test('speaker settings show room and entity ID in connected and available rows', async ({page}) => {
+  await fixture(page, "en", "sonos", "nested", {
+    added_speakers: ["media_player.window"],
+    dlna_candidates: [
+      {entity_id: "media_player.window", available: true},
+      {entity_id: "media_player.door", available: false},
+    ].map(target => ({
+      name: "Sonos", transport: "sonos", area_name: "Living & dining", show_entity_id: true,
+      ...target,
+    })),
+  });
+  await page.locator('[data-page="sonos"]').click();
+  const connected = page.locator('[data-speaker-panel="media_player.window"] ha-list-item-base[slot="header"]');
+  await expect(connected.locator('[slot="supporting-text"]')).toHaveText('Living & dining · media_player.window · Online');
+  await expect(connected.locator('ha-checkbox')).toHaveAttribute('aria-label', 'Sonos · Living & dining · media_player.window · Online');
+  const available = page.locator('ha-list-item-base').filter({has: page.locator('[data-add="media_player.door"]')});
+  await expect(available.locator('[slot="supporting-text"]')).toHaveText('Living & dining · media_player.door · offline');
+});
 test('inline sound test confirms before registering, and removal stays per speaker', async ({page}) => {
   await fixture(page);
   await page.locator('[data-page="dlna"]').click();
@@ -581,7 +631,7 @@ for (const language of ['en', 'de']) {
     await form.evaluate(el => {el.reportValidity = () => true;});
     await page.locator('.save').click();
     const call = await page.evaluate(() => window.calls.find(c => c.data?.page === 'announcements'));
-    expect(call.data).toEqual({page:'announcements', announcement_chime:true, skip_cast_chime:false});
+    expect(call.data).toEqual({page:'announcements', announcement_chime:true, skip_cast_chime:false, custom_chime:null});
     await page.locator('[data-page="announcements"]').click();
     expect(await form.evaluate(el => el.data)).toEqual({announcement_chime:true, skip_cast_chime:false});
     // Hiding the exception preserves its saved value for the next enable.
@@ -592,5 +642,55 @@ for (const language of ['en', 'de']) {
       }, enabled);
       expect(await form.evaluate(el => el.data.skip_cast_chime)).toBe(false);
     }
+  });
+}
+
+for (const layout of ['direct', 'nested']) {
+  test(`announcements use the native local MP3 picker and save or discard chime changes (${layout})`, async ({page}) => {
+    await fixture(page, 'en', 'dlna', layout);
+    await page.locator('[data-page="announcements"]').click();
+    const form = page.locator('.chime-settings > ha-form');
+    const row = page.locator('.chime-subsetting ha-settings-row');
+    const toggleChime = (value) => form.evaluate((element, enabled) => {
+      element.data = {...element.data, announcement_chime: enabled};
+      element.dispatchEvent(new CustomEvent('value-changed'));
+    }, value);
+    await expect(row).toHaveCount(0);
+    await toggleChime(true);
+    await expect(row.locator('[slot="description"]')).toHaveText('Built-in chime');
+    await row.getByText('Pick media').click();
+    const dialog = await page.evaluate(() => ({
+      accept: window.homecallDialog.accept,
+      navigateIds: window.homecallDialog.navigateIds,
+      minimumNavigateLevel: window.homecallDialog.minimumNavigateLevel,
+    }));
+    expect(dialog).toEqual({accept:['audio/mpeg'], navigateIds:[{media_content_id:'media-source://media_source'}], minimumNavigateLevel:1});
+    const mediaId = 'media-source://media_source/media/Chimes/soft & quiet.mp3';
+    await page.evaluate((id) => window.homecallDialog.mediaPickedCallback(id), mediaId);
+    await expect(row.locator('[slot="description"]')).toHaveText('soft & quiet.mp3');
+    await toggleChime(false);
+    await expect(row).toHaveCount(0);
+    await toggleChime(true);
+    await expect(row.locator('[slot="description"]')).toHaveText('soft & quiet.mp3');
+    await page.locator('.save').click();
+    await expect(page.locator('[data-page="announcements"]')).toBeVisible();
+    expect(await page.evaluate(() => window.settings.custom_chime)).toBe(mediaId);
+
+    await page.locator('homecall-settings').evaluate(async element => {
+      window.settings.custom_chime_unavailable = true;
+      await element._load();
+    });
+    await page.locator('[data-page="announcements"]').click();
+    await expect(page.locator('ha-alert[alert-type="warning"]')).toContainText('using the built-in chime');
+    await row.getByText('Change', {exact:true}).click();
+    expect(await page.evaluate(() => window.homecallDialog.currentId)).toBe(mediaId);
+    await row.getByText('Use built-in chime').click();
+    await page.locator('.close').evaluate(element => element.click());
+    await page.locator('[data-page="announcements"]').click();
+    await expect(row.locator('[slot="description"]')).toHaveText('soft & quiet.mp3');
+    await row.getByText('Use built-in chime').click();
+    await page.locator('.save').click();
+    await expect(page.locator('[data-page="announcements"]')).toBeVisible();
+    expect(await page.evaluate(() => window.settings.custom_chime)).toBeNull();
   });
 }
