@@ -7,6 +7,10 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        homeassistant: [minimum, "2026.11.2"]
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-python@v7.1.0
@@ -14,7 +18,16 @@ jobs:
           python-version: "3.14"
           cache: pip
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: python -m pip install -r requirements-dev.txt
+      - name: Install test dependencies
+        env:
+          HOME_ASSISTANT_VERSION: ${{ matrix.homeassistant }}
+        run: |
+          if [[ "$HOME_ASSISTANT_VERSION" == minimum ]]; then
+            python -m pip install -r requirements-dev.txt
+          else
+            python -m pip install "homeassistant==$HOME_ASSISTANT_VERSION" \
+              -r <(sed '/^homeassistant==/d' requirements-dev.txt)
+          fi
       - run: ruff check . && ruff format --check .
       - run: pytest --cov=custom_components.homecall --cov-report=term-missing --cov-fail-under=90
   browser:
