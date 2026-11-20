@@ -1,1 +1,1 @@
-Show speaker rooms in HomeCall
+Home Assistant compatibility testing and CI maintenance

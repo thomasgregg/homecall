@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.11.1
+
+- Test against both Home Assistant 2026.9 and 2026.11 in CI, keeping coverage for the oldest supported series.
+- Update the GitHub Actions used to install Python and Node.js, along with Ruff, pytest, and pytest-asyncio.
+- Stabilize the WebKit microphone recorder test by giving its synthetic audio source time to initialize.
+
 ## 1.11.0
 
 - Show Home Assistant speaker names with their areas in the card, card editor, and speaker settings. Show the entity ID when speakers still share a name and area, including speakers without an assigned area. ([#11](https://github.com/thomasgregg/homecall/issues/11))
