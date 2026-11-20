@@ -50,7 +50,10 @@ test("real audio worklet preserves opening and ending samples through a partial 
         signal.fill(.5, 5376);
         source.connect(recorder);
         source.onended = () => recorder.port.postMessage({type: "stop"});
-        source.start();
+        // Let the live audio graph settle before emitting the first marked quantum.
+        const quantumSize = 128;
+        const startFrame = Math.ceil((context.currentTime + 0.1) * context.sampleRate / quantumSize) * quantumSize;
+        source.start(startFrame / context.sampleRate);
       } catch (error) { window.captureError = error.message; }
     };
   });
