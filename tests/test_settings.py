@@ -128,7 +128,12 @@ def test_discovery_excludes_other_platforms_disabled_and_missing_entities(hass, 
 
     def entity(identifier, platform="alexa_devices", domain="notify", disabled=False):
         return SimpleNamespace(
-            entity_id=identifier, platform=platform, domain=domain, disabled_by=disabled
+            entity_id=identifier,
+            platform=platform,
+            domain=domain,
+            disabled_by=disabled,
+            device_id=None,
+            area_id=None,
         )
 
     entities = [
