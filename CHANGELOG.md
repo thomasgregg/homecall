@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.2
+
+- Match Home Assistant’s default content spacing in the HomeCall card editor’s Appearance, Default recipients, and Troubleshooting sections.
+
 ## 1.11.1
 
 - Test against both Home Assistant 2026.9 and 2026.11 in CI, keeping coverage for the oldest supported series.

@@ -1,4 +1,4 @@
-/*! HomeCall Card v1.11.1 | MIT License | github.com/thomasgregg/homecall */
+/*! HomeCall Card v1.11.2 | MIT License | github.com/thomasgregg/homecall */
 (() => {
   // src/layout.js
   function homeCallLayout(width, height, hasSelector = true, selectorWidth = 100, footerWidths = null) {
@@ -957,7 +957,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       this._recordingTargets = [...this._selection];
       this._recordingSkippedTargets = [...this._skippedTargets || []];
       this._diagnostics = {
-        card_version: false ? "development" : "1.11.1",
+        card_version: false ? "development" : "1.11.2",
         browser_timings_ms: {}
       };
       const tapped = performance.now();
@@ -1562,10 +1562,17 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       if (!this._config) return;
       const de = this._lang === "de";
       if (!this.shadowRoot.querySelector(".appearance")) {
-        this.shadowRoot.innerHTML = `<style>:host{display:block;min-width:0}ha-expansion-panel{display:block;margin-bottom:24px}ha-icon{color:var(--secondary-text-color)}ha-alert{display:block;margin-top:16px}.speaker-list{min-width:0}</style>
-        <ha-expansion-panel outlined class="appearance"><ha-icon slot="leading-icon" icon="mdi:palette-outline"></ha-icon><span slot="header" role="heading" aria-level="3"></span><ha-form></ha-form></ha-expansion-panel>
-        <ha-expansion-panel outlined class="recipients"><ha-icon slot="leading-icon" icon="mdi:speaker-multiple"></ha-icon><span slot="header" role="heading" aria-level="3"></span><ha-form></ha-form><div class="speakers"></div><div class="message"></div></ha-expansion-panel>
-        <ha-expansion-panel outlined class="troubleshooting"><ha-icon slot="leading-icon" icon="mdi:bug-outline"></ha-icon><span slot="header" role="heading" aria-level="3"></span><ha-form></ha-form></ha-expansion-panel>`;
+        this.shadowRoot.innerHTML = `<style>
+        :host{display:block;min-width:0}
+        ha-expansion-panel{display:block;margin-bottom:24px;--expansion-panel-content-padding:0}
+        .panel-content{padding:var(--ha-space-3,12px)}
+        ha-icon{color:var(--secondary-text-color)}
+        ha-alert{display:block;margin-top:16px}
+        .speaker-list{min-width:0}
+        </style>
+        <ha-expansion-panel outlined class="appearance"><ha-icon slot="leading-icon" icon="mdi:palette-outline"></ha-icon><span slot="header" role="heading" aria-level="3"></span><div class="panel-content"><ha-form></ha-form></div></ha-expansion-panel>
+        <ha-expansion-panel outlined class="recipients"><ha-icon slot="leading-icon" icon="mdi:speaker-multiple"></ha-icon><span slot="header" role="heading" aria-level="3"></span><div class="panel-content"><ha-form></ha-form><div class="speakers"></div><div class="message"></div></div></ha-expansion-panel>
+        <ha-expansion-panel outlined class="troubleshooting"><ha-icon slot="leading-icon" icon="mdi:bug-outline"></ha-icon><span slot="header" role="heading" aria-level="3"></span><div class="panel-content"><ha-form></ha-form></div></ha-expansion-panel>`;
         for (const form of this.shadowRoot.querySelectorAll("ha-form")) {
           form.addEventListener("value-changed", (event) => {
             if (event.target === form) this._change(event.detail.value);
