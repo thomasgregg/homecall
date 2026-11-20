@@ -68,6 +68,8 @@ function homeCallSpeakerIntegration(target) {
 }
 function homeCallSpeakerDescription(target, language) {
   const integration = homeCallSpeakerIntegration(target);
+  const name = target.name.toLowerCase();
+  const route = integration.toLowerCase();
   const status =
     language === "de"
       ? target.available
@@ -76,7 +78,14 @@ function homeCallSpeakerDescription(target, language) {
       : target.available
         ? "Available"
         : "Unavailable";
-  return [integration, status].filter(Boolean).join(" · ");
+  return [
+    target.area_name,
+    target.show_entity_id && target.entity_id,
+    name !== route && !name.startsWith(route + " ") && integration,
+    status,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 function homeCallSpeakerList(
   targets,
@@ -98,6 +107,7 @@ function homeCallSpeakerList(
     row.value = target.entity_id;
     row.left = true;
     row.twoline = true;
+    row.toggleAttribute("multiline-secondary", !!target.show_entity_id);
     const name = document.createElement("span");
     name.textContent = target.name;
     const description = document.createElement("span");
@@ -1224,7 +1234,14 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       const target = this._targets?.find((target) => target.entity_id === id);
       if (!target) return id;
       const integration = homeCallSpeakerIntegration(target);
-      return target.name + (integration ? " (" + integration + ")" : "");
+      const context = [
+        target.area_name,
+        target.show_entity_id && target.entity_id,
+        integration,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return target.name + (context ? " (" + context + ")" : "");
     });
     return this._t(
       pending
