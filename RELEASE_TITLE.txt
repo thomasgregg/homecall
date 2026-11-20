@@ -1,1 +1,1 @@
-Integration and dashboard card in one install
+Show speaker rooms in HomeCall
