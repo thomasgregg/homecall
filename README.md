@@ -3,7 +3,7 @@
 <p align="center">
 <a href="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml"><img src="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-<a href="https://hacs.xyz"><img src="https://img.shields.io/badge/HACS-Integration-41BDF5" alt="HACS integration"></a>
+<a href="https://my.home-assistant.io/redirect/marketplace_repository/?owner=thomasgregg&amp;repository=homecall&amp;category=integration"><img src="https://my.home-assistant.io/badges/marketplace_repository.svg" height="20" alt="Open HomeCall in Home Assistant Marketplace"></a>
 </p>
 
 **Your voice. Every room.**
