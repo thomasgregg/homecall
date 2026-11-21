@@ -61,6 +61,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
     <th valign="top">Protocol / integration</th>
     <th valign="top">Announcement playback</th>
     <th valign="top">Optional announcement chime</th>
+    <th valign="top">Custom announcement volume (beta)</th>
     <th valign="top">Music continuation</th>
     <th valign="top">Tested hardware / scope</th>
   </tr>
@@ -68,6 +69,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
     <td valign="top">Alexa Devices</td>
     <td valign="top">🟢 Recorded voice announcements verified.</td>
     <td valign="top">🟢 Optional chime confirmed by the user on their Alexa setup.</td>
+    <td valign="top">—</td>
     <td valign="top">🟢 TuneIn radio resumed after Alexa SSML soundbank clips.</td>
     <td valign="top">Echo Show with Deutschlandfunk/TuneIn and soundbank clips. HomeCall-recording resume and other sources/models untested.</td>
   </tr>
@@ -75,6 +77,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
     <td valign="top">DLNA</td>
     <td valign="top">🟢 MP3 playback verified; recorded voice verification pending.</td>
     <td valign="top">🟠 Combined chime and recording implemented; hardware verification pending.</td>
+    <td valign="top">—</td>
     <td valign="top">🟠 Optional current-item restoration and seek where supported; hardware restoration unverified. No playlist/session restoration.</td>
     <td valign="top">JBL Charge 5 Wi-Fi; other renderers require the sound test.</td>
   </tr>
@@ -82,6 +85,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
     <td valign="top">Sonos</td>
     <td valign="top">🟠 Uses native Sonos announcements. Direct Sonos hardware playback remains unverified.</td>
     <td valign="top">🟠 Combined chime and recording implemented; hardware verification pending.</td>
+    <td valign="top">🟠 S2 with AudioClip. Hardware test pending.</td>
     <td valign="top">🟠 Delegated to Sonos; not hardware-verified.</td>
     <td valign="top">Simulated discovery, setup and service-call tests only. The community Sonos One SL test used Music Assistant, not this direct route.</td>
   </tr>
@@ -89,6 +93,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
     <td valign="top">Music Assistant</td>
     <td valign="top">🟢 Recorded voice with the optional chime confirmed by the user on their tested MA setup. Community playback confirmed on Sonos One SL with MA 2.10.6. Separate Sync Group playback reported on Reddit.</td>
     <td valign="top">🟢 Combined two-tone chime and recording confirmed by the user. MA's additional pre-announcement cue is disabled. A Sonos One SL user reports the chime volume is good, but the recording is too loud. Other providers/groups need verification.</td>
+    <td valign="top">🟢 Eligible standalone players. Verified on JBL via AirPlay 2.</td>
     <td valign="top">🟢 Ducking, continuation and volume restoration verified with MA-managed music through AirPlay 2. A Sonos One SL user on MA 2.10.6 also confirms MA-managed music resumed at its previous volume. 🟠 A Reddit Sync Group report describes abrupt transitions and track-position behavior.</td>
     <td valign="top">Earlier ducking test: JBL Charge 5 Wi-Fi, AirPlay 2, MA 2.10.5. New combined-audio confirmation: user's MA setup. Community test: Sonos One SL, MA 2.10.6; playback, chime and restoration of MA-managed music confirmed (Sonos firmware/protocol unspecified). Reddit Sync Group models/protocols unspecified; full pause/resume unverified.</td>
   </tr>
@@ -96,6 +101,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
     <td valign="top">EchoMuse (ESPHome)</td>
     <td valign="top">🟢 Recorded message playback and opening-cutoff fix confirmed by a Reddit user.</td>
     <td valign="top">🟠 Combined chime and recording implemented; hardware verification pending.</td>
+    <td valign="top">—</td>
     <td valign="top">🟠 Delegated to EchoMuse; hardware continuation unverified.</td>
     <td valign="top">User's EchoMuse Dots; installed firmware/controller versions unspecified. Music Assistant/SendSpin route not verified.</td>
   </tr>
@@ -103,10 +109,13 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
     <td valign="top">Google Cast</td>
     <td valign="top">🟢 MP3 test playback verified on JBL; message playback reported by a Reddit Nest user.</td>
     <td valign="top">🟠 Skipped by default on direct Cast. Combined chime and recording available when the exception is disabled; hardware verification pending. Cast's native connection cue may still play.</td>
+    <td valign="top">—</td>
     <td valign="top">🔴 No automatic restoration. Phone-started YouTube Music remained stopped in our test.</td>
     <td valign="top">JBL Charge 5 Wi-Fi; Reddit Nest model unspecified. Specific Nest models and Cast groups need further tests.</td>
   </tr>
 </table>
+
+Custom announcement volume is available in the beta. A dash means HomeCall uses the route’s usual volume behavior. Music Assistant applies its player settings and limits. [Volume setup and tested hardware](https://github.com/thomasgregg/homecall/blob/v1.12.0-beta.4/docs/configuration.md#custom-announcement-volume-beta)
 
 Results apply to the tested setup, not every model or firmware version. The optional announcement chime column refers to the bundled two-tone cue combined with a recording. Custom MP3 chimes are covered by automated audio tests. The latest Music Assistant combined-audio test and Alexa optional-chime playback were confirmed by the user on 6 October 2026. The Alexa chime test does not establish music restoration. Reddit reports confirm limited EchoMuse and Nest message playback; they do not verify the new chime on those routes. The Sonos report was clarified as Sonos One SL through Music Assistant 2.10.6, with chime playback and restoration of MA-managed music at its previous volume confirmed. It does not verify the direct Sonos route; the recording was reported too loud. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
 
