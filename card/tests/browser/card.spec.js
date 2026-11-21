@@ -1196,6 +1196,49 @@ test("partial delivery keeps its warning after an audio fetch and offers details
   expect(await page.evaluate(() => window.uploads.length)).toBe(1);
 });
 
+test("an unconfirmed announcement warns that the speaker may still play", async ({
+  page,
+}) => {
+  await controlledRecorder(page);
+  await page.locator("homecall-card").evaluate((card) => {
+    card._recordingTargets = [
+      "media_player.kitchen",
+      "media_player.living_room",
+    ];
+    const fetch = card._hass.fetchWithAuth;
+    card._hass.fetchWithAuth = async (...args) => {
+      const response = await fetch(...args);
+      if (!args[0].startsWith("/api/homecall/send")) return response;
+      const data = await response.json();
+      return {
+        ok: true,
+        json: async () => ({
+          ...data,
+          results: [
+            { entity_id: "media_player.kitchen", accepted: true },
+            {
+              entity_id: "media_player.living_room",
+              accepted: false,
+              reason: "delivery_unconfirmed",
+            },
+          ],
+        }),
+      };
+    };
+  });
+  await page.locator("homecall-card .main").click();
+  await page.evaluate(() =>
+    window.recorderPort.onmessage({
+      data: { type: "stopped", total: 12000, reason: "requested" },
+    }),
+  );
+  const status = page.locator("homecall-card .status");
+  await expect(status).toContainText("Playback unconfirmed:");
+  await expect(status).toContainText("The announcement may still play.");
+  await expect(status).not.toContainText("Some devices could not be reached.");
+  expect(await page.evaluate(() => window.uploads.length)).toBe(1);
+});
+
 test("prepared recording reuses code across announcements while releasing the microphone", async ({
   page,
 }) => {

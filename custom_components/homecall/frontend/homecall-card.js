@@ -1415,7 +1415,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
             data.error || "Die Durchsage konnte nicht gesendet werden."
           );
         const sent = data.results.filter((r) => r.accepted).length;
-        const deliveryWarnings = [
+        const warnings = [
           [
             "announcement_volume_unavailable",
             "Eigene Durchsagelautst\xE4rke nicht verf\xFCgbar: {speakers}."
@@ -1425,10 +1425,16 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
             "Wiedergabe unbest\xE4tigt: {speakers}. Die Durchsage kann trotzdem abgespielt werden."
           ]
         ].flatMap(([reason, text]) => {
-          const ids = data.results.filter((r) => r.reason === reason).map((r) => r.entity_id);
-          return ids.length ? [this._t(text, { speakers: this._speakerNames(ids) })] : [];
+          const ids = data.results.filter((r) => !r.accepted && r.reason === reason).map((r) => r.entity_id);
+          return ids.length ? [
+            {
+              count: ids.length,
+              message: this._t(text, { speakers: this._speakerNames(ids) })
+            }
+          ] : [];
         });
-        const failed = data.results.some((r) => !r.accepted && !r.reason);
+        const failed = sent + warnings.reduce((sum, warning) => sum + warning.count, 0) < targets.length;
+        const deliveryWarnings = warnings.map((warning) => warning.message);
         if (!sent)
           throw new Error(
             [
