@@ -3,7 +3,7 @@
 <p align="center">
 <a href="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml"><img src="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-<a href="https://hacs.xyz"><img src="https://img.shields.io/badge/HACS-Integration-41BDF5" alt="HACS integration"></a>
+<a href="https://my.home-assistant.io/redirect/marketplace_repository/?owner=thomasgregg&amp;repository=homecall&amp;category=integration"><img src="https://my.home-assistant.io/badges/marketplace_repository.svg" height="20" alt="Open HomeCall in Home Assistant Marketplace"></a>
 </p>
 
 **Your voice. Every room.**
@@ -22,6 +22,7 @@ Install **HomeCall** to get the integration and dashboard card together.
 - [Which setup should I use?](#which-setup-should-i-use)
 - [Before you start](#before-you-start)
 - [Install](#install)
+  - [Marketplace](#marketplace)
   - [HACS](#hacs)
   - [Manual installation](#manual)
 - [Use](#use)
@@ -151,18 +152,15 @@ For EchoMuse, connect your Dots through Home Assistant’s ESPHome integration, 
 
 From **HomeCall 1.9.0**, the dashboard card ships with the integration. Update HomeCall, restart Home Assistant, then refresh every dashboard tab or reset the Companion app's frontend cache. Existing users should follow the [bundled-card migration guide](docs/card-migration.md).
 
+### Marketplace
+
+On Home Assistant 2026.11 and later, open **Settings → Marketplace**, search for **HomeCall**, and select **Install**. Existing HACS installs migrate to Marketplace when Home Assistant starts after the upgrade. Then [complete setup](#complete-setup). [Home Assistant Marketplace documentation](https://www.home-assistant.io/integrations/marketplace/)
+
 ### HACS
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=thomasgregg&repository=homecall&category=integration)
 
-With HACS installed, search for **HomeCall** in HACS or use the button above to open it directly. The dashboard card is included.
-
-1. Open **HACS** and search for **HomeCall**.
-2. Open **HomeCall** and choose **Download**.
-3. Restart Home Assistant.
-4. Open **Settings → Devices & services → Add integration → HomeCall**.
-5. Choose **Alexa speakers**, **DLNA speakers**, **Music Assistant**, **Google Cast speakers** or **EchoMuse speakers** in the setup menu. For Alexa, configure the public HTTPS address and speaker selection. For direct Sonos without Alexa, finish the local-only setup through **DLNA speakers**, then add your devices under **Configure → Sonos speakers**. For DLNA, open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
-6. Refresh the dashboard and add **HomeCall** from the card picker. UI-managed dashboard resources are registered automatically; see the [migration guide](docs/card-migration.md) for YAML-managed resources.
+On Home Assistant 2026.9 or 2026.10 with HACS installed, open **HACS**, search for **HomeCall**, and select **Download**. Then [complete setup](#complete-setup).
 
 #### Fallback: custom repository
 
@@ -170,11 +168,18 @@ If HomeCall does not appear in your HACS catalog:
 
 1. In HACS, open **Custom repositories** from the menu.
 2. Add `https://github.com/thomasgregg/homecall` with type **Integration**.
-3. Search for **HomeCall**, download it, then continue with steps 3–6 above.
+3. Search for **HomeCall**, download it, then [complete setup](#complete-setup).
 
 ### Manual
 
-Download `homecall.zip` from the [latest release](https://github.com/thomasgregg/homecall/releases/latest) and extract its contents into `<config>/custom_components/homecall`. Alternatively, copy [`custom_components/homecall`](custom_components/homecall) from the repository to that location. Restart Home Assistant and follow steps 4–6 above. The bundled card is already included; no separate JavaScript download or npm build on Home Assistant is needed.
+Download `homecall.zip` from the [latest release](https://github.com/thomasgregg/homecall/releases/latest) and extract its contents into `<config>/custom_components/homecall`. Alternatively, copy [`custom_components/homecall`](custom_components/homecall) from the repository to that location. The ZIP includes the built dashboard card. Then [complete setup](#complete-setup).
+
+### Complete setup
+
+1. Restart Home Assistant.
+2. Open **Settings → Devices & services → Add integration → HomeCall** if setup has not already opened.
+3. Choose **Alexa speakers**, **DLNA speakers**, **Music Assistant**, **Google Cast speakers** or **EchoMuse speakers**. For Alexa, configure the public HTTPS address and speaker selection. For direct Sonos without Alexa, finish local-only setup through **DLNA speakers**, then add your devices under **Configure → Sonos speakers**. For DLNA, open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
+4. Refresh the dashboard and add **HomeCall** from the card picker. HomeCall registers UI-managed dashboard resources automatically. For YAML-managed resources, follow the [migration guide](docs/card-migration.md).
 
 ## Use
 
