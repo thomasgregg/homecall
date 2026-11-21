@@ -247,6 +247,7 @@ Object.assign(HC_WORDS.en, {
   announcements: "Announcements",
   announcementVolume: "Custom announcement volume",
   volume: "Announcement volume",
+  announcement_volume_offline: "Connect this speaker to check volume support.",
   announcement_volume_unavailable: "This speaker cannot use a custom announcement volume right now.",
   delivery_unconfirmed: "Playback could not be confirmed. The test sound may still play.",
   announcement_chime: "Play a chime before messages",
@@ -267,6 +268,7 @@ Object.assign(HC_WORDS.de, {
   announcements: "Durchsagen",
   announcementVolume: "Eigene Durchsagelautstärke",
   volume: "Durchsagelautstärke",
+  announcement_volume_offline: "Verbinde diesen Lautsprecher, um die Lautstärkeunterstützung zu prüfen.",
   announcement_volume_unavailable: "Dieser Lautsprecher kann gerade keine eigene Durchsagelautstärke verwenden.",
   delivery_unconfirmed: "Die Wiedergabe konnte nicht bestätigt werden. Der Testton kann trotzdem abgespielt werden.",
   announcement_chime: "Signalton vor Nachrichten abspielen",
@@ -378,8 +380,7 @@ class HomeCallSettings extends HTMLElement {
         homeCallNativeSettingsRow(this).catch(() => {}),
       ]);
       this._data = await this._hass.callApi("GET", "homecall/settings");
-      if (this._data.dlna_candidates?.some(t => t.announcement_volume_supported)
-        || Object.keys(this._data.announcement_volumes || {}).length) {
+      if (this._data.dlna_candidates?.some(t => this._showVolume(this._data, t))) {
         await homeCallNativeSpeakerControls(this, this._hass, true).catch(() => {});
       }
       if (this._draft) this._mergeSpeakerData(this._data);
@@ -626,6 +627,11 @@ class HomeCallSettings extends HTMLElement {
   _volumePreference(values, entityId) {
     return values?.announcement_volume_changes?.[entityId] ?? values?.announcement_volumes?.[entityId];
   }
+  _showVolume(values, target) {
+    return target.announcement_volume_supported
+      || this._volumePreference(values, target.entity_id)
+      || (!target.available && ["sonos", "music_assistant"].includes(target.transport));
+  }
   _bindSpeakers(values) {
     const speakers = this._speakerList(values);
     const selected = id => this._page === "devices" && values.use_all || values.default_targets.includes(id);
@@ -688,7 +694,7 @@ class HomeCallSettings extends HTMLElement {
     for (const row of this.shadowRoot.querySelectorAll("[data-volume-speaker]")) {
       const id = row.dataset.volumeSpeaker;
       const supported = this._localCandidates(values).some(target =>
-        target.entity_id === id && target.announcement_volume_supported);
+        target.entity_id === id && target.available && target.announcement_volume_supported);
       const preference = this._volumePreference(values, id);
       const toggle = row.querySelector("ha-switch");
       const level = row.querySelector(".volume-level");
@@ -766,9 +772,10 @@ class HomeCallSettings extends HTMLElement {
       const description = this._speakerDescription(t);
       const label = hcEscape(t.name + " · " + description);
       const checkbox = `<ha-checkbox slot="start" data-visible="${id}" aria-label="${label}"></ha-checkbox>`;
+      const volumeHint = t.available ? "announcement_volume_unavailable" : "announcement_volume_offline";
       const volume = customElements.get("ha-switch") && customElements.get("ha-slider")
-        && (t.announcement_volume_supported || this._volumePreference(values, t.entity_id))
-        ? `<div data-volume-speaker="${id}"><ha-list-item-base><div slot="headline">${this._t("announcementVolume")}</div>${t.announcement_volume_supported ? "" : `<div slot="supporting-text">${this._t("announcement_volume_unavailable")}</div>`}<ha-switch slot="end" aria-label="${this._t("announcementVolume")}"></ha-switch></ha-list-item-base><ha-list-item-base class="volume-level" hidden><ha-slider slot="headline" aria-label="${this._t("volume")}"></ha-slider><output slot="end" aria-hidden="true"></output></ha-list-item-base></div>`
+        && this._showVolume(values, t)
+        ? `<div data-volume-speaker="${id}"><ha-list-item-base><div slot="headline">${this._t("announcementVolume")}</div>${t.available && t.announcement_volume_supported ? "" : `<div slot="supporting-text">${this._t(volumeHint)}</div>`}<ha-switch slot="end" aria-label="${this._t("announcementVolume")}"></ha-switch></ha-list-item-base><ha-list-item-base class="volume-level" hidden><ha-slider slot="headline" aria-label="${this._t("volume")}"></ha-slider><output slot="end" aria-hidden="true"></output></ha-list-item-base></div>`
         : "";
       return `<ha-expansion-panel data-speaker-panel="${id}" ><ha-list-item-base slot="header" wrap-supporting-text title="${label}">${checkbox}<div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${hcEscape(description)}</div></ha-list-item-base><ha-list-base>${this._page !== "dlna" ? "" : `<ha-list-item-base><div slot="headline">${this._t("resume")}</div><ha-checkbox slot="end" id="resume-${id}" data-resume="${id}" aria-label="${hcEscape(this._t("resume"))}"></ha-checkbox></ha-list-item-base>`}${volume}<ha-list-item-base><div slot="headline">${this._t("testHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-test="${id}" ${!t.available || this._busy || this._test ? "disabled" : ""}>${this._t(this._chosenDlna === t.entity_id && this._busy ? "testing" : "test")}</ha-button></ha-list-item-base><ha-list-item-base><div slot="headline">${this._t("removeHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-remove="${id}" ${disabled}>${this._t("remove")}</ha-button></ha-list-item-base></ha-list-base></ha-expansion-panel>`;
     }).join("");

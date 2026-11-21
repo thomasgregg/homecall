@@ -59,7 +59,7 @@ In **HomeCall → Configure → Sonos speakers** or **Music Assistant speakers**
 
 - **Sonos:** The direct speaker must report S2 software and have a connected AudioClip client. HomeCall uses AudioClip for an override. If the clip is refused, HomeCall reports the speaker as skipped.
 - **Music Assistant:** The player must support volume adjustment and be standalone. Group and stereo-pair targets and players currently participating in a group use their own volume settings. Music Assistant can limit or ignore a requested percentage according to its player settings. It controls playback interruption, temporary unmuting, and restoration.
-- A saved override remains available to turn off if the speaker is disconnected or grouped. If a reachable speaker can no longer use its override, HomeCall reports the affected speaker and continues with the other eligible recipients. A delivery timeout can mean a clip is still playing.
+- Offline Sonos and Music Assistant rows show the volume switch with a prompt to reconnect. Enabling it requires a reachability and support check. A saved override remains available to turn off if the speaker is disconnected or grouped. If a reachable speaker can no longer use its override, HomeCall reports the affected speaker and continues with the other eligible recipients. A delivery timeout can mean a clip is still playing.
 
 The level applies to the whole announcement, including the HomeCall chime. Direct Google Cast, DLNA, Alexa Devices, and direct EchoMuse keep their current behavior. Percentage scales differ by device. The beta has automated coverage, and audible playback and restoration still need verification on hardware.
 

@@ -215,6 +215,37 @@ test("the native volume controls only appear on an eligible speaker and save on 
     "media_player.bedroom": {enabled: false, level: 37},
   });
 });
+for (const transport of ["sonos", "music_assistant"]) {
+  test(`${transport} keeps the offline volume switch visible and checks support on refresh`, async ({page}) => {
+    await fixture(page, "en", transport, "nested", {
+      added_speakers: ["media_player.bedroom"],
+      default_targets: ["media_player.bedroom"],
+      dlna_candidates: [
+        {entity_id: "media_player.bedroom", name: "Bedroom", transport, available: false},
+      ],
+    });
+    await page.locator(`[data-page="${transport}"]`).click();
+    const panel = page.locator('[data-speaker-panel="media_player.bedroom"]');
+    await panel.locator("button").click();
+    const row = panel.locator("[data-volume-speaker]");
+    await expect(row).toBeVisible();
+    await expect(row).toContainText("Connect this speaker to check volume support.");
+    await expect(row.locator("ha-switch")).toHaveJSProperty("disabled", true);
+    await expect(row.locator(".volume-level")).toBeHidden();
+    await expect(panel.locator("[data-test]")).toHaveAttribute("disabled", "");
+
+    await page.evaluate(() => {
+      window.settings.dlna_candidates[0].available = true;
+      window.settings.dlna_candidates[0].announcement_volume_supported = true;
+    });
+    await page.locator("[data-available-panel] button").click();
+    await page.locator(".refresh-speakers").click();
+    await expect(row.locator("ha-switch")).toHaveJSProperty("disabled", false);
+    await expect(row).not.toContainText("Connect this speaker");
+    await expect(panel.locator("[data-test]")).not.toHaveAttribute("disabled", "");
+  });
+}
+
 test('speaker settings show room and entity ID in connected and available rows', async ({page}) => {
   await fixture(page, "en", "sonos", "nested", {
     added_speakers: ["media_player.window"],

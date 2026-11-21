@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.0-beta.2
+
+- Keep Custom announcement volume visible for offline Sonos and Music Assistant speakers, with a reconnect hint and a disabled switch until HomeCall confirms support.
+
 ## 1.12.0-beta.1
 
 - Add an optional announcement-volume switch and slider for eligible direct Sonos S2 speakers and standalone Music Assistant players. The level applies to the whole announcement, including the chime.
