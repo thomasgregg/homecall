@@ -1,10 +1,6 @@
 ![HomeCall — Your voice. Every room.](https://raw.githubusercontent.com/thomasgregg/homecall/main/docs/assets/hero-compact.png)
 
-<p align="center">
-<a href="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml"><img src="https://github.com/thomasgregg/homecall/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-<a href="https://my.home-assistant.io/redirect/marketplace_repository/?owner=thomasgregg&amp;repository=homecall&amp;category=integration"><img src="https://my.home-assistant.io/badges/marketplace_repository.svg" height="20" alt="Open HomeCall in Home Assistant Marketplace"></a>
-</p>
+[![Tests](https://github.com/thomasgregg/homecall/actions/workflows/ci.yml/badge.svg)](https://github.com/thomasgregg/homecall/actions/workflows/ci.yml) [![MIT license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Open HomeCall in Home Assistant Marketplace](https://img.shields.io/badge/Home%20Assistant-Marketplace-41BDF5?style=flat)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=thomasgregg&repository=homecall&category=integration)
 
 **Your voice. Every room.**
 
