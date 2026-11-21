@@ -1,1 +1,1 @@
-Keep the volume control visible for offline speakers
+Preview the announcement chime and use a compact volume slider

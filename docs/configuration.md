@@ -25,7 +25,7 @@ All groups reuse the same **Your speakers** and **Available speakers** cards. Pr
 3. Select **Test** beside an online speaker. Progress, errors, and confirmation appear under that row.
 4. Confirm **Yes, add speaker** only if you heard it.
 
-The test plays a three-second chime at the current speaker volume and replaces any current playback. HomeCall requires both a download of the test audio and your audible confirmation before adding the speaker. An accepted service call alone is insufficient. Failed, expired and offline tests never add a device.
+The test plays the announcement chime when enabled, followed by a three-second tone at the current speaker volume. It replaces any current playback. HomeCall requires both a download of the test audio and your audible confirmation before adding the speaker. An accepted service call alone is insufficient. Failed, expired and offline tests never add a device.
 
 Added speakers have a checkbox controlling visibility in the card. Unchecking hides the speaker without discarding the successful test. Expand the speaker row to use **Remove**. DLNA rows also offer **Resume music after announcements**; Sonos handles restoration through native announcement mode. Visibility and resume edits remain pending until **Save changes** at the bottom of the page; refreshing discovery preserves pending edits. A successful DLNA test registers the speaker immediately. Removing it remains pending until **Save changes**. **Remove** discards the test and visibility; re-adding requires a new test. New DLNA speakers never enter the card automatically.
 
@@ -51,14 +51,14 @@ No YAML entry is required. HomeCall supports one configuration entry per instanc
 
 The row shows the selected filename. Use **Change** to select a different file, or **Use built-in chime** to restore the two-tone sound, then select **Save**. Turning chimes off remembers your selection. If your selected file is moved, deleted, or becomes unreadable, HomeCall uses the built-in chime and shows a warning in Announcements settings.
 
-The direct Google Cast exception is on by default. Music Assistant targets use the HomeCall chime when enabled. HomeCall uses the chime and recording in one clip, and the speaker setup sound test uses its own test tone.
+The direct Google Cast exception is on by default. Music Assistant targets use the HomeCall chime when enabled. HomeCall puts the chime and recording in one clip. **Test** follows the same chime settings and plays a short tone after the cue.
 
 ## Custom announcement volume (beta)
 
-In **HomeCall → Configure → Sonos speakers** or **Music Assistant speakers**, expand an eligible speaker and enable **Custom announcement volume**. Set the level with the slider and select **Save**. You can select **Test** to hear the current slider level before saving. Turn the switch off to use the integration’s normal announcement level. HomeCall remembers the selected percentage.
+In **HomeCall → Configure → Sonos speakers** or **Music Assistant speakers**, expand an eligible speaker and enable **Custom announcement volume**. Set the level with the slider and select **Save**. **Test** sends the current slider level before saving. Its diagnostics show the requested percentage. Turn the switch off to use the integration’s normal announcement level. HomeCall remembers the selected percentage.
 
 - **Sonos:** The direct speaker must report S2 software and have a connected AudioClip client. HomeCall uses AudioClip for an override. If the clip is refused, HomeCall reports the speaker as skipped.
-- **Music Assistant:** The player must support volume adjustment and be standalone. Group and stereo-pair targets and players currently participating in a group use their own volume settings. Music Assistant can limit or ignore a requested percentage according to its player settings. It controls playback interruption, temporary unmuting, and restoration.
+- **Music Assistant:** The player must support volume adjustment and be standalone. Group and stereo-pair targets and players currently participating in a group use their own volume settings. Music Assistant can clamp the requested percentage to the player’s announcement volume limits. On Music Assistant 2.10.13, **Do not adjust volume** ignores overrides, so choose a different announcement volume strategy for that player to use HomeCall’s slider. Whether the player applies the request also depends on its output protocol and volume control. Music Assistant handles interruption, temporary unmuting, and restoration.
 - Offline Sonos and Music Assistant rows show the volume switch with a prompt to reconnect. Enabling it requires a reachability and support check. A saved override remains available to turn off if the speaker is disconnected or grouped. If a reachable speaker can no longer use its override, HomeCall reports the affected speaker and continues with the other eligible recipients. A delivery timeout can mean a clip is still playing.
 
 The level applies to the whole announcement, including the HomeCall chime. Direct Google Cast, DLNA, Alexa Devices, and direct EchoMuse keep their current behavior. Percentage scales differ by device. The beta has automated coverage, and audible playback and restoration still need verification on hardware.

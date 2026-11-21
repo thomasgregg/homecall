@@ -244,5 +244,28 @@ async def test_speaker_sound_test_uses_draft_without_saving(hass, http_request, 
         )
     )
     assert response.status == 200
+    assert json.loads(response.body)["diagnostics"]["requested_announcement_volume_percent"] == 27
     assert speakers.sonos.websocket.play_clip.call_args.kwargs == {"volume": 27}
+    hass.config_entries.async_update_entry.assert_not_called()
+
+
+@pytest.mark.parametrize("draft", [option(level=12), option(level=34), option(False, 34), None])
+async def test_music_assistant_sound_test_sends_selected_volume(
+    hass, entry, http_request, speakers, draft
+):
+    entry.options["announcement_volumes"] = {"ma-key": option(level=23)}
+    preference = {"announcement_volume": draft} if draft else {}
+    response = await SpeakerTestView(hass).post(
+        http_request({"action": "test", "entity_id": MA, **preference})
+    )
+    assert response.status == 200
+    domain, service, data = hass.services.async_call.call_args.args
+    assert (domain, service) == ("music_assistant", "play_announcement")
+    assert data["use_pre_announce"] is False
+    expected = 23 if draft is None else draft["level"] if draft["enabled"] else None
+    assert data.get("announce_volume") == expected
+    assert (
+        json.loads(response.body)["diagnostics"].get("requested_announcement_volume_percent")
+        == expected
+    )
     hass.config_entries.async_update_entry.assert_not_called()

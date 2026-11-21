@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.0-beta.3
+
+- Play the configured announcement chime before the speaker test tone, following the same chime settings as recordings.
+- Use Home Assistant's compact native volume slider layout with a read-only percentage, and show the requested level in test diagnostics.
+- Document how Music Assistant's announcement volume strategy and limits affect custom volume.
+
 ## 1.12.0-beta.2
 
 - Keep Custom announcement volume visible for offline Sonos and Music Assistant speakers, with a reconnect hint and a disabled switch until HomeCall confirms support.

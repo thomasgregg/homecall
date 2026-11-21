@@ -701,6 +701,7 @@ class HomeCallSettings extends HTMLElement {
       const slider = level.querySelector("ha-slider");
       const percent = level.querySelector("output");
       toggle.checked = preference?.enabled ?? false;
+      slider.accessibleLabel = this._t("volume");
       slider.min = 1;
       slider.max = 100;
       slider.step = 1;
@@ -775,7 +776,16 @@ class HomeCallSettings extends HTMLElement {
       const volumeHint = t.available ? "announcement_volume_unavailable" : "announcement_volume_offline";
       const volume = customElements.get("ha-switch") && customElements.get("ha-slider")
         && this._showVolume(values, t)
-        ? `<div data-volume-speaker="${id}"><ha-list-item-base><div slot="headline">${this._t("announcementVolume")}</div>${t.available && t.announcement_volume_supported ? "" : `<div slot="supporting-text">${this._t(volumeHint)}</div>`}<ha-switch slot="end" aria-label="${this._t("announcementVolume")}"></ha-switch></ha-list-item-base><ha-list-item-base class="volume-level" hidden><ha-slider slot="headline" aria-label="${this._t("volume")}"></ha-slider><output slot="end" aria-hidden="true"></output></ha-list-item-base></div>`
+        ? `<div data-volume-speaker="${id}">
+            <ha-list-item-base><div slot="headline">${this._t("announcementVolume")}</div>${t.available && t.announcement_volume_supported ? "" : `<div slot="supporting-text">${this._t(volumeHint)}</div>`}<ha-switch slot="end" aria-label="${this._t("announcementVolume")}"></ha-switch></ha-list-item-base>
+            <ha-list-item-base class="volume-level" hidden>
+              <div slot="content" class="volume-controls">
+                <span>${this._t("volume")}</span>
+                <ha-slider labeled></ha-slider>
+                <output aria-hidden="true"></output>
+              </div>
+            </ha-list-item-base>
+          </div>`
         : "";
       return `<ha-expansion-panel data-speaker-panel="${id}" ><ha-list-item-base slot="header" wrap-supporting-text title="${label}">${checkbox}<div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${hcEscape(description)}</div></ha-list-item-base><ha-list-base>${this._page !== "dlna" ? "" : `<ha-list-item-base><div slot="headline">${this._t("resume")}</div><ha-checkbox slot="end" id="resume-${id}" data-resume="${id}" aria-label="${hcEscape(this._t("resume"))}"></ha-checkbox></ha-list-item-base>`}${volume}<ha-list-item-base><div slot="headline">${this._t("testHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-test="${id}" ${!t.available || this._busy || this._test ? "disabled" : ""}>${this._t(this._chosenDlna === t.entity_id && this._busy ? "testing" : "test")}</ha-button></ha-list-item-base><ha-list-item-base><div slot="headline">${this._t("removeHint")}</div><ha-button slot="end" appearance="plain" variant="brand" data-remove="${id}" ${disabled}>${this._t("remove")}</ha-button></ha-list-item-base></ha-list-base></ha-expansion-panel>`;
     }).join("");
@@ -826,7 +836,11 @@ class HomeCallSettings extends HTMLElement {
       body = "<ha-form></ha-form>";
     }
     this.shadowRoot.innerHTML = `<style>
-:host{display:block;height:100%;color:var(--primary-text-color);font-family:var(--primary-font-family)}.content{max-width:600px;margin:0 auto;padding:var(--ha-space-6,24px) var(--ha-space-4,16px);display:grid;gap:var(--ha-space-4,16px)}ha-card{overflow:hidden}ha-expansion-panel[data-speaker-panel]{--expansion-panel-summary-padding:0 8px 0 0;--expansion-panel-content-padding:0}ha-list-item-base[slot="header"]{font-weight:var(--ha-font-weight-normal,400)}ha-icon,ha-icon-next,.speaker-status{color:var(--secondary-text-color)}.footer{display:flex;justify-content:flex-end}.test-content.card-content,.confirmation.card-content{padding:var(--ha-space-4,16px)}.diagnostic-content{padding:var(--ha-space-4,16px)}.confirmation-actions{display:flex;justify-content:flex-end;gap:var(--ha-space-2,8px);padding-top:var(--ha-space-4,16px)}.chime-subsetting,.volume-level{margin-inline-start:var(--ha-space-4,16px)}.volume-level[hidden]{display:none}.volume-level ha-slider{width:100%}.test-diagnostics pre{white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
+:host{display:block;height:100%;color:var(--primary-text-color);font-family:var(--primary-font-family)}.content{max-width:600px;margin:0 auto;padding:var(--ha-space-6,24px) var(--ha-space-4,16px);display:grid;gap:var(--ha-space-4,16px)}ha-card{overflow:hidden}ha-expansion-panel[data-speaker-panel]{--expansion-panel-summary-padding:0 8px 0 0;--expansion-panel-content-padding:0}ha-list-item-base[slot="header"]{font-weight:var(--ha-font-weight-normal,400)}ha-icon,ha-icon-next,.speaker-status{color:var(--secondary-text-color)}.footer{display:flex;justify-content:flex-end}.test-content.card-content,.confirmation.card-content{padding:var(--ha-space-4,16px)}.diagnostic-content{padding:var(--ha-space-4,16px)}.confirmation-actions{display:flex;justify-content:flex-end;gap:var(--ha-space-2,8px);padding-top:var(--ha-space-4,16px)}.chime-subsetting,.volume-level{margin-inline-start:var(--ha-space-4,16px)}.volume-level[hidden]{display:none}
+.volume-controls{display:flex;align-items:center;gap:var(--ha-space-2,8px)}
+.volume-controls span{flex:1 1 auto;overflow-wrap:anywhere}
+.volume-controls output{min-inline-size:45px;text-align:end}
+.test-diagnostics pre{white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
 .chime-actions{display:flex;flex-wrap:wrap;justify-content:flex-end}.chime-name{overflow-wrap:anywhere}
 </style><hass-subpage header="${home ? "HomeCall" : this._t(this._page)}" back-path="/config/integrations/integration/homecall"><ha-icon-button class="close" slot="toolbar-icon" label="${home ? this._t("close") : this._t("cancel")}" ${disabled}></ha-icon-button><main class="content">${home || this._isLocalSpeakerPage() || this._page === "devices" ? body : `<ha-card class="surface"><div class="card-content">${body}${this._error ? `<ha-alert class="error" alert-type="error">${hcEscape(this._error)}</ha-alert>` : ""}</div>${this._isLocalSpeakerPage() ? "" : `<footer class="footer card-actions"><ha-button class="save" appearance="accent" variant="brand" ${disabled}>${this._busy ? this._t("saving") : this._t("save")}</ha-button></footer>`}</ha-card>`}</main></hass-subpage>`;
     const page = this.shadowRoot.querySelector("hass-subpage");

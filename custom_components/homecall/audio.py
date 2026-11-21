@@ -14,6 +14,7 @@ LOCAL_MEDIA_PREFIX = "media-source://media_source/"
 MAX_CHIME_SECONDS = 10
 MAX_CHIME_BYTES = 2 * 1024 * 1024
 CHIME_RATE = 24000
+TEST_TONE_DURATION = 3
 
 
 async def async_custom_chime(hass, media_id):
@@ -88,6 +89,13 @@ def chime_duration():
         return wav.getnframes() / wav.getframerate()
 
 
+async def async_announcement_chime(hass, media_id):
+    """Return the custom cue or the bundled cue (represented by None), with duration."""
+    if media_id and (custom := await async_custom_chime(hass, media_id)):
+        return custom
+    return None, await hass.async_add_executor_job(chime_duration)
+
+
 def validate_wav(data):
     with wave.open(io.BytesIO(data)) as wav:
         duration = wav.getnframes() / wav.getframerate()
@@ -160,8 +168,8 @@ def convert_wav(data, prepend_chime=False, custom_chime=None):
         return dest.read_bytes()
 
 
-def test_audio():
-    """A short quiet chime encoded exactly like microphone recordings."""
+def test_audio(prepend_chime=False, custom_chime=None):
+    """Encode a short test tone with the same optional cue as a recording."""
     import math
     import struct
 
@@ -172,11 +180,11 @@ def test_audio():
         wav.setsampwidth(2)
         wav.setframerate(rate)
         samples = []
-        for i in range(rate * 3):
+        for i in range(rate * TEST_TONE_DURATION):
             t = i / rate
-            envelope = min(t / 0.08, (3 - t) / 0.2, 1)
+            envelope = min(t / 0.08, (TEST_TONE_DURATION - t) / 0.2, 1)
             samples.append(
                 struct.pack("<h", int(1800 * envelope * math.sin(2 * math.pi * 660 * t)))
             )
         wav.writeframes(b"".join(samples))
-    return convert_wav(buffer.getvalue())
+    return convert_wav(buffer.getvalue(), prepend_chime, custom_chime)

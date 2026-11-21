@@ -197,6 +197,9 @@ test("the native volume controls only appear on an eligible speaker and save on 
   await expect(page.locator('[data-volume-speaker="media_player.legacy"]')).toHaveCount(0);
   await toggle(page, '[data-volume-speaker] ha-switch', true);
   await expect(row.locator(".volume-level")).toBeVisible();
+  await expect(row.locator('.volume-level [slot="content"] span')).toHaveText("Announcement volume");
+  await expect(slider).toHaveAttribute("labeled", "");
+  await expect(slider).toHaveJSProperty("accessibleLabel", "Announcement volume");
   await expect(row.locator("output")).toHaveText("25%");
   await slider.evaluate((element) => {
     element.value = 37;

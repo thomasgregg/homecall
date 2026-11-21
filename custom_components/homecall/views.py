@@ -18,7 +18,14 @@ from .announcement_volume import (
     sonos_audio_clip_player,
     valid_preference,
 )
-from .audio import async_custom_chime, chime_duration, convert_wav, test_audio, validate_wav
+from .audio import (
+    TEST_TONE_DURATION,
+    async_announcement_chime,
+    async_custom_chime,
+    convert_wav,
+    test_audio,
+    validate_wav,
+)
 from .const import DELIVERY_TIMEOUT, DOMAIN, MAX_BYTES, TTL, UPLOAD_TIMEOUT
 from .diagnostics import elapsed_ms, public_diagnostics, start_diagnostics
 from .helpers import (
@@ -30,6 +37,10 @@ from .helpers import (
     system_url,
     targets,
 )
+
+
+def uses_announcement_chime(values, transport):
+    return values["announcement_chime"] and not (values["skip_cast_chime"] and transport == "cast")
 
 
 class HomeCallView(HomeAssistantView):
@@ -338,8 +349,7 @@ class UploadView(HomeCallView):
             chimed_targets = {
                 entity_id
                 for entity_id in selected
-                if values["announcement_chime"]
-                and not (values["skip_cast_chime"] and transports.get(entity_id) == "cast")
+                if uses_announcement_chime(values, transports.get(entity_id))
             }
             stage = time.monotonic()
             try:
@@ -348,20 +358,12 @@ class UploadView(HomeCallView):
                 chimed_audio = None
                 cue_duration = 0
                 if chimed_targets:
-                    media_id = values["custom_chime"]
-                    custom_chime = (
-                        await async_custom_chime(self.hass, media_id) if media_id else None
+                    cue, cue_duration = await async_announcement_chime(
+                        self.hass, values["custom_chime"]
                     )
-                    if custom_chime is None:
-                        chimed_audio = await self.hass.async_add_executor_job(
-                            convert_wav, recording, True
-                        )
-                        cue_duration = await self.hass.async_add_executor_job(chime_duration)
-                    else:
-                        cue, cue_duration = custom_chime
-                        chimed_audio = await self.hass.async_add_executor_job(
-                            convert_wav, recording, True, cue
-                        )
+                    chimed_audio = await self.hass.async_add_executor_job(
+                        convert_wav, recording, True, cue
+                    )
             except OSError, subprocess.SubprocessError, wave.Error:
                 return self.json(
                     {"error": "Audio konnte nicht umgewandelt werden."}, status_code=500
@@ -659,18 +661,25 @@ class SpeakerTestView(SettingsView):
                 return self.json({"error": "test_busy"}, status_code=429)
             trace = start_diagnostics(store, request)
             trace["test_mode"] = mode
-            duration = 3
-            trace["duration_seconds"] = duration
+            duration = TEST_TONE_DURATION
             stage = time.monotonic()
             try:
-                audio = await self.hass.async_add_executor_job(
-                    test_audio,
-                )
-            except OSError, subprocess.SubprocessError:
+                if uses_announcement_chime(values, candidate.get("transport")):
+                    cue, cue_duration = await async_announcement_chime(
+                        self.hass, values["custom_chime"]
+                    )
+                    duration += cue_duration
+                    audio = await self.hass.async_add_executor_job(test_audio, True, cue)
+                else:
+                    audio = await self.hass.async_add_executor_job(test_audio)
+            except OSError, subprocess.SubprocessError, wave.Error:
                 return self.json({"error": "test_failed"}, status_code=500)
             if not self.operation_active(store, generation):
                 raise web.HTTPServiceUnavailable()
             token = secrets.token_urlsafe(32)
+            trace["duration_seconds"] = round(duration, 3)
+            if volume is not None:
+                trace["requested_announcement_volume_percent"] = volume
             trace["timings_ms"]["conversion"] = elapsed_ms(stage)
             trace["_clip_created"] = time.monotonic()
             trace["_expires"] = trace["_clip_created"] + TTL
