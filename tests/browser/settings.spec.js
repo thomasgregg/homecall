@@ -14,6 +14,8 @@ async function fixture(page, language = "en", transport = "dlna", pickerLayout =
   await page.evaluate((layout) => {
     customElements.define("hass-subpage", class extends HTMLElement {});
     customElements.define("ha-settings-row", class extends HTMLElement {});
+    customElements.define("ha-switch", class extends HTMLElement {});
+    customElements.define("ha-slider", class extends HTMLElement {});
     class MockMediaPicker extends HTMLElement {
       connectedCallback() {
         this.attachShadow({mode:"open"});
@@ -152,6 +154,12 @@ async function fixture(page, language = "en", transport = "dlna", pickerLayout =
         if (data.removed_dlna) {
           window.settings.tested_dlna = window.settings.tested_dlna.filter(id => !data.removed_dlna.includes(id));
         }
+        if (data.announcement_volume_changes) {
+          window.settings.announcement_volumes = {
+            ...window.settings.announcement_volumes,
+            ...data.announcement_volume_changes,
+          };
+        }
         Object.assign(window.settings, data);
         return structuredClone(window.settings);
       },
@@ -171,6 +179,42 @@ async function addDlna(page) {
   await page.locator('[data-test="media_player.jbl"]').click();
   await page.locator('.confirm-test').click();
 }
+test("the native volume controls only appear on an eligible speaker and save on request", async ({page}) => {
+  await fixture(page, "en", "sonos", "nested", {
+    added_speakers: ["media_player.bedroom", "media_player.legacy"],
+    default_targets: ["media_player.bedroom", "media_player.legacy"],
+    dlna_candidates: [
+      {entity_id: "media_player.bedroom", name: "Bedroom", transport: "sonos", available: true, announcement_volume_supported: true},
+      {entity_id: "media_player.legacy", name: "Legacy", transport: "sonos", available: true},
+    ],
+  });
+  await page.locator('[data-page="sonos"]').click();
+  const panel = page.locator('[data-speaker-panel="media_player.bedroom"]');
+  await panel.locator("button").click();
+  const row = panel.locator("[data-volume-speaker]");
+  const slider = row.locator("ha-slider");
+  await expect(row.locator(".volume-level")).toBeHidden();
+  await expect(page.locator('[data-volume-speaker="media_player.legacy"]')).toHaveCount(0);
+  await toggle(page, '[data-volume-speaker] ha-switch', true);
+  await expect(row.locator(".volume-level")).toBeVisible();
+  await expect(row.locator("output")).toHaveText("25%");
+  await slider.evaluate((element) => {
+    element.value = 37;
+    element.dispatchEvent(new Event("input"));
+  });
+  await expect(row.locator("output")).toHaveText("37%");
+  await panel.locator("[data-test]").click();
+  const calls = await page.evaluate(() => window.calls.filter((call) => call.method === "POST"));
+  expect(calls).toHaveLength(1);
+  expect(calls[0].data.announcement_volume).toEqual({enabled: true, level: 37});
+  await toggle(page, '[data-volume-speaker] ha-switch', false);
+  await expect(row.locator(".volume-level")).toBeHidden();
+  await page.locator(".save").click();
+  await expect(page.locator('[data-page="sonos"]')).toBeVisible();
+  expect(await page.evaluate(() => window.settings.announcement_volumes)).toEqual({
+    "media_player.bedroom": {enabled: false, level: 37},
+  });
+});
 test('speaker settings show room and entity ID in connected and available rows', async ({page}) => {
   await fixture(page, "en", "sonos", "nested", {
     added_speakers: ["media_player.window"],

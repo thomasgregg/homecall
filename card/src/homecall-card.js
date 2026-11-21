@@ -220,6 +220,10 @@ const HOMECALL_EN = {
   "An {count} Lautsprecher gesendet.": "Sent to {count} speakers.",
   "Einige Geräte konnten nicht erreicht werden.":
     "Some devices could not be reached.",
+  "Eigene Durchsagelautstärke nicht verfügbar: {speakers}.":
+    "Custom announcement volume unavailable: {speakers}.",
+  "Wiedergabe unbestätigt: {speakers}. Die Durchsage kann trotzdem abgespielt werden.":
+    "Playback unconfirmed: {speakers}. The announcement may still play.",
   "Diese Lautsprecher werden übersprungen: {speakers}.":
     "These speakers will be skipped: {speakers}.",
   "Übersprungen: {speakers}.": "Skipped: {speakers}.",
@@ -1230,25 +1234,29 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
   }
   _skippedStatus(ids, pending = false) {
     if (!ids?.length) return "";
-    const speakers = ids.map((id) => {
-      const target = this._targets?.find((target) => target.entity_id === id);
-      if (!target) return id;
-      const integration = homeCallSpeakerIntegration(target);
-      const context = [
-        target.area_name,
-        target.show_entity_id && target.entity_id,
-        integration,
-      ]
-        .filter(Boolean)
-        .join(" · ");
-      return target.name + (context ? " (" + context + ")" : "");
-    });
     return this._t(
       pending
         ? "Diese Lautsprecher werden übersprungen: {speakers}."
         : "Übersprungen: {speakers}.",
-      { speakers: speakers.join(", ") },
+      { speakers: this._speakerNames(ids) },
     );
+  }
+  _speakerNames(ids) {
+    return ids
+      .map((id) => {
+        const target = this._targets?.find((target) => target.entity_id === id);
+        if (!target) return id;
+        const integration = homeCallSpeakerIntegration(target);
+        const context = [
+          target.area_name,
+          target.show_entity_id && target.entity_id,
+          integration,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return target.name + (context ? " (" + context + ")" : "");
+      })
+      .join(", ");
   }
   _readyStatus() {
     const message = this._selection.length
@@ -1476,18 +1484,47 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
           data.error || "Die Durchsage konnte nicht gesendet werden.",
         );
       const sent = data.results.filter((r) => r.accepted).length;
+      const deliveryWarnings = [
+        [
+          "announcement_volume_unavailable",
+          "Eigene Durchsagelautstärke nicht verfügbar: {speakers}.",
+        ],
+        [
+          "delivery_unconfirmed",
+          "Wiedergabe unbestätigt: {speakers}. Die Durchsage kann trotzdem abgespielt werden.",
+        ],
+      ].flatMap(([reason, text]) => {
+        const ids = data.results
+          .filter((r) => r.reason === reason)
+          .map((r) => r.entity_id);
+        return ids.length
+          ? [this._t(text, { speakers: this._speakerNames(ids) })]
+          : [];
+      });
+      const failed = data.results.some((r) => !r.accepted && !r.reason);
       if (!sent)
         throw new Error(
-          "Die Lautsprecher haben die Durchsage nicht angenommen.",
+          [
+            ...(failed
+              ? [
+                  this._t(
+                    "Die Lautsprecher haben die Durchsage nicht angenommen.",
+                  ),
+                ]
+              : []),
+            ...deliveryWarnings,
+          ].join("\n") ||
+            "Die Lautsprecher haben die Durchsage nicht angenommen.",
         );
       this._phase = "sent";
       const skipped = this._skippedStatus(this._recordingSkippedTargets);
       this._partialSend = sent < targets.length || !!skipped;
       this._setStatus(
         this._t("An {count} Lautsprecher gesendet.", { count: sent }) +
-          (sent < targets.length
+          (failed
             ? " " + this._t("Einige Geräte konnten nicht erreicht werden.")
             : "") +
+          (deliveryWarnings.length ? "\n" + deliveryWarnings.join("\n") : "") +
           (skipped ? "\n" + skipped : ""),
       );
       this._doneButton();

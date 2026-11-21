@@ -53,6 +53,16 @@ The row shows the selected filename. Use **Change** to select a different file, 
 
 The direct Google Cast exception is on by default. Music Assistant targets use the HomeCall chime when enabled. HomeCall uses the chime and recording in one clip, and the speaker setup sound test uses its own test tone.
 
+## Custom announcement volume (beta)
+
+In **HomeCall → Configure → Sonos speakers** or **Music Assistant speakers**, expand an eligible speaker and enable **Custom announcement volume**. Set the level with the slider and select **Save**. You can select **Test** to hear the current slider level before saving. Turn the switch off to use the integration’s normal announcement level. HomeCall remembers the selected percentage.
+
+- **Sonos:** The direct speaker must report S2 software and have a connected AudioClip client. HomeCall uses AudioClip for an override. If the clip is refused, HomeCall reports the speaker as skipped.
+- **Music Assistant:** The player must support volume adjustment and be standalone. Group and stereo-pair targets and players currently participating in a group use their own volume settings. Music Assistant can limit or ignore a requested percentage according to its player settings. It controls playback interruption, temporary unmuting, and restoration.
+- A saved override remains available to turn off if the speaker is disconnected or grouped. If a reachable speaker can no longer use its override, HomeCall reports the affected speaker and continues with the other eligible recipients. A delivery timeout can mean a clip is still playing.
+
+The level applies to the whole announcement, including the HomeCall chime. Direct Google Cast, DLNA, Alexa Devices, and direct EchoMuse keep their current behavior. Percentage scales differ by device. The beta has automated coverage, and audible playback and restoration still need verification on hardware.
+
 ## Resume music after announcements
 
 Each added DLNA speaker has an optional **Resume music after announcements** setting, off by default. It remembers the current media URL, playback position and playing/paused state. After an announcement has actually played and finished, it restarts that media and seeks to the saved position if the speaker supports seeking. Without seeking support it restarts at the beginning. Paused media is restored to paused when the device advertises pause support; idle players are never started.

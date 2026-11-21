@@ -10,6 +10,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from yarl import URL
 
+from .announcement_volume import supports_announcement_volume
+
 
 def _speaker_label(hass, entity, state, device):
     """Describe a speaker using the Home Assistant name and area registries."""
@@ -105,6 +107,7 @@ def settings(entry, hass=None):
         "announcement_chime": values.get("announcement_chime", False),
         "skip_cast_chime": values.get("skip_cast_chime", True),
         "custom_chime": values.get("custom_chime"),
+        "announcement_volumes": values.get("announcement_volumes", {}),
     }
 
 
@@ -162,6 +165,12 @@ def dlna_candidates(hass):
             {
                 "entity_id": entity.entity_id,
                 **_speaker_label(hass, entity, state, device),
+                **(
+                    {"announcement_volume_supported": True}
+                    if entity.platform in ("sonos", "music_assistant")
+                    and supports_announcement_volume(hass, entity, state)
+                    else {}
+                ),
                 "available": state.state not in ("unavailable", "unknown"),
                 "transport": (
                     "echomuse"

@@ -1,1 +1,1 @@
-Match Home Assistant card editor spacing
+Per-speaker announcement volume beta

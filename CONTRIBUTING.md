@@ -22,6 +22,8 @@ Never include real credentials, recordings, delivery URLs, or personal dashboard
 4. Tag `v<version>` and push the tag. The release workflow validates and publishes the distribution asset.
 5. Install the published asset through HACS or the manual instructions to verify packaging.
 
+Use `v<version>-beta.<number>` from the beta branch for opt-in builds. The same workflow publishes these as pre-releases.
+
 MIT is the project's license. Contributions are provided under that license.
 
 The administrative settings UI has browser regression tests. Run `npm ci`, install matching browsers with `npx playwright install chromium webkit`, then run `npm run test:browser`. Chromium and WebKit fixtures verify the six speaker groups, test confirmation, failure handling and selection preservation. They use native-control stand-ins; real HA styling and audible playback still need device checks.

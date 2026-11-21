@@ -1,4 +1,4 @@
-/*! HomeCall Card v1.11.2 | MIT License | github.com/thomasgregg/homecall */
+/*! HomeCall Card v1.12.0-beta.1 | MIT License | github.com/thomasgregg/homecall */
 (() => {
   // src/layout.js
   function homeCallLayout(width, height, hasSelector = true, selectorWidth = 100, footerWidths = null) {
@@ -354,6 +354,8 @@
     "An die Lautsprecher gesendet. Der Audioabruf ist noch nicht best\xE4tigt.": "Sent to the speakers. Audio retrieval has not been confirmed yet.",
     "An {count} Lautsprecher gesendet.": "Sent to {count} speakers.",
     "Einige Ger\xE4te konnten nicht erreicht werden.": "Some devices could not be reached.",
+    "Eigene Durchsagelautst\xE4rke nicht verf\xFCgbar: {speakers}.": "Custom announcement volume unavailable: {speakers}.",
+    "Wiedergabe unbest\xE4tigt: {speakers}. Die Durchsage kann trotzdem abgespielt werden.": "Playback unconfirmed: {speakers}. The announcement may still play.",
     "Diese Lautsprecher werden \xFCbersprungen: {speakers}.": "These speakers will be skipped: {speakers}.",
     "\xDCbersprungen: {speakers}.": "Skipped: {speakers}.",
     "Eine Durchsage wird gerade gesendet.": "An announcement is already being sent.",
@@ -957,7 +959,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       this._recordingTargets = [...this._selection];
       this._recordingSkippedTargets = [...this._skippedTargets || []];
       this._diagnostics = {
-        card_version: false ? "development" : "1.11.2",
+        card_version: false ? "development" : "1.12.0-beta.1",
         browser_timings_ms: {}
       };
       const tapped = performance.now();
@@ -1192,7 +1194,13 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
     }
     _skippedStatus(ids, pending = false) {
       if (!ids?.length) return "";
-      const speakers = ids.map((id) => {
+      return this._t(
+        pending ? "Diese Lautsprecher werden \xFCbersprungen: {speakers}." : "\xDCbersprungen: {speakers}.",
+        { speakers: this._speakerNames(ids) }
+      );
+    }
+    _speakerNames(ids) {
+      return ids.map((id) => {
         const target = this._targets?.find((target2) => target2.entity_id === id);
         if (!target) return id;
         const integration = homeCallSpeakerIntegration(target);
@@ -1202,11 +1210,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
           integration
         ].filter(Boolean).join(" \xB7 ");
         return target.name + (context ? " (" + context + ")" : "");
-      });
-      return this._t(
-        pending ? "Diese Lautsprecher werden \xFCbersprungen: {speakers}." : "\xDCbersprungen: {speakers}.",
-        { speakers: speakers.join(", ") }
-      );
+      }).join(", ");
     }
     _readyStatus() {
       const message = this._selection.length ? "Tippe auf das Mikrofon" : "Bitte mindestens einen Lautsprecher ausw\xE4hlen.";
@@ -1411,15 +1415,36 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
             data.error || "Die Durchsage konnte nicht gesendet werden."
           );
         const sent = data.results.filter((r) => r.accepted).length;
+        const deliveryWarnings = [
+          [
+            "announcement_volume_unavailable",
+            "Eigene Durchsagelautst\xE4rke nicht verf\xFCgbar: {speakers}."
+          ],
+          [
+            "delivery_unconfirmed",
+            "Wiedergabe unbest\xE4tigt: {speakers}. Die Durchsage kann trotzdem abgespielt werden."
+          ]
+        ].flatMap(([reason, text]) => {
+          const ids = data.results.filter((r) => r.reason === reason).map((r) => r.entity_id);
+          return ids.length ? [this._t(text, { speakers: this._speakerNames(ids) })] : [];
+        });
+        const failed = data.results.some((r) => !r.accepted && !r.reason);
         if (!sent)
           throw new Error(
-            "Die Lautsprecher haben die Durchsage nicht angenommen."
+            [
+              ...failed ? [
+                this._t(
+                  "Die Lautsprecher haben die Durchsage nicht angenommen."
+                )
+              ] : [],
+              ...deliveryWarnings
+            ].join("\n") || "Die Lautsprecher haben die Durchsage nicht angenommen."
           );
         this._phase = "sent";
         const skipped = this._skippedStatus(this._recordingSkippedTargets);
         this._partialSend = sent < targets.length || !!skipped;
         this._setStatus(
-          this._t("An {count} Lautsprecher gesendet.", { count: sent }) + (sent < targets.length ? " " + this._t("Einige Ger\xE4te konnten nicht erreicht werden.") : "") + (skipped ? "\n" + skipped : "")
+          this._t("An {count} Lautsprecher gesendet.", { count: sent }) + (failed ? " " + this._t("Einige Ger\xE4te konnten nicht erreicht werden.") : "") + (deliveryWarnings.length ? "\n" + deliveryWarnings.join("\n") : "") + (skipped ? "\n" + skipped : "")
         );
         this._doneButton();
         this._checkReceipt(data.receipt, 0);
