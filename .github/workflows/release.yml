@@ -37,7 +37,7 @@ jobs:
           release_flags=()
           if [[ "$GITHUB_REF_NAME" == *-beta.* ]]; then
             release_flags+=(--prerelease --latest=false)
-            validation+=" Audible playback and volume restoration with the beta override still need hardware verification on Sonos and Music Assistant."
+            validation+=" See the [configuration guide](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/configuration.md#custom-announcement-volume-beta) for verified hardware and volume limits."
           fi
           python3 scripts/release-notes.py --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" --previous-tag "$previous_tag" --validation "$validation" > release-notes.md
           gh release create "$GITHUB_REF_NAME" homecall.zip --verify-tag --title "$GITHUB_REF_NAME — $(cat RELEASE_TITLE.txt)" --notes-file release-notes.md "${release_flags[@]}"

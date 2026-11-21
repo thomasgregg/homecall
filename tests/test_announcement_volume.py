@@ -10,7 +10,14 @@ from aiohttp import web
 from homeassistant.components.media_player.const import MediaPlayerEntityFeature as Feature
 
 from custom_components.homecall.announcement_volume import supports_announcement_volume
-from custom_components.homecall.views import SettingsView, SpeakerTestView, UploadView, deliver
+from custom_components.homecall.views import (
+    AudioView,
+    SettingsView,
+    SpeakerTestView,
+    StatusView,
+    UploadView,
+    deliver,
+)
 
 SONOS = "media_player.sonos"
 MA = "media_player.mass"
@@ -247,6 +254,42 @@ async def test_speaker_sound_test_uses_draft_without_saving(hass, http_request, 
     assert json.loads(response.body)["diagnostics"]["requested_announcement_volume_percent"] == 27
     assert speakers.sonos.websocket.play_clip.call_args.kwargs == {"volume": 27}
     hass.config_entries.async_update_entry.assert_not_called()
+
+
+async def test_unconfirmed_music_assistant_test_keeps_owner_scoped_diagnostics(
+    hass, http_request, speakers, monkeypatch
+):
+    monkeypatch.setattr("custom_components.homecall.views.DELIVERY_TIMEOUT", 0.02)
+
+    async def wait_for_player(*args, **kwargs):
+        await asyncio.Event().wait()
+
+    hass.services.async_call.side_effect = wait_for_player
+    request = http_request({"action": "test", "entity_id": MA, "announcement_volume": option()})
+    request["hass_user"].id = "test-admin"
+    response = await SpeakerTestView(hass).post(request)
+
+    assert response.status == 400
+    result = json.loads(response.body)
+    diagnostics = result["diagnostics"]
+    assert result["error"] == diagnostics["error"] == "delivery_unconfirmed"
+    assert diagnostics["failure_stage"] == "delivery"
+    assert diagnostics["requested_announcement_volume_percent"] == 25
+    assert diagnostics["audio_fetches"] == 0
+    assert "receipt" not in result
+
+    token = next(iter(hass.data["homecall"]["clips"]))
+    assert token not in response.text
+    await AudioView(hass).get(http_request(), token)
+    status_request = http_request()
+    status_request.query["diagnostic_id"] = diagnostics["diagnostic_id"]
+    with pytest.raises(web.HTTPNotFound):
+        await StatusView(hass).get(status_request)
+    status_request["hass_user"].id = "test-admin"
+    refreshed = json.loads((await StatusView(hass).get(status_request)).body)["diagnostics"]
+    assert refreshed["audio_fetches"] == 1
+    assert refreshed["error"] == "delivery_unconfirmed"
+    assert token not in json.dumps(refreshed)
 
 
 @pytest.mark.parametrize("draft", [option(level=12), option(level=34), option(False, 34), None])

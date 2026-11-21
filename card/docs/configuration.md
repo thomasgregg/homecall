@@ -2,9 +2,9 @@
 
 ## Native editor
 
-Appearance controls whether the speaker picker is shown. Default recipients selects all allowed available devices or a custom list. Save the card and leave dashboard edit mode before judging its final size: edit handles and the preview can have different widths.
+**Appearance → Show speaker selection** controls the speaker picker. In **Default recipients**, choose **All allowed devices** or **Custom selection**. Save the card and leave dashboard edit mode to check its final size because edit handles and the preview can have different widths.
 
-Speaker selection uses HA’s native selectable rows. The speaker name is on the main line, with integration and availability beneath it. Identical names remain separate routes (for example, DLNA and Music Assistant). Unavailable routes are disabled in the send picker but can remain saved defaults. Selecting more than one route to the same physical device can deliver the announcement more than once. Narrow cards use a viewport-bounded popover wide enough for the second line; long names retain their full text in the native tooltip.
+Speaker selection uses HA’s native selectable rows. The speaker name is on the main line. The card shows its area when assigned, its availability, and the integration where needed. If speakers share the same name and area or have the same name with no area, the card also shows their entity IDs. The editor uses the same name and area details. Unavailable routes are disabled in the send picker but can remain saved defaults. Selecting more than one route to the same physical device can deliver the announcement more than once. Narrow cards use a viewport-bounded popover with room for the second line. Long names retain their full text in the native tooltip.
 
 **Show diagnostics** is optional and defaults to off. Enable it under **Troubleshooting** in the native editor, or set `show_diagnostics: true` in YAML, when investigating capture or playback issues. It exposes the measured timings in the status panel; recording behavior is unchanged.
 
@@ -54,7 +54,9 @@ grid_options:
 
 Discard invalidates the current session, stops tracks, disconnects the audio processor, clears buffers, and preserves recipient controls. The card can reuse a suspended audio context after capture, but closes an in-progress startup context on cancellation. No microphone track stays open between recordings. Late microphone and HTTP callbacks cannot update a discarded recording.
 
-Recipients are frozen during capture and until sending. The countdown uses captured samples. There is no fixed startup wait, stop delay, chime or silence added to normal recordings. First-sample and flush timeouts are failure deadlines, not minimum waits.
+Recipients are frozen during capture and until sending. The countdown uses captured samples. The card uploads the captured speech. The integration applies the configured announcement chime and per-speaker volume during delivery. [HomeCall announcement chime](../../docs/configuration.md#announcement-chime) · [Custom announcement volume (beta)](../../docs/configuration.md#custom-announcement-volume-beta)
+
+First-sample and flush timeouts are failure deadlines.
 
 Readiness visuals use the card's phase as their single source of truth. Finishing and sending remove recording markers immediately. Control positions reserve the same space across phases, including when the timer is hidden during preparation.
 

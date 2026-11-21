@@ -17,20 +17,14 @@ def main():
     if marker not in changelog:
         parser.error(f"Missing changelog entry for {version}")
     changes = changelog.split(marker, 1)[1].split("\n## ", 1)[0].strip()
+    base = f"https://github.com/{args.repository}"
     installation = (
-        "Install or update HomeCall through HACS, then restart Home Assistant and refresh the dashboard. "
+        "Install or update HomeCall through Marketplace on Home Assistant 2026.11 and later, "
+        "or through HACS on earlier supported versions. Restart Home Assistant and refresh the dashboard. "
         "For manual installation, extract `homecall.zip` into `custom_components/homecall`. "
         "HomeCall Card is included. Existing separate card installations must follow "
         "the [migration guide](https://github.com/thomasgregg/homecall/blob/main/docs/card-migration.md)."
     )
-    if "-beta." in version:
-        installation = (
-            f"To opt into this beta, open HomeCall in HACS or Marketplace, enable pre-releases "
-            f"and select `{args.tag}`. Restart Home Assistant and refresh the dashboard. "
-            "To return to the stable release, install the latest stable version from the same "
-            "repository and restart again."
-        )
-    base = f"https://github.com/{args.repository}"
     link = (
         f"{base}/compare/{args.previous_tag}...{args.tag}"
         if args.previous_tag

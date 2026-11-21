@@ -1,6 +1,6 @@
 {
   "name": "homecall-card",
-  "version": "1.12.0-beta.3",
+  "version": "1.12.0-beta.4",
   "private": true,
   "type": "module",
   "description": "Original-voice announcements to Alexa devices from Home Assistant",

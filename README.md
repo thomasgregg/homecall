@@ -22,6 +22,7 @@ Install **HomeCall** to get the integration and dashboard card together.
 - [Which setup should I use?](#which-setup-should-i-use)
 - [Before you start](#before-you-start)
 - [Install](#install)
+  - [Marketplace](#marketplace)
   - [HACS](#hacs)
   - [Manual installation](#manual)
 - [Use](#use)
@@ -83,7 +84,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
   </tr>
   <tr>
     <td valign="top">Sonos</td>
-    <td valign="top">🟠 Implemented using native <code>announce: true</code>; direct Sonos hardware playback unverified.</td>
+    <td valign="top">🟠 Uses native Sonos announcements. Direct Sonos hardware playback remains unverified.</td>
     <td valign="top">🟠 Combined chime and recording implemented; hardware verification pending.</td>
     <td valign="top">🟠 Delegated to Sonos; not hardware-verified.</td>
     <td valign="top">Simulated discovery, setup and service-call tests only. The community Sonos One SL test used Music Assistant, not this direct route.</td>
@@ -137,7 +138,7 @@ You need Home Assistant **2026.9 or newer** and FFmpeg with MP3 encoding. For Al
 
 For DLNA, configure the built-in [DLNA Digital Media Renderer integration](https://www.home-assistant.io/integrations/dlna_dmr/) and ensure the speaker can reach HA’s local audio address. A public HTTPS address is not needed for DLNA delivery. The browser still needs HTTPS for microphone access.
 
-For Sonos, configure Home Assistant’s [Sonos integration](https://www.home-assistant.io/integrations/sonos/), then choose speakers under **Sonos speakers**. A sound test is available in each speaker row and is optional. HomeCall uses `announce: true` and leaves music restoration to Sonos. Direct Sonos playback, optional chime and music restoration remain hardware-unverified. The community Sonos One SL report used Music Assistant 2.10.6, rather than this route. Simulated discovery, onboarding, and delivery tests pass. Older hardware and S1 firmware may have announcement limitations.
+For Sonos, configure Home Assistant’s [Sonos integration](https://www.home-assistant.io/integrations/sonos/), then choose speakers under **Sonos speakers**. A sound test is available in each speaker row. HomeCall normally uses `announce: true`. The beta uses Sonos AudioClip for [custom announcement volume](docs/configuration.md#custom-announcement-volume-beta) on eligible S2 speakers. Sonos handles music restoration. Direct Sonos hardware playback remains unverified. The community Sonos One SL test used Music Assistant 2.10.6.
 
 For Music Assistant, install and start the [Music Assistant server](https://www.music-assistant.io/), connect your speakers, and configure its [Home Assistant integration](https://www.home-assistant.io/integrations/music_assistant/), then open **HomeCall → Configure → Music Assistant speakers**, add players, select visibility, and save. HomeCall sends recorded MP3s through `music_assistant.play_announcement`; Music Assistant handles playback restoration. Choose the MA entity rather than the underlying DLNA/Sonos entity when music is managed by MA. The JBL Charge 5 Wi-Fi / AirPlay 2 test confirmed audible chime playback, music ducking and volume restoration. A community test on Sonos One SL with MA 2.10.6 confirmed announcement and chime playback, plus resumption of MA-managed music at its previous volume; the recording was reported too loud. Playback behavior depends on the player and protocol; see [Music Assistant configuration and tested scope](docs/configuration.md#music-assistant-announcements).
 
@@ -151,18 +152,15 @@ For EchoMuse, connect your Dots through Home Assistant’s ESPHome integration, 
 
 From **HomeCall 1.9.0**, the dashboard card ships with the integration. Update HomeCall, restart Home Assistant, then refresh every dashboard tab or reset the Companion app's frontend cache. Existing users should follow the [bundled-card migration guide](docs/card-migration.md).
 
+### Marketplace
+
+On Home Assistant 2026.11 and later, open **Settings → Marketplace**, search for **HomeCall**, and select **Install**. Existing HACS installs migrate to Marketplace when Home Assistant starts after the upgrade. Then [complete setup](#complete-setup). [Home Assistant Marketplace documentation](https://www.home-assistant.io/integrations/marketplace/)
+
 ### HACS
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=thomasgregg&repository=homecall&category=integration)
 
-With HACS installed, search for **HomeCall** in HACS or use the button above to open it directly. The dashboard card is included.
-
-1. Open **HACS** and search for **HomeCall**.
-2. Open **HomeCall** and choose **Download**.
-3. Restart Home Assistant.
-4. Open **Settings → Devices & services → Add integration → HomeCall**.
-5. Choose **Alexa speakers**, **DLNA speakers**, **Music Assistant**, **Google Cast speakers** or **EchoMuse speakers** in the setup menu. For Alexa, configure the public HTTPS address and speaker selection. For direct Sonos without Alexa, finish the local-only setup through **DLNA speakers**, then add your devices under **Configure → Sonos speakers**. For DLNA, open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
-6. Refresh the dashboard and add **HomeCall** from the card picker. UI-managed dashboard resources are registered automatically; see the [migration guide](docs/card-migration.md) for YAML-managed resources.
+On Home Assistant 2026.9 or 2026.10 with HACS installed, open **HACS**, search for **HomeCall**, and select **Download**. Then [complete setup](#complete-setup).
 
 #### Fallback: custom repository
 
@@ -170,11 +168,18 @@ If HomeCall does not appear in your HACS catalog:
 
 1. In HACS, open **Custom repositories** from the menu.
 2. Add `https://github.com/thomasgregg/homecall` with type **Integration**.
-3. Search for **HomeCall**, download it, then continue with steps 3–6 above.
+3. Search for **HomeCall**, download it, then [complete setup](#complete-setup).
 
 ### Manual
 
-Download `homecall.zip` from the [latest release](https://github.com/thomasgregg/homecall/releases/latest) and extract its contents into `<config>/custom_components/homecall`. Alternatively, copy [`custom_components/homecall`](custom_components/homecall) from the repository to that location. Restart Home Assistant and follow steps 4–6 above. The bundled card is already included; no separate JavaScript download or npm build on Home Assistant is needed.
+Download `homecall.zip` from the [latest release](https://github.com/thomasgregg/homecall/releases/latest) and extract its contents into `<config>/custom_components/homecall`. Alternatively, copy [`custom_components/homecall`](custom_components/homecall) from the repository to that location. The ZIP includes the built dashboard card. Then [complete setup](#complete-setup).
+
+### Complete setup
+
+1. Restart Home Assistant.
+2. Open **Settings → Devices & services → Add integration → HomeCall** if setup has not already opened.
+3. Choose **Alexa speakers**, **DLNA speakers**, **Music Assistant**, **Google Cast speakers** or **EchoMuse speakers**. For Alexa, configure the public HTTPS address and speaker selection. For direct Sonos without Alexa, finish local-only setup through **DLNA speakers**, then add your devices under **Configure → Sonos speakers**. For DLNA, open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
+4. Refresh the dashboard and add **HomeCall** from the card picker. HomeCall registers UI-managed dashboard resources automatically. For YAML-managed resources, follow the [migration guide](docs/card-migration.md).
 
 ## Use
 
@@ -256,7 +261,11 @@ Enable **Play a chime before messages** under **HomeCall → Configure → Annou
 
 **Skip the chime on direct Google Cast speakers** is on by default. Turn it off to include the cue on those direct routes. Music Assistant targets still receive the HomeCall chime, and HomeCall disables Music Assistant's own pre-announcement cue. Native Cast connection sounds may still play.
 
-The card uploads one recording; the integration combines the cue and voice when needed. Speaker sound tests are unchanged. Verified routes and remaining hardware limits are listed in [Speaker compatibility](#speaker-compatibility).
+The card uploads one recording. The integration combines the cue and voice when needed. Starting with **v1.12.0-beta.3**, **Test** follows the saved chime settings and plays a short tone after the cue. Verified routes and hardware limits are listed in [Speaker compatibility](#speaker-compatibility).
+
+### Custom announcement volume (beta)
+
+Eligible direct Sonos S2 speakers and standalone Music Assistant players have a **Custom announcement volume** switch under **HomeCall → Configure** in their respective speaker lists. Turning it on reveals a slider for the whole announcement, including the chime. **Test** uses the selected level before you save. For Music Assistant’s required player settings and limits, see the [volume setup guide](docs/configuration.md#music-assistant-volume-setup).
 
 For more detail, see [layout and recording states](card/docs/configuration.md) and [card troubleshooting](card/docs/troubleshooting.md). Developers can find the card source and checks in [card/](card/).
 
@@ -273,9 +282,9 @@ flowchart TD
     Notify -->|SSML with public HTTPS audio URL| Amazon[Amazon Alexa service]
     Route -->|Tested DLNA| Play[DLNA DMR: media_player.play_media]
     Play -->|Local audio URL; type music| Speaker[DLNA renderer]
-    Route -->|Sonos| SonosService["Sonos: media_player.play_media<br/>announce: true"]
-    SonosService -->|Local audio URL; type music| SonosPlayer[Sonos native announcement]
-    Route -->|Music Assistant| MAService["music_assistant.play_announcement<br/>use_pre_announce: false"]
+    Route -->|Sonos| SonosService["Sonos: announce: true by default<br/>AudioClip for a custom volume"]
+    SonosService -->|Local audio URL| SonosPlayer[Sonos native announcement]
+    Route -->|Music Assistant| MAService["music_assistant.play_announcement<br/>announce_volume when enabled"]
     MAService -->|Local audio URL| MAPlayer[Music Assistant managed player]
     Amazon -->|Fetch MP3| Audio[Token-only audio endpoint: no HA login]
     Speaker -->|Fetch MP3| Audio
@@ -313,7 +322,7 @@ Service calls are dispatched concurrently, without synchronized playback or a co
 
 | Guide                                      | Covers                                                                |
 | ------------------------------------------ | --------------------------------------------------------------------- |
-| [Configuration](docs/configuration.md)     | Public address, speakers shown in the card, and changing settings     |
+| [Configuration](docs/configuration.md)     | Speaker setup, custom chimes, announcement volume, and playback      |
 | [EchoMuse](docs/echomuse.md)               | ESPHome setup, audio delivery and playback limitations                |
 | [Google Cast / Nest](docs/google-cast.md)  | Cast setup, network requirements, test results and music continuation |
 | [API and architecture](docs/api.md)        | Endpoints, limits, audio lifecycle, and module responsibilities       |

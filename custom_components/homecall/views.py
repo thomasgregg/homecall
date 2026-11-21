@@ -661,6 +661,8 @@ class SpeakerTestView(SettingsView):
                 return self.json({"error": "test_busy"}, status_code=429)
             trace = start_diagnostics(store, request)
             trace["test_mode"] = mode
+            if volume is not None:
+                trace["requested_announcement_volume_percent"] = volume
             duration = TEST_TONE_DURATION
             stage = time.monotonic()
             try:
@@ -673,13 +675,16 @@ class SpeakerTestView(SettingsView):
                 else:
                     audio = await self.hass.async_add_executor_job(test_audio)
             except OSError, subprocess.SubprocessError, wave.Error:
-                return self.json({"error": "test_failed"}, status_code=500)
+                trace["timings_ms"]["conversion"] = elapsed_ms(stage)
+                trace.update(error="test_failed", failure_stage="conversion")
+                return self.json(
+                    {"error": "test_failed", "diagnostics": public_diagnostics(trace)},
+                    status_code=500,
+                )
             if not self.operation_active(store, generation):
                 raise web.HTTPServiceUnavailable()
             token = secrets.token_urlsafe(32)
             trace["duration_seconds"] = round(duration, 3)
-            if volume is not None:
-                trace["requested_announcement_volume_percent"] = volume
             trace["timings_ms"]["conversion"] = elapsed_ms(stage)
             trace["_clip_created"] = time.monotonic()
             trace["_expires"] = trace["_clip_created"] + TTL
@@ -699,7 +704,11 @@ class SpeakerTestView(SettingsView):
                 reason = result.get("reason", "test_failed")
                 if reason != "delivery_unconfirmed":
                     store["clips"].pop(token, None)
-                return self.json({"error": reason}, status_code=400)
+                trace.update(error=reason, failure_stage="delivery")
+                return self.json(
+                    {"error": reason, "diagnostics": public_diagnostics(trace)},
+                    status_code=400,
+                )
             return self.json(
                 {
                     "receipt": token,

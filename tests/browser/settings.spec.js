@@ -128,10 +128,10 @@ async function fixture(page, language = "en", transport = "dlna", pickerLayout =
       callApi: async (method, path, data) => {
         window.calls.push({ method, path, data });
         if (method === "GET") return path.includes("diagnostic_id=")
-          ? {diagnostics: {diagnostic_id: "test-diagnostic", audio_fetches: 1, timings_ms: {clip_to_first_fetch: 30}}}
+          ? {diagnostics: window.failedTestDiagnostics || {diagnostic_id: "test-diagnostic", audio_fetches: 1, timings_ms: {clip_to_first_fetch: 30}}}
           : structuredClone(window.settings);
         if (data.action === "test") {
-          if (window.failTest) throw { body: { error: "test_failed" } };
+          if (window.failTest) throw { body: { error: "test_failed", diagnostics: window.failedTestDiagnostics } };
           return { receipt: "receipt", diagnostics: {diagnostic_id: "test-diagnostic", test_mode: data.mode || "sound", audio_fetches: 0} };
         }
         if (data.action === "confirm") {
@@ -579,6 +579,9 @@ test('EchoMuse sound tests preserve diagnostics without temporary timing control
   const copied = await page.evaluate(() => window.copiedDiagnostics);
   expect(JSON.parse(copied).audio_fetches).toBe(1);
   expect(copied).not.toContain('receipt');
+  await page.locator('.close').evaluate(el=>el.click());
+  await page.locator('[data-page="sonos"]').click();
+  await expect(page.locator('.test-diagnostics')).toHaveCount(0);
 });
 
 test('sound test diagnostics copy begins on the click while refresh is pending', async ({page}) => {
@@ -626,6 +629,32 @@ test('a failed sound test clears diagnostics from the previous successful test',
   await page.locator('[data-test="media_player.jbl"]').click();
   await expect(page.locator('ha-alert[alert-type="error"]')).toBeVisible();
   await expect(page.locator('.test-diagnostics')).toHaveCount(0);
+});
+
+test('a failed test on an added DLNA speaker shows the error and copies its own diagnostics', async ({page}) => {
+  await fixture(page, 'en', 'dlna', 'nested', {tested_dlna: ['media_player.jbl']});
+  await page.evaluate(() => {
+    window.failTest = true;
+    window.failedTestDiagnostics = {
+      diagnostic_id: 'failed-test',
+      error: 'test_failed',
+      failure_stage: 'delivery',
+    };
+    Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {
+      writeText: async text => {window.copiedDiagnostics = JSON.parse(text);},
+    }});
+  });
+  await page.locator('[data-page="dlna"]').click();
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await expect(page.locator('ha-alert[alert-type="error"]')).toBeVisible();
+  await page.locator('.test-diagnostics ha-expansion-panel button').click();
+  await page.locator('.copy-diagnostics').click();
+  await expect.poll(() => page.evaluate(() => window.copiedDiagnostics)).toEqual({
+    diagnostic_id: 'failed-test',
+    error: 'test_failed',
+    failure_stage: 'delivery',
+  });
 });
 
 for (const language of ['en', 'de']) {

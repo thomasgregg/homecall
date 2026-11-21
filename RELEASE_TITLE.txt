@@ -1,1 +1,1 @@
-Preview the announcement chime and use a compact volume slider
+Make failed speaker tests easier to troubleshoot

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.0-beta.4
+
+- Make diagnostics copyable when a speaker test fails during audio conversion or delivery. Include late audio fetches when copying a report after a delivery timeout.
+- Clear the last test report when opening a speaker page, and show playback errors for already-added DLNA speakers.
+- Document the verified JBL setup with Music Assistant over AirPlay 2, the volume strategy and limits, and Home Assistant Marketplace installation.
+
 ## 1.12.0-beta.3
 
 - Play the configured announcement chime before the speaker test tone, following the same chime settings as recordings.

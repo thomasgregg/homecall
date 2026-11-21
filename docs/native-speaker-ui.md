@@ -9,9 +9,10 @@ The component inventory was reviewed before implementing the shared speaker sett
 | Speaker rows | `ha-list-base`, `ha-list-item-base` | Native row layout, headline, supporting text, leading and trailing slots. |
 | Selection | `ha-checkbox` | Native checked, disabled, indeterminate states and accessibility. |
 | Per-speaker settings and discovery | `ha-expansion-panel` | Native chevron, keyboard activation, expanded-state events, and region semantics. |
+| Custom announcement volume | `ha-switch`, `ha-slider` | The switch reveals an indented row with the native slider at its default width, its value tooltip, and a read-only percentage. |
 | Test, confirmation, removal, save | `ha-button` | Native accent/brand primary and plain secondary variants. |
 | Progress, confirmation, errors | `ha-alert` | Native info/error styling and feedback icons. |
-| Existing connection form and lazy loading | `ha-form` | Existing HA selectors; schema loading imports expansion and checkbox modules. |
+| Existing connection form and lazy loading | `ha-form` | The native form schema loader loads the panel, checkbox, switch, and slider controls where needed. |
 
 Alternative HA list/select controls (`ha-check-list-item`, `ha-list-selectable`, `ha-md-list-item`, selector dropdowns) were considered. Basic slotted rows and checkboxes fit selection plus independent per-speaker settings without an extra picker or custom row component. The native expansion panel already implements accessible collapse/expand behavior, so no custom chevron or animation is needed. A text-bearing native info alert communicates test progress without a bespoke spinner.
 
@@ -20,6 +21,7 @@ APIs checked against official sources:
 - [Row slots and default sizing](https://github.com/home-assistant/frontend/blob/dev/src/components/item/ha-row-item.ts)
 - [List container](https://github.com/home-assistant/frontend/blob/dev/src/components/list/ha-list-base.ts)
 - [Checkbox](https://github.com/home-assistant/frontend/blob/dev/src/components/ha-checkbox.ts)
+- [Slider](https://github.com/home-assistant/frontend/blob/dev/src/components/ha-slider.ts)
 - [Expansion panel slots and events](https://github.com/home-assistant/frontend/blob/dev/src/components/ha-expansion-panel.ts)
 - [Button appearances and variants](https://github.com/home-assistant/frontend/blob/dev/src/components/ha-button.ts)
 - [Alert types](https://github.com/home-assistant/frontend/blob/dev/src/components/ha-alert.ts)
@@ -31,6 +33,8 @@ Browser tests use native-control stand-ins for behavior and inherited theme vari
 
 Current appearance: navigation icons and expansion chevrons use `--secondary-text-color`. Speaker labels and the discovery label use the native header slot with `--ha-font-weight-normal`. The selection heading is a native list headline. Save uses accent/brand; secondary actions, including Remove and Refresh, use plain/brand. Checkbox sizing and internals remain native.
 
-Refresh sits above the speaker list in the expanded discovery content, outside the clickable summary, with 16px top and side insets. It is hidden when discovery is collapsed and preserves the panel state when used. Chevron layout is retained per the user's request.
+The beta keeps the volume switch visible for offline Sonos and Music Assistant speakers and shows a reconnect hint. A saved override can still be switched off.
+
+Refresh sits in a native row above the speaker list in the expanded discovery content. It preserves the panel state when used.
 
 The overview now places Connection in its own card and groups the six speaker connectors in a second card. The former Ready/device-count summary is removed.

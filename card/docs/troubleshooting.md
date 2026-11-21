@@ -22,7 +22,7 @@ The button shows preparation progress immediately after a tap; speak when it tur
 
 Enable **Show diagnostics** under **Troubleshooting** in the card editor (`show_diagnostics: true` in YAML). It defaults to off. After sending, open the status icon, expand **Diagnostics**, and use **Copy diagnostics**. Copy refreshes first-fetch timings when the trace is still available. Browser upload-request time includes network transfer, server processing and response; it is not pure upload time. HA timings identify body read, validation, conversion, per-target service calls, and time from clip creation to first audio GET. Acceptance and retrieval do not prove audible playback. Traces expire after three minutes and contain no recorded audio or bearer links.
 
-In HomeCall settings, expand the speaker and use its regular sound test, then copy the available diagnostics. A sound test checks delivery independently of microphone capture; there is no separate Playback timing test or padded-notes control in the current UI.
+In HomeCall settings, expand the speaker and use **Test**, then copy the available diagnostics. This checks the delivery path without using the microphone. In v1.12.0-beta.3, it also previews the saved chime when enabled for that route and sends the slider’s current volume for an enabled override. [Integration troubleshooting](../../docs/troubleshooting.md#announcement-chime-and-volume-beta)
 
 ## No speakers or send rejected
 

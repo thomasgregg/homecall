@@ -410,6 +410,8 @@ class HomeCallSettings extends HTMLElement {
   _open(page) {
     this._page = page;
     this._test = null;
+    this._chosenDlna = "";
+    this._diagnostics = null;
     this._draft = {
       ...this._data,
       announcement_chime: this._data.announcement_chime ?? false,
@@ -572,6 +574,7 @@ class HomeCallSettings extends HTMLElement {
       }
     } catch (error) {
       this._error = this._t(error.body?.error || "failed");
+      if (action === "test") this._diagnostics = error.body?.diagnostics || null;
     } finally {
       this._busy = false;
       this._render();
@@ -801,8 +804,9 @@ class HomeCallSettings extends HTMLElement {
         return `<ha-list-item-base wrap-supporting-text title="${hcEscape(t.name + " · " + description)}"><div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${hcEscape(description)}</div><ha-button slot="end" class="test-sound" data-${this._page === "dlna" ? "test" : "add"}="${hcEscape(t.entity_id)}" appearance="plain" variant="brand" ${(this._page === "dlna" && !t.available) || this._busy || this._test ? "disabled" : ""}>${this._t(this._page === "dlna" ? chosen && this._busy ? "testing" : "test" : "add")}</ha-button></ha-list-item-base>${progress}${confirmation}${chosen && this._error ? `<div class="test-content card-content"><ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert></div>` : ""}`;
       }).join("");
       body += `<ha-card><ha-expansion-panel data-available-panel><span slot="header" class="discovery-label">${this._t("availableSpeakers")}</span><ha-list-item-base><ha-button slot="end" class="refresh-speakers" appearance="plain" variant="brand" ${disabled}>${this._t("refresh")}</ha-button></ha-list-item-base><ha-list-base>${availableRows}</ha-list-base>${!choices.length ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t(this._speakerCandidates(values).length ? "allAdded" : this._page === "devices" ? "emptyAlexa" : this._page === "sonos" ? "emptySonos" : this._page === "music_assistant" ? "emptyMusicAssistant" : this._page === "cast" ? "emptyCast" : this._page === "echomuse" ? "emptyEchoMuse" : "emptyDlna")}</ha-alert></div>` : this._page === "dlna" && choices.every(t => !t.available) ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t("offlineDlna")}</ha-alert></div>` : ""}</ha-expansion-panel></ha-card>`;
+      const errorInDiscovery = this._page === "dlna" && choices.some(t => t.entity_id === this._chosenDlna);
+      if (this._error && !errorInDiscovery) body += `<ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert>`;
     }
-    if (this._error && (this._page !== "dlna" || !this._chosenDlna)) body += `<ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert>`;
     if (this._diagnostics) body += `<ha-card class="test-diagnostics"><ha-expansion-panel header="${hcEscape(this._t("diagnostics"))}"><div class="diagnostic-content"><pre>${hcEscape(JSON.stringify(this._diagnostics, null, 2))}</pre><ha-button class="copy-diagnostics" appearance="plain" variant="brand">${this._t("copyDiagnostics")}</ha-button></div></ha-expansion-panel></ha-card>`;
     return body;
   }

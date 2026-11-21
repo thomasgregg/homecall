@@ -19,6 +19,8 @@ Include HA and HomeCall versions, install method, browser/OS, selected mode, and
 
 HomeCall includes the card from version 1.9.0. Update HomeCall, restart HA and refresh every dashboard tab. If the card is missing or an old version remains visible, check the [migration and resource guide](card-migration.md) and [card troubleshooting](../card/docs/troubleshooting.md). There is no separate current card download.
 
+If the HomeCall settings panel still looks like the previous version after an update, reload the browser tab that contains **Configure** and open the speaker list again.
+
 ## DLNA sound test
 
 - **No speakers found:** configure HA’s DLNA Digital Media Renderer integration; check the entity is enabled and supports media playback. Cast or DLNA server integrations are not renderer entities.
@@ -31,8 +33,17 @@ HomeCall includes the card from version 1.9.0. Update HomeCall, restart HA and r
 - **No players found:** install/start the Music Assistant server, configure its speaker providers, then add its Home Assistant integration. Ensure the relevant player is enabled and exposed to HA.
 - **The same speaker appears twice:** DLNA/Sonos/Cast and Music Assistant entities are different delivery routes for one device. Use the Music Assistant entity when its server manages your music; hide the direct route from the card.
 - **Music plays but announcements fail:** check Music Assistant can retrieve HomeCall's local MP3 address, and test `music_assistant.play_announcement` independently. Check player volume and availability.
+- **The chime plays but the slider makes no audible difference.** Confirm the strategy was saved on the same Music Assistant player you selected in HomeCall. On Music Assistant 2.10.13, **Do not adjust volume** ignores a requested level. Compare two levels within the player’s minimum and maximum. The **Diagnostics** section shows `requested_announcement_volume_percent` for the latest test on the current speaker page when HomeCall requested an override. [Music Assistant volume setup](configuration.md#music-assistant-volume-setup)
 - **Music lowers instead of pausing:** native announcement support may duck or overlay music. JBL Charge 5 Wi-Fi / AirPlay 2 was tested with audible ducking and subsequent volume restoration. Other players may pause/resume instead.
 - **Player connection fails:** power on the speaker and confirm it is on the same reachable network as the Music Assistant server. Discovery alone does not prove a connection is working; inspect the player/provider logs.
+
+## Announcement chime and volume (beta)
+
+The speaker test’s **Diagnostics** panel includes **Copy diagnostics** when HomeCall has captured a report. For a failed test, the report identifies whether audio conversion or delivery failed.
+
+- **Test plays only a tone.** In v1.12.0-beta.3, **Test** uses the saved setting under **HomeCall → Configure → Announcements**. Enable **Play a chime before messages** and save it. Direct Google Cast skips the chime by default. [Chime settings](configuration.md#announcement-chime)
+- **The volume switch is missing or disabled.** Expand an added speaker under **Your speakers** in **Sonos speakers** or **Music Assistant speakers**. An offline speaker shows a reconnect hint. Online availability depends on Sonos S2 AudioClip support or an eligible standalone Music Assistant player. [Custom announcement volume](configuration.md#custom-announcement-volume-beta)
+- **The card reports that custom volume is unavailable.** HomeCall skips that speaker and still tries the other recipients. Reconnect the speaker or turn its override off to use its usual announcement volume. **Playback unconfirmed** indicates a timeout and the clip may still play.
 
 ## Sonos, Google Cast and EchoMuse
 
