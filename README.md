@@ -61,7 +61,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
     <th valign="top">Protocol / integration</th>
     <th valign="top">Announcement playback</th>
     <th valign="top">Optional announcement chime</th>
-    <th valign="top">Custom announcement volume (beta)</th>
+    <th valign="top">Custom announcement volume</th>
     <th valign="top">Music continuation</th>
     <th valign="top">Tested hardware / scope</th>
   </tr>
@@ -83,7 +83,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
   </tr>
   <tr>
     <td valign="top">Sonos</td>
-    <td valign="top">🟠 Implemented using native <code>announce: true</code>; direct Sonos hardware playback unverified.</td>
+    <td valign="top">🟠 Uses native Sonos announcements. Direct Sonos hardware playback remains unverified.</td>
     <td valign="top">🟠 Combined chime and recording implemented; hardware verification pending.</td>
     <td valign="top">🟠 S2 with AudioClip. Hardware test pending.</td>
     <td valign="top">🟠 Delegated to Sonos; not hardware-verified.</td>
@@ -115,7 +115,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
   </tr>
 </table>
 
-Custom announcement volume is available in the beta. A dash means HomeCall uses the route’s usual volume behavior. Music Assistant applies its player settings and limits. [Volume setup and tested hardware](https://github.com/thomasgregg/homecall/blob/v1.12.0-beta.4/docs/configuration.md#custom-announcement-volume-beta)
+A dash means HomeCall uses the route’s usual volume behavior. Music Assistant applies its player settings and limits. [Volume setup and tested hardware](docs/configuration.md#custom-announcement-volume)
 
 Results apply to the tested setup, not every model or firmware version. The optional announcement chime column refers to the bundled two-tone cue combined with a recording. Custom MP3 chimes are covered by automated audio tests. The latest Music Assistant combined-audio test and Alexa optional-chime playback were confirmed by the user on 6 October 2026. The Alexa chime test does not establish music restoration. Reddit reports confirm limited EchoMuse and Nest message playback; they do not verify the new chime on those routes. The Sonos report was clarified as Sonos One SL through Music Assistant 2.10.6, with chime playback and restoration of MA-managed music at its previous volume confirmed. It does not verify the direct Sonos route; the recording was reported too loud. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
 
@@ -143,7 +143,7 @@ You need Home Assistant **2026.9 or newer** and FFmpeg with MP3 encoding. For Al
 
 For DLNA, configure the built-in [DLNA Digital Media Renderer integration](https://www.home-assistant.io/integrations/dlna_dmr/) and ensure the speaker can reach HA’s local audio address. A public HTTPS address is not needed for DLNA delivery. The browser still needs HTTPS for microphone access.
 
-For Sonos, configure Home Assistant’s [Sonos integration](https://www.home-assistant.io/integrations/sonos/), then choose speakers under **Sonos speakers**. A sound test is available in each speaker row and is optional. HomeCall uses `announce: true` and leaves music restoration to Sonos. Direct Sonos playback, optional chime and music restoration remain hardware-unverified. The community Sonos One SL report used Music Assistant 2.10.6, rather than this route. Simulated discovery, onboarding, and delivery tests pass. Older hardware and S1 firmware may have announcement limitations.
+For Sonos, configure Home Assistant’s [Sonos integration](https://www.home-assistant.io/integrations/sonos/), then choose speakers under **Sonos speakers**. A sound test is available in each speaker row. HomeCall normally uses `announce: true`. HomeCall uses Sonos AudioClip for [custom announcement volume](docs/configuration.md#custom-announcement-volume) on eligible S2 speakers. Sonos handles music restoration. Direct Sonos hardware playback remains unverified. The community Sonos One SL test used Music Assistant 2.10.6.
 
 For Music Assistant, install and start the [Music Assistant server](https://www.music-assistant.io/), connect your speakers, and configure its [Home Assistant integration](https://www.home-assistant.io/integrations/music_assistant/), then open **HomeCall → Configure → Music Assistant speakers**, add players, select visibility, and save. HomeCall sends recorded MP3s through `music_assistant.play_announcement`; Music Assistant handles playback restoration. Choose the MA entity rather than the underlying DLNA/Sonos entity when music is managed by MA. The JBL Charge 5 Wi-Fi / AirPlay 2 test confirmed audible chime playback, music ducking and volume restoration. A community test on Sonos One SL with MA 2.10.6 confirmed announcement and chime playback, plus resumption of MA-managed music at its previous volume; the recording was reported too loud. Playback behavior depends on the player and protocol; see [Music Assistant configuration and tested scope](docs/configuration.md#music-assistant-announcements).
 
@@ -266,7 +266,11 @@ Enable **Play a chime before messages** under **HomeCall → Configure → Annou
 
 **Skip the chime on direct Google Cast speakers** is on by default. Turn it off to include the cue on those direct routes. Music Assistant targets still receive the HomeCall chime, and HomeCall disables Music Assistant's own pre-announcement cue. Native Cast connection sounds may still play.
 
-The card uploads one recording; the integration combines the cue and voice when needed. Speaker sound tests are unchanged. Verified routes and remaining hardware limits are listed in [Speaker compatibility](#speaker-compatibility).
+The card uploads one recording. The integration combines the cue and voice when needed. **Test** follows the saved chime settings and plays a short tone after the cue. Verified routes and hardware limits are listed in [Speaker compatibility](#speaker-compatibility).
+
+### Custom announcement volume
+
+Eligible direct Sonos S2 speakers and standalone Music Assistant players have a **Custom announcement volume** switch under **HomeCall → Configure** in their respective speaker lists. Turning it on reveals a slider for the whole announcement, including the chime. **Test** uses the selected level before you save. For Music Assistant’s required player settings and limits, see the [volume setup guide](docs/configuration.md#music-assistant-volume-setup).
 
 For more detail, see [layout and recording states](card/docs/configuration.md) and [card troubleshooting](card/docs/troubleshooting.md). Developers can find the card source and checks in [card/](card/).
 
@@ -283,9 +287,9 @@ flowchart TD
     Notify -->|SSML with public HTTPS audio URL| Amazon[Amazon Alexa service]
     Route -->|Tested DLNA| Play[DLNA DMR: media_player.play_media]
     Play -->|Local audio URL; type music| Speaker[DLNA renderer]
-    Route -->|Sonos| SonosService["Sonos: media_player.play_media<br/>announce: true"]
-    SonosService -->|Local audio URL; type music| SonosPlayer[Sonos native announcement]
-    Route -->|Music Assistant| MAService["music_assistant.play_announcement<br/>use_pre_announce: false"]
+    Route -->|Sonos| SonosService["Sonos: announce: true by default<br/>AudioClip for a custom volume"]
+    SonosService -->|Local audio URL| SonosPlayer[Sonos native announcement]
+    Route -->|Music Assistant| MAService["music_assistant.play_announcement<br/>announce_volume when enabled"]
     MAService -->|Local audio URL| MAPlayer[Music Assistant managed player]
     Amazon -->|Fetch MP3| Audio[Token-only audio endpoint: no HA login]
     Speaker -->|Fetch MP3| Audio
@@ -323,7 +327,7 @@ Service calls are dispatched concurrently, without synchronized playback or a co
 
 | Guide                                      | Covers                                                                |
 | ------------------------------------------ | --------------------------------------------------------------------- |
-| [Configuration](docs/configuration.md)     | Public address, speakers shown in the card, and changing settings     |
+| [Configuration](docs/configuration.md)     | Speaker setup, custom chimes, announcement volume, and playback      |
 | [EchoMuse](docs/echomuse.md)               | ESPHome setup, audio delivery and playback limitations                |
 | [Google Cast / Nest](docs/google-cast.md)  | Cast setup, network requirements, test results and music continuation |
 | [API and architecture](docs/api.md)        | Endpoints, limits, audio lifecycle, and module responsibilities       |

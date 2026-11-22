@@ -1,1 +1,1 @@
-Match Home Assistant card editor spacing
+Set announcement volume per speaker

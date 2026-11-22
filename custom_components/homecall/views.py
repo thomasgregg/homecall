@@ -10,8 +10,22 @@ from xml.sax.saxutils import quoteattr
 from aiohttp import web
 from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.components.http import HomeAssistantView
+from homeassistant.helpers import entity_registry as er
 
-from .audio import async_custom_chime, chime_duration, convert_wav, test_audio, validate_wav
+from .announcement_volume import (
+    preference_key,
+    requested_level,
+    sonos_audio_clip_player,
+    valid_preference,
+)
+from .audio import (
+    TEST_TONE_DURATION,
+    async_announcement_chime,
+    async_custom_chime,
+    convert_wav,
+    test_audio,
+    validate_wav,
+)
 from .const import DELIVERY_TIMEOUT, DOMAIN, MAX_BYTES, TTL, UPLOAD_TIMEOUT
 from .diagnostics import elapsed_ms, public_diagnostics, start_diagnostics
 from .helpers import (
@@ -23,6 +37,10 @@ from .helpers import (
     system_url,
     targets,
 )
+
+
+def uses_announcement_chime(values, transport):
+    return values["announcement_chime"] and not (values["skip_cast_chime"] and transport == "cast")
 
 
 class HomeCallView(HomeAssistantView):
@@ -75,14 +93,23 @@ class SettingsView(HomeCallView):
             and not chime_validated
             and await async_custom_chime(self.hass, media_id) is None
         )
+        candidates = dlna_candidates(self.hass)
+        preferences = values["announcement_volumes"]
         return self.json(
             {
                 **({"success": True} if saved else {}),
                 **values,
+                "announcement_volumes": {
+                    entity_id: preferences[key]
+                    for candidate in candidates
+                    if preferences
+                    and (entity_id := candidate["entity_id"])
+                    and (key := preference_key(self.hass, entity_id)) in preferences
+                },
                 "custom_chime_unavailable": unavailable,
                 "system_url": system_url(self.hass),
                 "targets": distinguish_speakers(targets(self.hass)),
-                "dlna_candidates": distinguish_speakers(dlna_candidates(self.hass)),
+                "dlna_candidates": distinguish_speakers(candidates),
                 "detected_local_url": local_url(self.hass, entry),
             }
         )
@@ -154,6 +181,9 @@ class SettingsView(HomeCallView):
                 announcement_chime=enabled, skip_cast_chime=skip_cast, custom_chime=media_id
             )
         elif page == "devices":
+            previous_added = values["added_speakers"]
+            if previous_added is None:
+                previous_added = values["default_targets"]
             use_all = payload.get("use_all")
             selected = payload.get("default_targets", [])
             ids = {device["entity_id"] for device in targets(self.hass)}
@@ -187,6 +217,9 @@ class SettingsView(HomeCallView):
             values["use_all"] = use_all
             # Keep the custom selection while switching to all-device mode.
             values["default_targets"] = list(dict.fromkeys(selected))
+            if "added_speakers" in payload or "announcement_volume_changes" in payload:
+                if not self._save_volumes(values, previous_added, payload):
+                    return self.json({"error": "announcement_volume_unavailable"}, status_code=400)
             if "resume_dlna" in payload:
                 resume = payload["resume_dlna"]
                 if (
@@ -206,6 +239,29 @@ class SettingsView(HomeCallView):
         return await self.settings_response(
             entry, values, saved=True, chime_validated=chime_validated
         )
+
+    def _save_volumes(self, values, previous_added, payload):
+        changes = payload.get("announcement_volume_changes", {})
+        if not isinstance(changes, dict) or not all(valid_preference(v) for v in changes.values()):
+            raise web.HTTPBadRequest()
+        added = values["added_speakers"]
+        if added is None:
+            added = values["default_targets"]
+        volumes = values["announcement_volumes"].copy()
+        if volumes:
+            for entity_id in set(previous_added) - set(added):
+                volumes.pop(preference_key(self.hass, entity_id), None)
+        if changes:
+            candidates = {c["entity_id"]: c for c in dlna_candidates(self.hass)}
+            for entity_id, preference in changes.items():
+                if entity_id not in added or not (key := preference_key(self.hass, entity_id)):
+                    return False
+                supported = candidates.get(entity_id, {}).get("announcement_volume_supported")
+                if not supported and (preference["enabled"] or key not in volumes):
+                    return False
+                volumes[key] = preference
+        values["announcement_volumes"] = volumes
+        return True
 
 
 class StatusView(HomeCallView):
@@ -293,8 +349,7 @@ class UploadView(HomeCallView):
             chimed_targets = {
                 entity_id
                 for entity_id in selected
-                if values["announcement_chime"]
-                and not (values["skip_cast_chime"] and transports.get(entity_id) == "cast")
+                if uses_announcement_chime(values, transports.get(entity_id))
             }
             stage = time.monotonic()
             try:
@@ -303,20 +358,12 @@ class UploadView(HomeCallView):
                 chimed_audio = None
                 cue_duration = 0
                 if chimed_targets:
-                    media_id = values["custom_chime"]
-                    custom_chime = (
-                        await async_custom_chime(self.hass, media_id) if media_id else None
+                    cue, cue_duration = await async_announcement_chime(
+                        self.hass, values["custom_chime"]
                     )
-                    if custom_chime is None:
-                        chimed_audio = await self.hass.async_add_executor_job(
-                            convert_wav, recording, True
-                        )
-                        cue_duration = await self.hass.async_add_executor_job(chime_duration)
-                    else:
-                        cue, cue_duration = custom_chime
-                        chimed_audio = await self.hass.async_add_executor_job(
-                            convert_wav, recording, True, cue
-                        )
+                    chimed_audio = await self.hass.async_add_executor_job(
+                        convert_wav, recording, True, cue
+                    )
             except OSError, subprocess.SubprocessError, wave.Error:
                 return self.json(
                     {"error": "Audio konnte nicht umgewandelt werden."}, status_code=500
@@ -356,6 +403,8 @@ class UploadView(HomeCallView):
                 store["clips"][chimed_token] = [now + TTL, chimed_audio, 0, None, trace]
                 asyncio.get_running_loop().call_later(TTL, store["clips"].pop, chimed_token, None)
 
+            volumes = settings(store["entry"])["announcement_volumes"]
+
             async def send(index, entity_id):
                 if not self.operation_active(store, generation):
                     return {"entity_id": entity_id, "accepted": False}
@@ -368,6 +417,7 @@ class UploadView(HomeCallView):
                     duration=duration + (cue_duration if entity_id in chimed_targets else 0),
                     diagnostics=trace,
                     target_index=index,
+                    announcement_volume=requested_level(self.hass, volumes, entity_id),
                 )
 
             results = await asyncio.gather(
@@ -409,18 +459,32 @@ class AudioView(HomeCallView):
 
 
 async def deliver(
-    hass, entry, entity_id, token, context=None, duration=3, diagnostics=None, target_index=1
+    hass,
+    entry,
+    entity_id,
+    token,
+    context=None,
+    duration=3,
+    diagnostics=None,
+    target_index=1,
+    announcement_volume=None,
 ):
     """Route only previously validated targets through their actual HA platform."""
     started = time.monotonic()
     transport = "alexa"
     accepted = False
+    reason = None
     try:
         candidate = next((t for t in dlna_candidates(hass) if t["entity_id"] == entity_id), None)
         transport = candidate.get("transport", "dlna") if candidate else "alexa"
         dlna = candidate is not None
         sonos = bool(candidate and candidate.get("transport") == "sonos")
         music_assistant = bool(candidate and candidate.get("transport") == "music_assistant")
+        if announcement_volume is not None and not (
+            candidate and candidate.get("announcement_volume_supported")
+        ):
+            reason = "announcement_volume_unavailable"
+            return {"entity_id": entity_id, "accepted": False, "reason": reason}
         base = local_url(hass, entry) if dlna else settings(entry, hass)["public_url"]
         if not base:
             raise ValueError("No audio address")
@@ -434,6 +498,8 @@ async def deliver(
         if music_assistant:
             domain, service = "music_assistant", "play_announcement"
             data = {"url": url, "use_pre_announce": False}
+            if announcement_volume is not None:
+                data["announce_volume"] = announcement_volume
         elif candidate and candidate.get("transport") == "cast":
             data["media_content_type"] = "audio/mpeg"
         elif candidate and candidate.get("transport") == "echomuse":
@@ -447,17 +513,40 @@ async def deliver(
             else:
                 manager.cancel(entity_id)
         async with asyncio.timeout(DELIVERY_TIMEOUT):
-            await hass.services.async_call(
-                domain, service, {"entity_id": entity_id, **data}, blocking=True, context=context
-            )
+            if sonos and announcement_volume is not None:
+                entity = er.async_get(hass).async_get(entity_id)
+                speaker = sonos_audio_clip_player(hass, entity) if entity else None
+                if not speaker:
+                    reason = "announcement_volume_unavailable"
+                    return {"entity_id": entity_id, "accepted": False, "reason": reason}
+                # The HA service can fall back to ordinary playback at the speaker's volume.
+                # Use the same connected AudioClip client without the fallback for overrides.
+                response, clip = await speaker.websocket.play_clip(url, volume=announcement_volume)
+                if not response.get("success"):
+                    reason = "announcement_volume_unavailable"
+                    return {"entity_id": entity_id, "accepted": False, "reason": reason}
+                if clip:
+                    speaker.last_announce_id = clip.get("id")
+            else:
+                await hass.services.async_call(
+                    domain,
+                    service,
+                    {"entity_id": entity_id, **data},
+                    blocking=True,
+                    context=context,
+                )
         accepted = True
         return {"entity_id": entity_id, "accepted": True}
+    except TimeoutError:
+        if transport == "music_assistant" or announcement_volume is not None:
+            reason = "delivery_unconfirmed"
+            return {"entity_id": entity_id, "accepted": False, "reason": reason}
+        return {"entity_id": entity_id, "accepted": False}
     except Exception:
-        manager = hass.data.get(DOMAIN, {}).get("resume_manager")
-        if manager:
-            manager.cancel(entity_id)
         return {"entity_id": entity_id, "accepted": False}
     finally:
+        if not accepted and (manager := hass.data.get(DOMAIN, {}).get("resume_manager")):
+            manager.cancel(entity_id)
         if diagnostics is not None:
             diagnostics["deliveries"].append(
                 {
@@ -465,6 +554,7 @@ async def deliver(
                     "transport": transport,
                     "accepted": accepted,
                     "service_call_ms": elapsed_ms(started),
+                    **({"reason": reason} if reason else {}),
                 }
             )
             diagnostics["deliveries"].sort(key=lambda item: item["target"])
@@ -547,6 +637,15 @@ class SpeakerTestView(SettingsView):
             return await self.get(request)
         if action != "test":
             raise web.HTTPBadRequest()
+        if "announcement_volume" in payload:
+            preference = payload["announcement_volume"]
+            if not valid_preference(preference):
+                raise web.HTTPBadRequest()
+            volume = preference["level"] if preference["enabled"] else None
+        else:
+            volume = requested_level(self.hass, values["announcement_volumes"], entity_id)
+        if volume is not None and not candidate.get("announcement_volume_supported"):
+            return self.json({"error": "announcement_volume_unavailable"}, status_code=400)
         address = (
             local_url(self.hass, entry) if candidate.get("transport") else values["public_url"]
         )
@@ -562,18 +661,30 @@ class SpeakerTestView(SettingsView):
                 return self.json({"error": "test_busy"}, status_code=429)
             trace = start_diagnostics(store, request)
             trace["test_mode"] = mode
-            duration = 3
-            trace["duration_seconds"] = duration
+            if volume is not None:
+                trace["requested_announcement_volume_percent"] = volume
+            duration = TEST_TONE_DURATION
             stage = time.monotonic()
             try:
-                audio = await self.hass.async_add_executor_job(
-                    test_audio,
+                if uses_announcement_chime(values, candidate.get("transport")):
+                    cue, cue_duration = await async_announcement_chime(
+                        self.hass, values["custom_chime"]
+                    )
+                    duration += cue_duration
+                    audio = await self.hass.async_add_executor_job(test_audio, True, cue)
+                else:
+                    audio = await self.hass.async_add_executor_job(test_audio)
+            except OSError, subprocess.SubprocessError, wave.Error:
+                trace["timings_ms"]["conversion"] = elapsed_ms(stage)
+                trace.update(error="test_failed", failure_stage="conversion")
+                return self.json(
+                    {"error": "test_failed", "diagnostics": public_diagnostics(trace)},
+                    status_code=500,
                 )
-            except OSError, subprocess.SubprocessError:
-                return self.json({"error": "test_failed"}, status_code=500)
             if not self.operation_active(store, generation):
                 raise web.HTTPServiceUnavailable()
             token = secrets.token_urlsafe(32)
+            trace["duration_seconds"] = round(duration, 3)
             trace["timings_ms"]["conversion"] = elapsed_ms(stage)
             trace["_clip_created"] = time.monotonic()
             trace["_expires"] = trace["_clip_created"] + TTL
@@ -587,10 +698,17 @@ class SpeakerTestView(SettingsView):
                 self.context(request),
                 duration=duration,
                 diagnostics=trace,
+                announcement_volume=volume,
             )
             if not result["accepted"]:
-                store["clips"].pop(token, None)
-                return self.json({"error": "test_failed"}, status_code=400)
+                reason = result.get("reason", "test_failed")
+                if reason != "delivery_unconfirmed":
+                    store["clips"].pop(token, None)
+                trace.update(error=reason, failure_stage="delivery")
+                return self.json(
+                    {"error": reason, "diagnostics": public_diagnostics(trace)},
+                    status_code=400,
+                )
             return self.json(
                 {
                     "receipt": token,

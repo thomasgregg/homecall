@@ -14,6 +14,8 @@ async function fixture(page, language = "en", transport = "dlna", pickerLayout =
   await page.evaluate((layout) => {
     customElements.define("hass-subpage", class extends HTMLElement {});
     customElements.define("ha-settings-row", class extends HTMLElement {});
+    customElements.define("ha-switch", class extends HTMLElement {});
+    customElements.define("ha-slider", class extends HTMLElement {});
     class MockMediaPicker extends HTMLElement {
       connectedCallback() {
         this.attachShadow({mode:"open"});
@@ -126,10 +128,10 @@ async function fixture(page, language = "en", transport = "dlna", pickerLayout =
       callApi: async (method, path, data) => {
         window.calls.push({ method, path, data });
         if (method === "GET") return path.includes("diagnostic_id=")
-          ? {diagnostics: {diagnostic_id: "test-diagnostic", audio_fetches: 1, timings_ms: {clip_to_first_fetch: 30}}}
+          ? {diagnostics: window.failedTestDiagnostics || {diagnostic_id: "test-diagnostic", audio_fetches: 1, timings_ms: {clip_to_first_fetch: 30}}}
           : structuredClone(window.settings);
         if (data.action === "test") {
-          if (window.failTest) throw { body: { error: "test_failed" } };
+          if (window.failTest) throw { body: { error: "test_failed", diagnostics: window.failedTestDiagnostics } };
           return { receipt: "receipt", diagnostics: {diagnostic_id: "test-diagnostic", test_mode: data.mode || "sound", audio_fetches: 0} };
         }
         if (data.action === "confirm") {
@@ -152,6 +154,12 @@ async function fixture(page, language = "en", transport = "dlna", pickerLayout =
         if (data.removed_dlna) {
           window.settings.tested_dlna = window.settings.tested_dlna.filter(id => !data.removed_dlna.includes(id));
         }
+        if (data.announcement_volume_changes) {
+          window.settings.announcement_volumes = {
+            ...window.settings.announcement_volumes,
+            ...data.announcement_volume_changes,
+          };
+        }
         Object.assign(window.settings, data);
         return structuredClone(window.settings);
       },
@@ -171,6 +179,76 @@ async function addDlna(page) {
   await page.locator('[data-test="media_player.jbl"]').click();
   await page.locator('.confirm-test').click();
 }
+test("the native volume controls only appear on an eligible speaker and save on request", async ({page}) => {
+  await fixture(page, "en", "sonos", "nested", {
+    added_speakers: ["media_player.bedroom", "media_player.legacy"],
+    default_targets: ["media_player.bedroom", "media_player.legacy"],
+    dlna_candidates: [
+      {entity_id: "media_player.bedroom", name: "Bedroom", transport: "sonos", available: true, announcement_volume_supported: true},
+      {entity_id: "media_player.legacy", name: "Legacy", transport: "sonos", available: true},
+    ],
+  });
+  await page.locator('[data-page="sonos"]').click();
+  const panel = page.locator('[data-speaker-panel="media_player.bedroom"]');
+  await panel.locator("button").click();
+  const row = panel.locator("[data-volume-speaker]");
+  const slider = row.locator("ha-slider");
+  await expect(row.locator(".volume-level")).toBeHidden();
+  await expect(page.locator('[data-volume-speaker="media_player.legacy"]')).toHaveCount(0);
+  await toggle(page, '[data-volume-speaker] ha-switch', true);
+  await expect(row.locator(".volume-level")).toBeVisible();
+  await expect(row.locator('.volume-level [slot="content"] span')).toHaveText("Announcement volume");
+  await expect(slider).toHaveAttribute("labeled", "");
+  await expect(slider).toHaveJSProperty("accessibleLabel", "Announcement volume");
+  await expect(row.locator("output")).toHaveText("25%");
+  await slider.evaluate((element) => {
+    element.value = 37;
+    element.dispatchEvent(new Event("input"));
+  });
+  await expect(row.locator("output")).toHaveText("37%");
+  await panel.locator("[data-test]").click();
+  const calls = await page.evaluate(() => window.calls.filter((call) => call.method === "POST"));
+  expect(calls).toHaveLength(1);
+  expect(calls[0].data.announcement_volume).toEqual({enabled: true, level: 37});
+  await toggle(page, '[data-volume-speaker] ha-switch', false);
+  await expect(row.locator(".volume-level")).toBeHidden();
+  await page.locator(".save").click();
+  await expect(page.locator('[data-page="sonos"]')).toBeVisible();
+  expect(await page.evaluate(() => window.settings.announcement_volumes)).toEqual({
+    "media_player.bedroom": {enabled: false, level: 37},
+  });
+});
+for (const transport of ["sonos", "music_assistant"]) {
+  test(`${transport} keeps the offline volume switch visible and checks support on refresh`, async ({page}) => {
+    await fixture(page, "en", transport, "nested", {
+      added_speakers: ["media_player.bedroom"],
+      default_targets: ["media_player.bedroom"],
+      dlna_candidates: [
+        {entity_id: "media_player.bedroom", name: "Bedroom", transport, available: false},
+      ],
+    });
+    await page.locator(`[data-page="${transport}"]`).click();
+    const panel = page.locator('[data-speaker-panel="media_player.bedroom"]');
+    await panel.locator("button").click();
+    const row = panel.locator("[data-volume-speaker]");
+    await expect(row).toBeVisible();
+    await expect(row).toContainText("Connect this speaker to check volume support.");
+    await expect(row.locator("ha-switch")).toHaveJSProperty("disabled", true);
+    await expect(row.locator(".volume-level")).toBeHidden();
+    await expect(panel.locator("[data-test]")).toHaveAttribute("disabled", "");
+
+    await page.evaluate(() => {
+      window.settings.dlna_candidates[0].available = true;
+      window.settings.dlna_candidates[0].announcement_volume_supported = true;
+    });
+    await page.locator("[data-available-panel] button").click();
+    await page.locator(".refresh-speakers").click();
+    await expect(row.locator("ha-switch")).toHaveJSProperty("disabled", false);
+    await expect(row).not.toContainText("Connect this speaker");
+    await expect(panel.locator("[data-test]")).not.toHaveAttribute("disabled", "");
+  });
+}
+
 test('speaker settings show room and entity ID in connected and available rows', async ({page}) => {
   await fixture(page, "en", "sonos", "nested", {
     added_speakers: ["media_player.window"],
@@ -501,6 +579,9 @@ test('EchoMuse sound tests preserve diagnostics without temporary timing control
   const copied = await page.evaluate(() => window.copiedDiagnostics);
   expect(JSON.parse(copied).audio_fetches).toBe(1);
   expect(copied).not.toContain('receipt');
+  await page.locator('.close').evaluate(el=>el.click());
+  await page.locator('[data-page="sonos"]').click();
+  await expect(page.locator('.test-diagnostics')).toHaveCount(0);
 });
 
 test('sound test diagnostics copy begins on the click while refresh is pending', async ({page}) => {
@@ -548,6 +629,32 @@ test('a failed sound test clears diagnostics from the previous successful test',
   await page.locator('[data-test="media_player.jbl"]').click();
   await expect(page.locator('ha-alert[alert-type="error"]')).toBeVisible();
   await expect(page.locator('.test-diagnostics')).toHaveCount(0);
+});
+
+test('a failed test on an added DLNA speaker shows the error and copies its own diagnostics', async ({page}) => {
+  await fixture(page, 'en', 'dlna', 'nested', {tested_dlna: ['media_player.jbl']});
+  await page.evaluate(() => {
+    window.failTest = true;
+    window.failedTestDiagnostics = {
+      diagnostic_id: 'failed-test',
+      error: 'test_failed',
+      failure_stage: 'delivery',
+    };
+    Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {
+      writeText: async text => {window.copiedDiagnostics = JSON.parse(text);},
+    }});
+  });
+  await page.locator('[data-page="dlna"]').click();
+  await page.locator('[data-speaker-panel] button').click();
+  await page.locator('[data-test="media_player.jbl"]').click();
+  await expect(page.locator('ha-alert[alert-type="error"]')).toBeVisible();
+  await page.locator('.test-diagnostics ha-expansion-panel button').click();
+  await page.locator('.copy-diagnostics').click();
+  await expect.poll(() => page.evaluate(() => window.copiedDiagnostics)).toEqual({
+    diagnostic_id: 'failed-test',
+    error: 'test_failed',
+    failure_stage: 'delivery',
+  });
 });
 
 for (const language of ['en', 'de']) {

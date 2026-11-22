@@ -74,8 +74,38 @@ async def test_admin_only_and_failed_test_not_added(hass, http_request, dlna):
         http_request({"action": "test", "entity_id": dlna["entity_id"]})
     )
     assert response.status == 400
+    result = json.loads(response.body)
+    assert result["error"] == result["diagnostics"]["error"] == "test_failed"
+    assert result["diagnostics"]["failure_stage"] == "delivery"
+    assert result["diagnostics"]["deliveries"][0]["accepted"] is False
+    assert result["diagnostics"]["deliveries"][0]["transport"] == "dlna"
+    assert "receipt" not in result
     assert not hass.data[DOMAIN]["clips"]
     hass.config_entries.async_update_entry.assert_not_called()
+
+
+async def test_conversion_failure_returns_sanitized_diagnostics(
+    hass, http_request, dlna, monkeypatch
+):
+    def fail_encoding():
+        raise OSError("private encoder path")
+
+    monkeypatch.setattr("custom_components.homecall.views.test_audio", fail_encoding)
+    response = await SpeakerTestView(hass).post(
+        http_request({"action": "test", "entity_id": dlna["entity_id"]})
+    )
+    assert response.status == 500
+    result = json.loads(response.body)
+    diagnostics = result["diagnostics"]
+    assert result["error"] == diagnostics["error"] == "test_failed"
+    assert diagnostics["failure_stage"] == "conversion"
+    assert "conversion" in diagnostics["timings_ms"]
+    assert diagnostics["deliveries"] == []
+    assert "private encoder path" not in response.text
+    assert "receipt" not in result
+    assert not hass.data[DOMAIN]["clips"]
+    assert not hass.data[DOMAIN]["lock"].locked()
+    hass.services.async_call.assert_not_awaited()
 
 
 async def test_mixed_delivery(hass, entry, http_request, devices, dlna, wav_bytes):

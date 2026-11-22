@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.12.0
+
+- Set a custom announcement volume for eligible Sonos S2 speakers and standalone Music Assistant players. The override is off by default and applies to the recording and its chime. Test the selected level before saving.
+- Preview the saved announcement chime with the speaker sound test. The test follows the direct Google Cast chime setting.
+- Copy diagnostics when a speaker test fails, including audio conversion or playback errors and any audio fetched after a delivery timeout.
+- See the [volume setup guide](https://github.com/thomasgregg/homecall/blob/v1.12.0/docs/configuration.md#custom-announcement-volume) for Music Assistant’s volume strategy and limits. Audible volume changes were confirmed during the beta on a JBL Charge 5 Wi-Fi over AirPlay 2 with Music Assistant 2.10.13. Direct Sonos hardware testing remains pending.
+
+## 1.12.0-beta.4
+
+- Make diagnostics copyable when a speaker test fails during audio conversion or delivery. Include late audio fetches when copying a report after a delivery timeout.
+- Clear the last test report when opening a speaker page, and show playback errors for already-added DLNA speakers.
+- Document the verified JBL setup with Music Assistant over AirPlay 2, the volume strategy and limits, and Home Assistant Marketplace installation.
+
+## 1.12.0-beta.3
+
+- Play the configured announcement chime before the speaker test tone, following the same chime settings as recordings.
+- Use Home Assistant's compact native volume slider layout with a read-only percentage, and show the requested level in test diagnostics.
+- Document how Music Assistant's announcement volume strategy and limits affect custom volume.
+
+## 1.12.0-beta.2
+
+- Keep Custom announcement volume visible for offline Sonos and Music Assistant speakers, with a reconnect hint and a disabled switch until HomeCall confirms support.
+
+## 1.12.0-beta.1
+
+- Add an optional announcement-volume switch and slider for eligible direct Sonos S2 speakers and standalone Music Assistant players. The level applies to the whole announcement, including the chime.
+- Keep each speaker’s existing volume behavior by default. Report an unavailable override or unconfirmed playback per recipient.
+
 ## 1.11.2
 
 - Match Home Assistant’s default content spacing in the HomeCall card editor’s Appearance, Default recipients, and Troubleshooting sections.

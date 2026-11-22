@@ -32,8 +32,14 @@ jobs:
           python scripts/check-package.py homecall.zip
       - name: Publish release with standard notes
         run: |
-          previous_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')
-          python3 scripts/release-notes.py --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" --previous-tag "$previous_tag" --validation "Ruff lint and formatting checks, integration tests, recorder tests, Chromium/WebKit browser checks, and package version checks passed in the release workflow." > release-notes.md
-          gh release create "$GITHUB_REF_NAME" homecall.zip --verify-tag --title "$GITHUB_REF_NAME — $(cat RELEASE_TITLE.txt)" --notes-file release-notes.md
+          previous_tag=$(gh release list --exclude-pre-releases --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // ""')
+          validation="Ruff lint and formatting checks, integration tests, recorder tests, Chromium/WebKit browser checks, and package version checks passed in the release workflow."
+          release_flags=(--latest)
+          if [[ "$GITHUB_REF_NAME" == *-beta.* ]]; then
+            release_flags=(--prerelease --latest=false)
+            validation+=" See the [configuration guide](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/configuration.md#custom-announcement-volume) for verified hardware and volume limits."
+          fi
+          python3 scripts/release-notes.py --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" --previous-tag "$previous_tag" --validation "$validation" > release-notes.md
+          gh release create "$GITHUB_REF_NAME" homecall.zip --verify-tag --title "$GITHUB_REF_NAME — $(cat RELEASE_TITLE.txt)" --notes-file release-notes.md "${release_flags[@]}"
         env:
           GH_TOKEN: ${{ github.token }}

@@ -16,13 +16,23 @@ from homeassistant.components.media_source.local_source import async_get_media_s
 
 from custom_components.homecall.audio import (
     CHIME_FILE,
+    TEST_TONE_DURATION,
     async_custom_chime,
     chime_duration,
     convert_wav,
 )
+from custom_components.homecall.audio import (
+    test_audio as encode_test_audio,
+)
 from custom_components.homecall.const import DOMAIN
 from custom_components.homecall.helpers import settings
-from custom_components.homecall.views import AudioView, SettingsView, StatusView, UploadView
+from custom_components.homecall.views import (
+    AudioView,
+    SettingsView,
+    SpeakerTestView,
+    StatusView,
+    UploadView,
+)
 
 
 def test_defaults(entry):
@@ -221,9 +231,9 @@ async def test_mixed_broadcast_has_one_playback_per_route(
     monkeypatch.setattr(UploadView, "context", lambda self, r: None)
     monkeypatch.setattr(
         "custom_components.homecall.views.convert_wav",
-        lambda data, prepend=False: b"chime-and-voice" if prepend else b"voice",
+        lambda data, prepend=False, cue=None: b"chime-and-voice" if prepend else b"voice",
     )
-    monkeypatch.setattr("custom_components.homecall.views.chime_duration", lambda: 3.0)
+    monkeypatch.setattr("custom_components.homecall.audio.chime_duration", lambda: 3.0)
     from unittest.mock import Mock
 
     manager = Mock()
@@ -266,12 +276,13 @@ async def test_unload_during_second_encoding_does_not_publish_variants(
     hass, entry, devices, http_request, wav_bytes, monkeypatch, reload
 ):
     entry.options = {"announcement_chime": True}
-    monkeypatch.setattr("custom_components.homecall.views.convert_wav", lambda *args: b"audio")
+    encoder = Mock(return_value=b"audio")
+    monkeypatch.setattr("custom_components.homecall.views.convert_wav", encoder)
     blocked, proceed = asyncio.Event(), asyncio.Event()
     executor = hass.async_add_executor_job
 
     async def delayed(fn, *args):
-        if fn.__name__ == "<lambda>" and len(args) == 2:
+        if fn is encoder and len(args) > 1:
             blocked.set()
             await proceed.wait()
         return await executor(fn, *args)
@@ -280,7 +291,7 @@ async def test_unload_during_second_encoding_does_not_publish_variants(
     task = asyncio.create_task(
         UploadView(hass).post(http_request(targets=["notify.kitchen_speak"], body=wav_bytes()))
     )
-    await blocked.wait()
+    await asyncio.wait_for(blocked.wait(), timeout=2)
     store = hass.data[DOMAIN]
     if reload:
         store["generation"] = 1
@@ -376,7 +387,7 @@ async def test_failed_chime_encoding_does_not_send_voice_without_cue(
 ):
     entry.options = {"announcement_chime": True}
 
-    def encoder(data, prepend=False):
+    def encoder(data, prepend=False, cue=None):
         if prepend:
             raise OSError("missing asset")
         return b"voice"
@@ -388,3 +399,65 @@ async def test_failed_chime_encoding_does_not_send_voice_without_cue(
     assert response.status == 500
     assert not hass.data[DOMAIN]["clips"]
     hass.services.async_call.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("transport", "enabled", "skip_cast", "cue_selection", "expected_cue"),
+    [
+        ("dlna", True, True, "built-in", "built-in"),
+        ("music_assistant", True, True, "custom", "custom"),
+        ("music_assistant", True, True, "missing", "built-in"),
+        ("music_assistant", False, True, "custom", None),
+        ("cast", True, True, "custom", None),
+        ("cast", True, False, "custom", "custom"),
+    ],
+)
+async def test_speaker_test_follows_announcement_chime_settings(
+    hass,
+    entry,
+    devices,
+    http_request,
+    local_chime,
+    monkeypatch,
+    transport,
+    enabled,
+    skip_cast,
+    cue_selection,
+    expected_cue,
+):
+    path, media_id = local_chime
+    speaker = {"entity_id": "media_player.speaker", "transport": transport, "available": True}
+    entry.options = {
+        "announcement_chime": enabled,
+        "skip_cast_chime": skip_cast,
+        "custom_chime": None if cue_selection == "built-in" else media_id,
+        "resume_dlna": [speaker["entity_id"]],
+    }
+    if cue_selection == "missing":
+        path.unlink()
+    monkeypatch.setattr("custom_components.homecall.views.dlna_candidates", lambda _: [speaker])
+    monkeypatch.setattr("custom_components.homecall.views.local_url", lambda *_: "http://ha:8123")
+    monkeypatch.setattr(SpeakerTestView, "context", lambda *_: None)
+    manager = hass.data[DOMAIN]["resume_manager"] = Mock()
+
+    response = await SpeakerTestView(hass).post(
+        http_request({"action": "test", "entity_id": speaker["entity_id"]})
+    )
+
+    assert response.status == 200
+    result = json.loads(response.body)
+    cue, cue_duration = None, 0
+    if expected_cue == "custom":
+        cue, cue_duration = await async_custom_chime(hass, media_id)
+    elif expected_cue == "built-in":
+        cue_duration = chime_duration()
+    expected_duration = TEST_TONE_DURATION + cue_duration
+    clip = hass.data[DOMAIN]["clips"][result["receipt"]][1]
+    assert clip == encode_test_audio(expected_cue is not None, cue)
+    assert result["diagnostics"]["duration_seconds"] == round(expected_duration, 3)
+    hass.services.async_call.assert_awaited_once()
+    if transport == "dlna":
+        assert result["requires_confirmation"] is True
+        assert manager.prepare.call_args.args[2] == expected_duration
+    if transport == "music_assistant":
+        assert hass.services.async_call.call_args.args[2]["use_pre_announce"] is False

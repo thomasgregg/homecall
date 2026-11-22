@@ -14,9 +14,9 @@ Local-only setups do not require a public Alexa HTTPS address. The browser still
 
 HomeCall has six separate groups: **Alexa speakers**, **DLNA speakers**, **Sonos speakers**, **Music Assistant speakers**, **Google Cast speakers**, and **EchoMuse speakers**. Connection settings have their own section above the grouped speaker connectors. You can combine them; Alexa Devices is not required for local-only setups.
 
-### Alexa speakers
+Speaker rows show the Home Assistant name and area, when assigned. HomeCall adds the entity ID when speakers still share a name and area or share a name with no area assigned. The card and its editor also use these details.
 
-All groups reuse the same **Your speakers** and **Available speakers** cards. Press **Add** beside an available Alexa, Sonos, Music Assistant, Google Cast or EchoMuse speaker to move it into your list. **Remove** moves it back to the available list. Adding and removing Alexa, Sonos, Music Assistant, Google Cast and EchoMuse speakers remains pending until **Save changes**. Each added speaker has a checkbox. **Select all** checks or clears the speakers currently listed and shows a partial-selection state when only some are checked. Press **Save changes** once for the page. Saving this list uses the current selection; speakers discovered later are not automatically added. Editing Alexa selection preserves the separate DLNA selection. Alexa does not require the DLNA sound test.
+All groups use **Your speakers** and **Available speakers**. Press **Add** beside an available Alexa, Sonos, Music Assistant, Google Cast or EchoMuse speaker to move it into your list. **Remove** moves it back to the available list. Each added speaker has a checkbox that controls whether it appears in the card. **Select all** checks or clears the speakers currently listed and shows a partial-selection state when only some are checked. Select **Save** to apply additions, removals, and visibility changes. Editing Alexa selection preserves the separate DLNA selection. Alexa sound tests are optional.
 
 ### DLNA speakers
 
@@ -25,9 +25,9 @@ All groups reuse the same **Your speakers** and **Available speakers** cards. Pr
 3. Select **Test** beside an online speaker. Progress, errors, and confirmation appear under that row.
 4. Confirm **Yes, add speaker** only if you heard it.
 
-The test plays a three-second chime at the current speaker volume and replaces any current playback. HomeCall requires both a download of the test audio and your audible confirmation before adding the speaker. An accepted service call alone is insufficient. Failed, expired and offline tests never add a device.
+The test plays the announcement chime when enabled, followed by a three-second tone at the current speaker volume. It replaces any current playback. HomeCall requires both a download of the test audio and your audible confirmation before adding the speaker. An accepted service call alone is insufficient. Failed, expired and offline tests never add a device.
 
-Added speakers have a checkbox controlling visibility in the card. Unchecking hides the speaker without discarding the successful test. Expand the speaker row to use **Remove**. DLNA rows also offer **Resume music after announcements**; Sonos handles restoration through native announcement mode. Visibility and resume edits remain pending until **Save changes** at the bottom of the page; refreshing discovery preserves pending edits. A successful DLNA test registers the speaker immediately. Removing it remains pending until **Save changes**. **Remove** discards the test and visibility; re-adding requires a new test. New DLNA speakers never enter the card automatically.
+Added speakers have a checkbox controlling visibility in the card. Unchecking hides the speaker without discarding the successful test. Expand the speaker row to use **Remove**. DLNA rows also offer **Resume music after announcements**. Select **Save** to apply pending visibility, removal, and resume edits. Refreshing discovery preserves pending edits. Confirming a successful DLNA test registers the speaker immediately. Saving a removal discards the test and visibility. Re-adding requires a new test.
 
 Local discovery recognizes the `dlna_dmr`, `sonos`, `music_assistant` and `cast` entity platforms. EchoMuse players use the `esphome` platform and device manufacturer `EchoMuse`. Online local players need `PLAY_MEDIA`; EchoMuse also needs `MEDIA_ANNOUNCE`. Disabled entities are excluded. Unavailable or unknown players remain discoverable but cannot receive recordings. Passing the test confirms basic MP3 playback, not music resumption or every announcement scenario.
 
@@ -35,7 +35,7 @@ Local discovery recognizes the `dlna_dmr`, `sonos`, `music_assistant` and `cast`
 
 DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use HA’s local address automatically. If the speaker cannot resolve that address, set **Connection → Local address for DLNA / Sonos / Music Assistant / Cast / EchoMuse (optional)** to an address it can reach, for example `http://192.168.1.2:8123`. [HA recommends HTTP and an IP address for DLNA playback](https://www.home-assistant.io/integrations/dlna_dmr/#playing-media). Do not disable TLS or authentication on your HA instance; use an existing reachable listener. Changing the address may require testing speakers again.
 
-Alexa continues to use the public HTTPS address. Mixed announcements share one encoded clip but use the appropriate delivery address for each route. Both links retain the same random token and three-minute expiry.
+Alexa uses the public HTTPS address. Each recipient gets a link for its route and its audio variant. Chimed and voice-only variants have separate tokens, each expiring after three minutes.
 
 ## Change settings
 
@@ -45,13 +45,37 @@ No YAML entry is required. HomeCall supports one configuration entry per instanc
 
 ## Announcement chime
 
-1. Open **HomeCall → Configure → Announcements** and enable **Play a chime before messages**.
+1. Open **HomeCall → Configure → Announcements** and enable **Play a chime before messages**. The setting is off by default.
 2. Under **Chime sound**, select **Pick media** and choose a readable MP3 from Home Assistant's **My media**. The file may be up to 10 seconds and 2 MiB. The default media folder and any folders configured in `homeassistant.media_dirs` are available through the picker. See [Home Assistant's media setup guide](https://www.home-assistant.io/integrations/media_source/#using-custom-or-additional-media-folders).
-3. Select **Save**, then send a recording from the HomeCall card to hear the chime before your message.
+3. Select **Save**. Expand an online speaker and select **Test** to hear the saved chime followed by a three-second tone. With the chime off or skipped for that route, **Test** plays the tone alone.
 
 The row shows the selected filename. Use **Change** to select a different file, or **Use built-in chime** to restore the two-tone sound, then select **Save**. Turning chimes off remembers your selection. If your selected file is moved, deleted, or becomes unreadable, HomeCall uses the built-in chime and shows a warning in Announcements settings.
 
-The direct Google Cast exception is on by default. Music Assistant targets use the HomeCall chime when enabled. HomeCall uses the chime and recording in one clip, and the speaker setup sound test uses its own test tone.
+**Skip the chime on direct Google Cast speakers** is on by default. It applies to the **Google Cast** speaker list. Music Assistant players, including those using a Cast output, follow the HomeCall chime setting. HomeCall disables Music Assistant’s own pre-announcement cue. A Cast device can still play its connection sound when opening a receiver session.
+
+HomeCall combines the cue and the complete recording in one clip. Mixed sends can use both that clip and a voice-only variant. DLNA restoration uses the total playback duration, including the cue. See the [compatibility table](../README.md#speaker-compatibility) for verified playback. The built-in sound is [2-tone chime by mpaol2023](https://freesound.org/people/mpaol2023/sounds/370176/), licensed CC0.
+
+## Custom announcement volume
+
+In **HomeCall → Configure → Sonos speakers** or **Music Assistant speakers**, expand an eligible speaker under **Your speakers**. **Custom announcement volume** starts off, so the player uses its normal announcement volume. Turning it on reveals a slider from **1%** to **100%** and a read-only percentage. The initial level is **25%**. **Test** sends the current slider level before saving. Its diagnostics show the requested percentage. Select **Save** to use that level for future announcements. HomeCall remembers the percentage when you turn the switch off and clears it if you remove the speaker and save.
+
+- **Sonos:** The direct speaker must report S2 software and have a connected AudioClip client. HomeCall uses AudioClip for an override. If the clip is refused, HomeCall reports the speaker as skipped.
+- **Music Assistant:** The player must support volume adjustment and be standalone. Group and stereo-pair targets and players currently participating in a group use their own volume settings. See [Music Assistant volume setup](#music-assistant-volume-setup) for the required player setting. Whether the player applies the request also depends on its output protocol and volume control. Music Assistant handles interruption, temporary unmuting, and restoration.
+- Offline Sonos and Music Assistant rows show the volume switch with a prompt to reconnect. Enabling it requires a reachability and support check. A saved override remains available to turn off if the speaker is disconnected or grouped. If a reachable speaker can no longer use its override, HomeCall reports the affected speaker and continues with the other eligible recipients. A delivery timeout can mean a clip is still playing.
+
+The level applies to the whole announcement, including the HomeCall chime. Percentage scales differ by device. Audible adjustment was verified on the JBL setup below. Direct Sonos playback with the override and music restoration with the override still need hardware testing.
+
+### Music Assistant volume setup
+
+On Music Assistant 2.10.13, **Do not adjust volume** ignores the level HomeCall requests. Configure each eligible player you want to use with HomeCall’s slider. [Music Assistant 2.10.13 volume handling](https://github.com/music-assistant/server/blob/2.10.13/music_assistant/controllers/players/announcements.py#L268-L320)
+
+1. In **Music Assistant → Settings → Players**, open the player you selected in HomeCall and find **Announcements**.
+2. Set **Volume strategy for Announcements** to **Relative volume increase** and **Volume for Announcements** to **0**. This adds zero to the current volume for announcements that use the player’s default, subject to its limits.
+3. Review the **Minimum Volume level for Announcements** and **Maximum Volume level for Announcements**. Music Assistant clamps HomeCall’s requested percentage to this range. With limits of **15%** and **75%**, an **83%** request plays at **75%** if the player applies the override.
+4. Select **Save** in Music Assistant. If the volume still sounds the same, reopen the player settings and check that the strategy and **0** were saved.
+5. In **HomeCall → Configure → Music Assistant speakers**, expand the same player, enable **Custom announcement volume**, and use **Test** at two levels within the limits, such as **20%** and **35%**. You can compare them before saving the HomeCall setting.
+
+An audible volume difference was confirmed on a JBL Charge 5 Wi-Fi using AirPlay 2 with Music Assistant 2.10.13 and HomeCall v1.12.0-beta.3.
 
 ## Resume music after announcements
 
@@ -65,17 +89,19 @@ JBL Charge 5 Wi-Fi was checked with local MP3s: replay after interruption and a 
 
 ## Sonos announcements
 
-Sonos speakers appear in **Available speakers**. Press **Add**, then select which speakers appear in the card; the sound test is optional. Alexa uses the same speaker screen with an optional sound test. HomeCall sends MP3 URLs through `media_player.play_media` with `announce: true`. Sonos handles the music overlay and volume restoration; the DLNA resume checkbox is therefore hidden for Sonos. Legacy settings/API keys retain their DLNA names for compatibility.
+Sonos speakers appear in **Available speakers**. Press **Add**, select which speakers appear in the card, and select **Save**. The sound test is optional. HomeCall normally sends MP3 URLs through `media_player.play_media` with `announce: true`. Eligible Sonos S2 speakers use AudioClip when [custom announcement volume](#custom-announcement-volume) is enabled. Sonos handles the music overlay and volume restoration.
 
 The speaker must reach Home Assistant’s local audio address. Home Assistant must also reach TCP port 1443 on the Sonos speaker for announcements. Older hardware and S1 firmware may not fully support overlays; see [Home Assistant’s Sonos documentation](https://www.home-assistant.io/integrations/sonos/). Discovery, onboarding and service calls are covered by simulated tests; audible Sonos playback and restoration have not been verified on hardware.
 
-All six speaker groups use the same expandable speaker rows, visibility checkboxes, Select all and Save changes. Expand any online speaker to play a sound test. Alexa, Sonos, Music Assistant, Google Cast and EchoMuse tests do not add or select speakers and need no confirmation; DLNA onboarding still requires a downloaded test and audible confirmation. Testing produces audible sound and can interrupt playback. Only DLNA offers the HomeCall resume setting.
+Expand an online speaker to play a sound test. The test can interrupt playback. Sound tests are optional for Alexa, Sonos, Music Assistant, Google Cast, and EchoMuse. DLNA onboarding requires both a download and audible confirmation.
 
 ## Music Assistant announcements
 
-Install and start the Music Assistant server (available as a Home Assistant app), configure a player provider, and add the discovered Music Assistant integration under **Settings → Devices & services**. The server manages music and speaker connections; the HA integration exposes the player entities and announcement service. HomeCall does not install the server for you. You can choose Music Assistant during initial HomeCall setup without a public Alexa address. Open **HomeCall → Configure → Music Assistant speakers**, press **Add** beside a player, choose visibility, and **Save changes**. A sound test is optional and does not add or select the player. Refresh preserves pending selections.
+Install and start the Music Assistant server (available as a Home Assistant app), configure a player provider, and add the discovered Music Assistant integration under **Settings → Devices & services**. The server manages music and speaker connections. The HA integration exposes the player entities and announcement service. You can choose Music Assistant during initial HomeCall setup without a public Alexa address. Open **HomeCall → Configure → Music Assistant speakers**, press **Add** beside a player, choose visibility, and select **Save**. Refresh preserves pending selections.
 
-HomeCall calls `music_assistant.play_announcement` with the recording URL and no pre-announcement chime. Music Assistant manages pausing/restoring its playback or uses native announcement support where available. The HomeCall DLNA resume option is hidden. See [Music Assistant announcements](https://www.music-assistant.io/integration/announcements/).
+HomeCall calls `music_assistant.play_announcement` with its audio URL and disables Music Assistant’s own pre-announcement cue. Music Assistant manages pausing and restoring its playback or uses native announcement support where available. [Music Assistant announcements](https://www.music-assistant.io/integration/announcements/)
+
+For per-speaker volume, follow [Music Assistant volume setup](#music-assistant-volume-setup) before using **Custom announcement volume** in HomeCall.
 
 The Music Assistant server and players must be able to retrieve HomeCall's temporary MP3 URL from Home Assistant's local address. Set the optional local address in Connection settings if needed. Select the Music Assistant entity for MA-managed playback; avoid selecting both it and the underlying Sonos/DLNA/Cast entity for the same speaker. For groups, select one group target rather than also selecting its members, since MA can announce to the whole group.
 
@@ -98,15 +124,3 @@ For detailed setup, network troubleshooting, hardware findings and recovery opti
 ## EchoMuse speakers
 
 Connect EchoMuse Dots through ESPHome in Home Assistant, then add and select them under **EchoMuse speakers**. Sound tests are optional. HomeCall uses local `media_player.play_media` announcements and delegates music handling to EchoMuse. A [Reddit user](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe7g2wf/) confirmed recorded message playback and that the opening-cutoff fix worked on their EchoMuse Dots. The new optional chime and music continuation remain unverified on that route. See [EchoMuse setup and limitations](echomuse.md).
-
-## Announcement chime
-
-Open **HomeCall → Configure → Announcements** and enable **Play a chime before messages**. It is off by default. HomeCall plays the selected two-tone cue immediately before the complete recording in one combined audio file. No extra playback call or silent delay is added. The sound is bundled with the integration; no upload or external sound service is needed.
-
-When enabled, **Skip the chime on direct Google Cast speakers** appears and is on by default. Those recipients receive only the voice recording. Cast may still make its connection sound when a new receiver session starts; it does not necessarily make that sound before every message. Turn the exception off if you want the HomeCall chime before every direct-Cast message.
-
-The exception applies to speakers selected under **Google Cast**, not speakers or groups selected through **Music Assistant**. MA recipients receive the combined file with MA's additional pre-announcement sound explicitly disabled. HomeCall cannot reliably identify Cast protocols inside MA groups through the public HA entity information. A mixed broadcast may therefore use a voice-only file for direct Cast and a combined file for other routes, from one card upload. Playback is not guaranteed to start simultaneously across routes.
-
-The user confirmed optional-chime playback through Alexa on 6 October 2026. This verifies the chime on their tested Alexa setup, without establishing music restoration or behavior on other models. Alexa continues using Speak for recorded audio. Sonos and EchoMuse retain their existing announcement routes. DLNA's optional restoration tracks the combined playback duration. Full-length recordings retain their final words after the cue. Speaker setup sound tests remain unchanged. Automated coverage does not establish audible behavior on every device or firmware; verify idle/active playback and groups on your hardware.
-
-The cue is [2-tone chime by mpaol2023](https://freesound.org/people/mpaol2023/sounds/370176/), licensed CC0; source details are in the bundled asset's attribution file.
