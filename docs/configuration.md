@@ -12,11 +12,11 @@ Local-only setups do not require a public Alexa HTTPS address. The browser still
 
 ## Speaker groups
 
-HomeCall has six separate groups: **Alexa speakers**, **DLNA speakers**, **Sonos speakers**, **Music Assistant speakers**, **Google Cast speakers**, and **EchoMuse speakers**. Connection settings have their own section above the grouped speaker connectors. You can combine them; Alexa Devices is not required for local-only setups.
+HomeCall has seven separate groups: **Alexa speakers**, **DLNA speakers**, **Sonos speakers**, **Music Assistant speakers**, **Google Cast speakers**, **EchoMuse speakers**, and **Voice Satellite speakers**. Connection settings have their own section above the grouped speaker connectors. You can combine them; Alexa Devices is not required for local-only setups.
 
 Speaker rows show the Home Assistant name and area, when assigned. HomeCall adds the entity ID when speakers still share a name and area or share a name with no area assigned. The card and its editor also use these details.
 
-All groups use **Your speakers** and **Available speakers**. Press **Add** beside an available Alexa, Sonos, Music Assistant, Google Cast or EchoMuse speaker to move it into your list. **Remove** moves it back to the available list. Each added speaker has a checkbox that controls whether it appears in the card. **Select all** checks or clears the speakers currently listed and shows a partial-selection state when only some are checked. Select **Save** to apply additions, removals, and visibility changes. Editing Alexa selection preserves the separate DLNA selection. Alexa sound tests are optional.
+All groups use **Your speakers** and **Available speakers**. Press **Add** beside an available Alexa, Sonos, Music Assistant, Google Cast, EchoMuse or Voice Satellite speaker to move it into your list. **Remove** moves it back to the available list. Each added speaker has a checkbox that controls whether it appears in the card. **Select all** checks or clears the speakers currently listed and shows a partial-selection state when only some are checked. Select **Save** to apply additions, removals, and visibility changes. Editing Alexa selection preserves the separate DLNA selection. Alexa sound tests are optional.
 
 ### DLNA speakers
 
@@ -29,11 +29,13 @@ The test plays the announcement chime when enabled, followed by a three-second t
 
 Added speakers have a checkbox controlling visibility in the card. Unchecking hides the speaker without discarding the successful test. Expand the speaker row to use **Remove**. DLNA rows also offer **Resume music after announcements**. Select **Save** to apply pending visibility, removal, and resume edits. Refreshing discovery preserves pending edits. Confirming a successful DLNA test registers the speaker immediately. Saving a removal discards the test and visibility. Re-adding requires a new test.
 
-Local discovery recognizes the `dlna_dmr`, `sonos`, `music_assistant` and `cast` entity platforms. EchoMuse players use the `esphome` platform and device manufacturer `EchoMuse`. Online local players need `PLAY_MEDIA`; EchoMuse also needs `MEDIA_ANNOUNCE`. Disabled entities are excluded. Unavailable or unknown players remain discoverable but cannot receive recordings. Passing the test confirms basic MP3 playback, not music resumption or every announcement scenario.
+Local discovery recognizes the `dlna_dmr`, `sonos`, `music_assistant` and `cast` entity platforms. EchoMuse players use the `esphome` platform and device manufacturer `EchoMuse`. Voice Satellite kiosks are found through their `voice_satellite` Assist satellite entity and play through the media player on the same device. Online local players need `PLAY_MEDIA`; EchoMuse also needs `MEDIA_ANNOUNCE`. Disabled entities are excluded. Unavailable or unknown players remain discoverable but cannot receive recordings. Passing the test confirms basic MP3 playback, not music resumption or every announcement scenario.
 
 ### Local audio address
 
 DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use HA’s local address automatically. If the speaker cannot resolve that address, set **Connection → Local address for DLNA / Sonos / Music Assistant / Cast / EchoMuse (optional)** to an address it can reach, for example `http://192.168.1.2:8123`. [HA recommends HTTP and an IP address for DLNA playback](https://www.home-assistant.io/integrations/dlna_dmr/#playing-media). Do not disable TLS or authentication on your HA instance; use an existing reachable listener. Changing the address may require testing speakers again.
+
+Voice Satellite kiosks do not use this address. Their browser fetches the clip from the address it already uses to open Home Assistant.
 
 Alexa uses the public HTTPS address. Each recipient gets a link for its route and its audio variant. Chimed and voice-only variants have separate tokens, each expiring after three minutes.
 
@@ -93,7 +95,7 @@ Sonos speakers appear in **Available speakers**. Press **Add**, select which spe
 
 The speaker must reach Home Assistant’s local audio address. Home Assistant must also reach TCP port 1443 on the Sonos speaker for announcements. Older hardware and S1 firmware may not fully support overlays; see [Home Assistant’s Sonos documentation](https://www.home-assistant.io/integrations/sonos/). Discovery, onboarding and service calls are covered by simulated tests; audible Sonos playback and restoration have not been verified on hardware.
 
-Expand an online speaker to play a sound test. The test can interrupt playback. Sound tests are optional for Alexa, Sonos, Music Assistant, Google Cast, and EchoMuse. DLNA onboarding requires both a download and audible confirmation.
+Expand an online speaker to play a sound test. The test can interrupt playback. Sound tests are optional for Alexa, Sonos, Music Assistant, Google Cast, EchoMuse, and Voice Satellite. DLNA onboarding requires both a download and audible confirmation.
 
 ## Music Assistant announcements
 
@@ -124,3 +126,7 @@ For detailed setup, network troubleshooting, hardware findings and recovery opti
 ## EchoMuse speakers
 
 Connect EchoMuse Dots through ESPHome in Home Assistant, then add and select them under **EchoMuse speakers**. Sound tests are optional. HomeCall uses local `media_player.play_media` announcements and delegates music handling to EchoMuse. A [Reddit user](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe7g2wf/) confirmed recorded message playback and that the opening-cutoff fix worked on their EchoMuse Dots. The new optional chime and music continuation remain unverified on that route. See [EchoMuse setup and limitations](echomuse.md).
+
+## Voice Satellite speakers
+
+Set up [Voice Satellite](https://github.com/jxlarrea/voice-satellite-card-integration) and open its card on each kiosk, then add and select the kiosk under **Voice Satellite speakers**. Sound tests are optional. HomeCall sends a page-relative MP3 path through `media_player.play_media` on the kiosk's Voice Satellite media player, so HTTPS kiosks work while Home Assistant's internal URL is HTTP. The message replaces media playing on that player and does not resume it. On 25 November 2026, the user confirmed recorded message playback on their HA WinKiosk tablets. The tablets open Home Assistant over HTTPS while its internal URL is HTTP. Installed HA, Voice Satellite and HA WinKiosk versions were not recorded. An earlier development build that used `assist_satellite.announce` showed the announcement on the same tablets but played no audio. See [Voice Satellite setup and limitations](voice-satellite.md).

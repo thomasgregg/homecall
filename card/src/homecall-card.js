@@ -8,11 +8,19 @@ async function homeCallNativeForms() {
   await card.constructor.getConfigElement();
 }
 
+const HOMECALL_SPEAKER_LIST = ["ha-list-selectable", "ha-list-item-option"];
+const HOMECALL_LEGACY_SPEAKER_LIST = ["ha-list", "ha-check-list-item"];
+
 async function homeCallNativeSpeakerControls(element, hass) {
   await homeCallNativeForms();
-  const names = ["ha-list", "ha-check-list-item", "ha-expansion-panel"];
-  if (names.every((name) => customElements.get(name))) return;
-  // HA’s native To-do card imports its checklist; the form imports expansion panels.
+  const shared = ["ha-checkbox", "ha-expansion-panel"];
+  const lists = [HOMECALL_SPEAKER_LIST, HOMECALL_LEGACY_SPEAKER_LIST];
+  if (
+    shared.every((name) => customElements.get(name)) &&
+    lists.some((names) => names.every((name) => customElements.get(name)))
+  )
+    return;
+  // The native To-do card loads the checklist used by this HA version.
   // Ask HA to load its own modules, without copied controls or chunk URLs.
   const helpers = await window.loadCardHelpers();
   helpers.createCardElement({
@@ -26,9 +34,11 @@ async function homeCallNativeSpeakerControls(element, hass) {
   form.schema = [{ name: "settings", type: "expandable", schema: [] }];
   element.shadowRoot.append(form);
   let timeout;
+  const whenDefined = (names) =>
+    Promise.all(names.map((name) => customElements.whenDefined(name)));
   try {
     await Promise.race([
-      Promise.all(names.map((name) => customElements.whenDefined(name))),
+      Promise.all([whenDefined(shared), Promise.race(lists.map(whenDefined))]),
       new Promise((_, reject) => {
         timeout = setTimeout(
           () =>
@@ -44,12 +54,28 @@ async function homeCallNativeSpeakerControls(element, hass) {
     form.remove();
   }
 }
+function homeCallEntityAvailable(id, state) {
+  return (
+    state !== "unavailable" &&
+    (state !== "unknown" ||
+      (!id.startsWith("media_player.") && !id.startsWith("assist_satellite.")))
+  );
+}
 function homeCallSpeakerAvailable(target, hass) {
-  const state = hass?.states?.[target.entity_id]?.state;
+  const states = hass?.states;
+  const state = states?.[target.entity_id]?.state;
+  if (target.transport === "voice_satellite" && states) {
+    const playerState = states[target.player]?.state;
+    return (
+      state !== undefined &&
+      playerState !== undefined &&
+      homeCallEntityAvailable(target.entity_id, state) &&
+      homeCallEntityAvailable(target.player, playerState)
+    );
+  }
   return state === undefined
     ? target.available
-    : state !== "unavailable" &&
-        (!target.entity_id.startsWith("media_player.") || state !== "unknown");
+    : homeCallEntityAvailable(target.entity_id, state);
 }
 function homeCallSpeakerIntegration(target) {
   return (
@@ -59,6 +85,7 @@ function homeCallSpeakerIntegration(target) {
       music_assistant: "Music Assistant",
       cast: "Google Cast",
       echomuse: "EchoMuse",
+      voice_satellite: "Voice Satellite",
     }[target.transport] ||
     (target.entity_id.startsWith("notify.") &&
     target.entity_id.endsWith("_speak")
@@ -94,7 +121,13 @@ function homeCallSpeakerList(
   allowUnavailable,
   onChange,
 ) {
-  const list = document.createElement("ha-list");
+  const modern = HOMECALL_SPEAKER_LIST.every((name) =>
+    customElements.get(name),
+  );
+  const [listTag, rowTag] = modern
+    ? HOMECALL_SPEAKER_LIST
+    : HOMECALL_LEGACY_SPEAKER_LIST;
+  const list = document.createElement(listTag);
   list.className = "speaker-list";
   list.multi = true;
   list.wrapFocus = true;
@@ -102,29 +135,50 @@ function homeCallSpeakerList(
     "aria-label",
     language === "de" ? "Lautsprecher" : "Speakers",
   );
+  if (modern) {
+    list.controlled = true;
+    const select = (event, checked) => {
+      const row = list.children[event.detail];
+      if (event.target === list && row && !row.disabled)
+        onChange(row.value, checked);
+    };
+    list.addEventListener("ha-list-item-selected", (event) =>
+      select(event, true),
+    );
+    list.addEventListener("ha-list-item-deselected", (event) =>
+      select(event, false),
+    );
+  }
   for (const target of targets) {
-    const row = document.createElement("ha-check-list-item");
+    const row = document.createElement(rowTag);
     row.value = target.entity_id;
-    row.left = true;
-    row.twoline = true;
-    row.toggleAttribute("multiline-secondary", !!target.show_entity_id);
     const name = document.createElement("span");
     name.textContent = target.name;
     const description = document.createElement("span");
-    description.slot = "secondary";
+    if (modern) {
+      row.appearance = "checkbox";
+      row.toggleAttribute("wrap-supporting-text", !!target.show_entity_id);
+      name.slot = "headline";
+      description.slot = "supporting-text";
+    } else {
+      row.left = true;
+      row.twoline = true;
+      row.toggleAttribute("multiline-secondary", !!target.show_entity_id);
+      description.slot = "secondary";
+      row.addEventListener("request-selected", (event) => {
+        if (
+          event.target === row &&
+          !row.disabled &&
+          typeof event.detail?.selected === "boolean"
+        )
+          onChange(row.value, event.detail.selected);
+      });
+    }
     description.textContent = homeCallSpeakerDescription(target, language);
     row.append(name, description);
     row.title = target.name + " · " + description.textContent;
     row.selected = selected.includes(target.entity_id);
     row.disabled = !allowUnavailable && !target.available;
-    row.addEventListener("request-selected", (event) => {
-      if (
-        event.target === row &&
-        !row.disabled &&
-        typeof event.detail?.selected === "boolean"
-      )
-        onChange(row.value, event.detail.selected);
-    });
     list.append(row);
   }
   return list;
@@ -143,7 +197,7 @@ function homeCallSyncSpeakerList(
     row.selected = selected.includes(row.value);
     row.disabled = !allowUnavailable && !target.available;
     const description = homeCallSpeakerDescription(target, language);
-    row.querySelector('[slot="secondary"]').textContent = description;
+    row.lastElementChild.textContent = description;
     row.title = target.name + " · " + description;
   }
 }
@@ -315,13 +369,10 @@ class HomeCallCard extends HTMLElement {
         .filter(
           ([id]) =>
             (id.startsWith("notify.") && id.endsWith("_speak")) ||
-            id.startsWith("media_player."),
+            id.startsWith("media_player.") ||
+            id.startsWith("assist_satellite."),
         )
-        .map(([id, state]) => [
-          id,
-          state.state !== "unavailable" &&
-            (!id.startsWith("media_player.") || state.state !== "unknown"),
-        ])
+        .map(([id, state]) => [id, homeCallEntityAvailable(id, state.state)])
         .sort(([a], [b]) => a.localeCompare(b)),
     );
   }
@@ -822,7 +873,16 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
         !Array.isArray(this.config.default_targets) &&
         !this._defaults.length;
       this._nextSelection = null;
-      this._fillTargets(data.targets);
+      this._fillTargets(
+        data.targets.map((target) =>
+          target.transport === "voice_satellite" && target.available
+            ? {
+                ...target,
+                available: homeCallSpeakerAvailable(target, this._hass),
+              }
+            : target,
+        ),
+      );
       this._phase = "ready";
       this._setStatus("Tippe auf das Mikrofon");
       this._button("Mikrofon starten");

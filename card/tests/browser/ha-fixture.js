@@ -1,6 +1,8 @@
 // Lightweight native-control fixtures for local layout tests and previews.
 // Production continues to use Home Assistant's own components.
-export function registerHomeAssistantFixtures() {
+export function registerHomeAssistantFixtures(legacyList = false) {
+  const listTag = legacyList ? "ha-list" : "ha-list-selectable";
+  const optionTag = legacyList ? "ha-check-list-item" : "ha-list-item-option";
   customElements.define(
     "ha-card",
     class extends HTMLElement {
@@ -113,12 +115,12 @@ export function registerHomeAssistantFixtures() {
     },
   );
   customElements.define(
-    "ha-check-list-item",
+    optionTag,
     class extends HTMLElement {
       constructor() {
         super();
         this.attachShadow({ mode: "open" }).innerHTML =
-          `<style>:host{display:block;cursor:pointer;font-size:var(--ha-font-size-m,14px);line-height:1.5}:host([disabled]){color:var(--disabled-text-color,#999);pointer-events:none}.base{display:flex;align-items:center;gap:16px;padding:12px 16px;min-height:48px;box-sizing:border-box}.content{flex:1;min-width:0}.headline,.supporting{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.supporting{font-size:var(--ha-font-size-s,12px);color:var(--secondary-text-color,#666)}.checkbox{pointer-events:none;flex-shrink:0}</style><div class="base"><ha-checkbox class="checkbox" inert></ha-checkbox><div class="content"><div class="headline"><slot></slot></div><div class="supporting"><slot name="secondary"></slot></div></div></div>`;
+          `<style>:host{display:block;cursor:pointer;font-size:var(--ha-font-size-m,14px);line-height:1.5}:host([disabled]){color:var(--disabled-text-color,#999);pointer-events:none}.base{display:flex;align-items:center;gap:16px;padding:12px 16px;min-height:48px;box-sizing:border-box}.content{flex:1;min-width:0}.headline,.supporting{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.supporting{font-size:var(--ha-font-size-s,12px);color:var(--secondary-text-color,#666)}.checkbox{pointer-events:none;flex-shrink:0}</style><div class="base"><ha-checkbox class="checkbox" inert></ha-checkbox><div class="content"><div class="headline"><slot ${legacyList ? "" : 'name="headline"'}></slot></div><div class="supporting"><slot name="${legacyList ? "secondary" : "supporting-text"}"></slot></div></div></div>`;
       }
       connectedCallback() {
         this.setAttribute("role", "option");
@@ -149,7 +151,7 @@ export function registerHomeAssistantFixtures() {
     },
   );
   customElements.define(
-    "ha-list",
+    listTag,
     class extends HTMLElement {
       constructor() {
         super();
@@ -158,16 +160,30 @@ export function registerHomeAssistantFixtures() {
             .composedPath()
             .find(
               (node) =>
-                node instanceof HTMLElement &&
-                node.localName === "ha-check-list-item",
+                node instanceof HTMLElement && node.localName === optionTag,
             );
           if (!row || row.disabled) return;
-          row.dispatchEvent(
-            new CustomEvent("request-selected", {
-              detail: { selected: !row.selected },
-              bubbles: true,
-            }),
-          );
+          if (legacyList) {
+            row.dispatchEvent(
+              new CustomEvent("request-selected", {
+                detail: { selected: !row.selected },
+                bubbles: true,
+              }),
+            );
+          } else {
+            this.dispatchEvent(
+              new CustomEvent(
+                row.selected
+                  ? "ha-list-item-deselected"
+                  : "ha-list-item-selected",
+                {
+                  detail: Array.from(this.children).indexOf(row),
+                  bubbles: true,
+                },
+              ),
+            );
+            if (!this.controlled) row.selected = !row.selected;
+          }
         });
         this.addEventListener("keydown", (event) => {
           const rows = [...this.children].filter((row) => !row.disabled);

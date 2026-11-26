@@ -27,6 +27,9 @@ async function homeCallNativeSettingsRow(element) {
   await (routes?.preferences ?? routes?.general ?? routes?.dashboard)?.load?.();
 }
 const HC_CHIME_SELECTOR = {media: {accept: ["audio/mpeg"]}};
+// Routes added per speaker on their own page. DLNA also needs a confirmed sound test.
+const HC_ADDED_TRANSPORTS = ["sonos", "music_assistant", "cast", "echomuse", "voice_satellite"];
+const HC_LOCAL_TRANSPORTS = ["dlna", ...HC_ADDED_TRANSPORTS];
 const HC_CHIME_SOURCE = "media-source://media_source";
 async function homeCallNativeChimePicker(element, hass) {
   if (customElements.get("ha-selector-media")) return;
@@ -155,6 +158,8 @@ Object.assign(HC_WORDS.en, {
   music_assistant: "Music Assistant speakers",
   echomuse: "EchoMuse speakers",
   emptyEchoMuse: "No new EchoMuse speakers found. Connect your Dots through ESPHome in Home Assistant first.",
+  voice_satellite: "Voice Satellite speakers",
+  emptyVoiceSatellite: "No new Voice Satellite devices found. Set up the Voice Satellite integration in Home Assistant first.",
   cast: "Google Cast speakers",
   emptyCast: "No new Google Cast devices found. Set up Google Cast in Home Assistant first.",
   emptyMusicAssistant: "No new Music Assistant players found. Set up the Music Assistant integration in Home Assistant first.",
@@ -201,6 +206,8 @@ Object.assign(HC_WORDS.de, {
   music_assistant: "Music Assistant-Lautsprecher",
   echomuse: "EchoMuse-Lautsprecher",
   emptyEchoMuse: "Keine neuen EchoMuse-Lautsprecher gefunden. Die Dots zuerst über ESPHome in Home Assistant verbinden.",
+  voice_satellite: "Voice Satellite-Lautsprecher",
+  emptyVoiceSatellite: "Keine neuen Voice Satellite-Geräte gefunden. Zuerst die Voice Satellite-Integration in Home Assistant einrichten.",
   cast: "Google Cast-Lautsprecher",
   emptyCast: "Keine neuen Google Cast-Geräte gefunden. Zuerst Google Cast in Home Assistant einrichten.",
   emptyMusicAssistant: "Keine neuen Music Assistant-Player gefunden. Zuerst Music Assistant in Home Assistant einrichten.",
@@ -425,7 +432,7 @@ class HomeCallSettings extends HTMLElement {
     if (page === "devices" && this._draft.use_all) {
       this._draft.default_targets = [...new Set([
         ...this._draft.default_targets,
-        ...this._data.targets.filter(t => !["dlna", "sonos", "music_assistant", "cast", "echomuse"].includes(t.transport)).map(t => t.entity_id),
+        ...this._data.targets.filter(t => !HC_LOCAL_TRANSPORTS.includes(t.transport)).map(t => t.entity_id),
       ])];
       this._draft.added_speakers = [...new Set([...this._draft.added_speakers, ...this._draft.default_targets.filter(id => !this._data.tested_dlna.includes(id))])];
       this._draft.use_all = false;
@@ -593,7 +600,7 @@ class HomeCallSettings extends HTMLElement {
       added_speakers: [...(draft?.added_speakers ?? result.added_speakers ?? result.default_targets)],
       use_all: draft?.use_all ?? result.use_all,
       default_targets: draft ? [
-        ...draft.default_targets.filter(id => !id.startsWith("media_player.") || tested.has(id) || (result.dlna_candidates || []).some(t => t.entity_id === id && ["sonos", "music_assistant", "cast", "echomuse"].includes(t.transport))),
+        ...draft.default_targets.filter(id => !id.startsWith("media_player.") || tested.has(id) || (result.dlna_candidates || []).some(t => t.entity_id === id && HC_ADDED_TRANSPORTS.includes(t.transport))),
         ...(result.tested_dlna || []).filter(id => !previouslyTested.has(id) && result.default_targets.includes(id)),
       ] : [...result.default_targets],
       resume_dlna: [...(draft?.resume_dlna || result.resume_dlna || [])].filter(id => tested.has(id)),
@@ -602,19 +609,25 @@ class HomeCallSettings extends HTMLElement {
     this._data = result;
   }
   _isLocalSpeakerPage() {
-    return ["dlna", "sonos", "music_assistant", "cast", "echomuse"].includes(this._page);
+    return HC_LOCAL_TRANSPORTS.includes(this._page);
   }
   _localCandidates(values, platform = this._page) {
     return (values.dlna_candidates || []).filter(t => (t.transport || "dlna") === platform);
   }
   _speakerCandidates(values) {
     return this._page === "devices"
-      ? values.targets.filter(t => !["dlna", "sonos", "music_assistant", "cast", "echomuse"].includes(t.transport))
+      ? values.targets.filter(t => !HC_LOCAL_TRANSPORTS.includes(t.transport))
       : this._localCandidates(values);
   }
   _speakerList(values) {
     const candidates = this._speakerCandidates(values);
-    if (this._page !== "dlna") return candidates.filter(t => (values.added_speakers ?? values.default_targets).includes(t.entity_id));
+    if (this._page !== "dlna") {
+      const added = values.added_speakers ?? values.default_targets;
+      const speakers = candidates.filter(t => added.includes(t.entity_id));
+      if (this._page !== "voice_satellite") return speakers;
+      const missing = added.filter(id => id.startsWith("assist_satellite.") && !candidates.some(t => t.entity_id === id));
+      return [...speakers, ...missing.map(id => ({entity_id: id, name: id, available: false}))];
+    }
     return values.tested_dlna.map(id =>
       candidates.find(t => t.entity_id === id) ||
       (!(values.dlna_candidates || []).some(t => t.entity_id === id) && this._page === "dlna"
@@ -803,7 +816,7 @@ class HomeCallSettings extends HTMLElement {
         const progress = chosen && this._busy ? `<div class="test-content card-content"><ha-alert alert-type="info" role="status">${this._t("testing")}</ha-alert></div>` : "";
         return `<ha-list-item-base wrap-supporting-text title="${hcEscape(t.name + " · " + description)}"><div slot="headline">${hcEscape(t.name)}</div><div slot="supporting-text">${hcEscape(description)}</div><ha-button slot="end" class="test-sound" data-${this._page === "dlna" ? "test" : "add"}="${hcEscape(t.entity_id)}" appearance="plain" variant="brand" ${(this._page === "dlna" && !t.available) || this._busy || this._test ? "disabled" : ""}>${this._t(this._page === "dlna" ? chosen && this._busy ? "testing" : "test" : "add")}</ha-button></ha-list-item-base>${progress}${confirmation}${chosen && this._error ? `<div class="test-content card-content"><ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert></div>` : ""}`;
       }).join("");
-      body += `<ha-card><ha-expansion-panel data-available-panel><span slot="header" class="discovery-label">${this._t("availableSpeakers")}</span><ha-list-item-base><ha-button slot="end" class="refresh-speakers" appearance="plain" variant="brand" ${disabled}>${this._t("refresh")}</ha-button></ha-list-item-base><ha-list-base>${availableRows}</ha-list-base>${!choices.length ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t(this._speakerCandidates(values).length ? "allAdded" : this._page === "devices" ? "emptyAlexa" : this._page === "sonos" ? "emptySonos" : this._page === "music_assistant" ? "emptyMusicAssistant" : this._page === "cast" ? "emptyCast" : this._page === "echomuse" ? "emptyEchoMuse" : "emptyDlna")}</ha-alert></div>` : this._page === "dlna" && choices.every(t => !t.available) ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t("offlineDlna")}</ha-alert></div>` : ""}</ha-expansion-panel></ha-card>`;
+      body += `<ha-card><ha-expansion-panel data-available-panel><span slot="header" class="discovery-label">${this._t("availableSpeakers")}</span><ha-list-item-base><ha-button slot="end" class="refresh-speakers" appearance="plain" variant="brand" ${disabled}>${this._t("refresh")}</ha-button></ha-list-item-base><ha-list-base>${availableRows}</ha-list-base>${!choices.length ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t(this._speakerCandidates(values).length ? "allAdded" : this._page === "devices" ? "emptyAlexa" : this._page === "sonos" ? "emptySonos" : this._page === "music_assistant" ? "emptyMusicAssistant" : this._page === "cast" ? "emptyCast" : this._page === "echomuse" ? "emptyEchoMuse" : this._page === "voice_satellite" ? "emptyVoiceSatellite" : "emptyDlna")}</ha-alert></div>` : this._page === "dlna" && choices.every(t => !t.available) ? `<div class="test-content card-content"><ha-alert alert-type="info">${this._t("offlineDlna")}</ha-alert></div>` : ""}</ha-expansion-panel></ha-card>`;
       const errorInDiscovery = this._page === "dlna" && choices.some(t => t.entity_id === this._chosenDlna);
       if (this._error && !errorInDiscovery) body += `<ha-alert alert-type="error">${hcEscape(this._error)}</ha-alert>`;
     }
@@ -821,10 +834,10 @@ class HomeCallSettings extends HTMLElement {
     } else if (home) {
       const count = values.targets.filter(
         (t) =>
-          !["dlna", "sonos", "music_assistant", "cast", "echomuse"].includes(t.transport) &&
+          !HC_LOCAL_TRANSPORTS.includes(t.transport) &&
           values.default_targets.includes(t.entity_id),
       ).length;
-      body = `<ha-card class="connection-navigation"><ha-list-base><ha-list-item-button data-page="connection"><ha-icon slot="start" icon="mdi:lan-connect"></ha-icon><div slot="headline">${this._t("connection")}</div><div slot="supporting-text">${this._t(values.use_system_url ? "systemAddress" : "ownAddress")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button></ha-list-base></ha-card><ha-card class="announcements-navigation"><ha-list-base><ha-list-item-button data-page="announcements"><ha-icon slot="start" icon="mdi:bullhorn"></ha-icon><div slot="headline">${this._t("announcements")}</div><div slot="supporting-text">${this._t(values.announcement_chime ? "chimeOn" : "chimeOff")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button></ha-list-base></ha-card><ha-card class="settings-navigation"><ha-list-base><ha-list-item-button data-page="devices"><ha-icon slot="start" icon="mdi:speaker-multiple"></ha-icon><div slot="headline">${this._t("devices")}</div><div slot="supporting-text">${values.use_all ? this._t("allAllowed") : count === 1 ? (this._lang === "de" ? "1 Lautsprecher in der Karte" : "1 speaker shown in the card") : count + " " + this._t("allowed")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button>${["dlna", "sonos", "music_assistant", "cast", "echomuse"].map(platform => `<ha-list-item-button data-page="${platform}"><ha-icon slot="start" icon="mdi:speaker-multiple"></ha-icon><div slot="headline">${this._t(platform)}</div><div slot="supporting-text">${this._localCandidates(values, platform).filter(t => (platform === "dlna" ? values.tested_dlna : values.added_speakers ?? values.default_targets).includes(t.entity_id) && values.default_targets.includes(t.entity_id)).length} ${this._t("allowed")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button>`).join("")}</ha-list-base></ha-card>`;
+      body = `<ha-card class="connection-navigation"><ha-list-base><ha-list-item-button data-page="connection"><ha-icon slot="start" icon="mdi:lan-connect"></ha-icon><div slot="headline">${this._t("connection")}</div><div slot="supporting-text">${this._t(values.use_system_url ? "systemAddress" : "ownAddress")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button></ha-list-base></ha-card><ha-card class="announcements-navigation"><ha-list-base><ha-list-item-button data-page="announcements"><ha-icon slot="start" icon="mdi:bullhorn"></ha-icon><div slot="headline">${this._t("announcements")}</div><div slot="supporting-text">${this._t(values.announcement_chime ? "chimeOn" : "chimeOff")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button></ha-list-base></ha-card><ha-card class="settings-navigation"><ha-list-base><ha-list-item-button data-page="devices"><ha-icon slot="start" icon="mdi:speaker-multiple"></ha-icon><div slot="headline">${this._t("devices")}</div><div slot="supporting-text">${values.use_all ? this._t("allAllowed") : count === 1 ? (this._lang === "de" ? "1 Lautsprecher in der Karte" : "1 speaker shown in the card") : count + " " + this._t("allowed")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button>${HC_LOCAL_TRANSPORTS.map(platform => `<ha-list-item-button data-page="${platform}"><ha-icon slot="start" icon="${platform === "voice_satellite" ? "mdi:tablet-dashboard" : "mdi:speaker-multiple"}"></ha-icon><div slot="headline">${this._t(platform)}</div><div slot="supporting-text">${this._localCandidates(values, platform).filter(t => (platform === "dlna" ? values.tested_dlna : values.added_speakers ?? values.default_targets).includes(t.entity_id) && values.default_targets.includes(t.entity_id)).length} ${this._t("allowed")}</div><ha-icon-next slot="end"></ha-icon-next></ha-list-item-button>`).join("")}</ha-list-base></ha-card>`;
     } else if (this._isLocalSpeakerPage() || this._page === "devices") {
       body = this._renderSpeakers(values, disabled);
     } else if (this._page === "announcements") {

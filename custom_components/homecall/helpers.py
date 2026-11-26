@@ -10,7 +10,13 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from yarl import URL
 
+from . import voice_satellite
 from .announcement_volume import supports_announcement_volume
+
+# Routes added per speaker in their own settings page. DLNA additionally needs a
+# confirmed sound test; the others are shown once added.
+ADDED_TRANSPORTS = ("sonos", "music_assistant", "cast", "echomuse", voice_satellite.TRANSPORT)
+LOCAL_TRANSPORTS = ("dlna", *ADDED_TRANSPORTS)
 
 
 def _speaker_label(hass, entity, state, device):
@@ -74,8 +80,7 @@ def targets(hass):
     result.extend(
         t
         for t in dlna_candidates(hass)
-        if t.get("transport") in ("sonos", "music_assistant", "cast", "echomuse")
-        or t["entity_id"] in confirmed
+        if t.get("transport") in ADDED_TRANSPORTS or t["entity_id"] in confirmed
     )
     return sorted(result, key=lambda item: item["name"])
 
@@ -119,11 +124,7 @@ def allowed_targets(hass, entry):
         device
         for device in devices
         if device["entity_id"] in allowed
-        or (
-            values["use_all"]
-            and device.get("transport")
-            not in ("dlna", "sonos", "music_assistant", "cast", "echomuse")
-        )
+        or (values["use_all"] and device.get("transport") not in LOCAL_TRANSPORTS)
     ]
 
 
@@ -181,7 +182,60 @@ def dlna_candidates(hass):
                 ),
             }
         )
+    result.extend(voice_satellite_candidates(hass))
     return sorted(result, key=lambda item: item["name"])
+
+
+def voice_satellite_candidates(hass):
+    """Discover Voice Satellite kiosks through their Assist satellite entities.
+
+    The satellite names the kiosk and reports whether its browser is connected.
+    Delivery uses the media player on the same device, given as ``player``.
+    Offline kiosks are listed but cannot be selected in the card.
+    """
+    entities = er.async_get(hass).entities.values()
+    players = {
+        entity.device_id: entity.entity_id
+        for entity in entities
+        if entity.platform == voice_satellite.PLATFORM
+        and entity.domain == "media_player"
+        and entity.device_id
+        and not entity.disabled_by
+    }
+    result = []
+    for entity in entities:
+        if (
+            entity.platform != voice_satellite.PLATFORM
+            or entity.domain != "assist_satellite"
+            or entity.disabled_by
+            or not (player := players.get(entity.device_id))
+        ):
+            continue
+        state = hass.states.get(entity.entity_id)
+        player_state = hass.states.get(player)
+        if state is None or player_state is None:
+            continue
+        available = state.state not in ("unavailable", "unknown") and player_state.state not in (
+            "unavailable",
+            "unknown",
+        )
+        if (
+            available
+            and not int(player_state.attributes.get("supported_features", 0))
+            & MediaPlayerEntityFeature.PLAY_MEDIA
+        ):
+            continue
+        device = dr.async_get(hass).async_get(entity.device_id)
+        result.append(
+            {
+                "entity_id": entity.entity_id,
+                **_speaker_label(hass, entity, state, device),
+                "available": available,
+                "transport": voice_satellite.TRANSPORT,
+                "player": player,
+            }
+        )
+    return result
 
 
 def local_url(hass, entry):

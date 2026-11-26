@@ -26,7 +26,7 @@ In HomeCall settings, expand the speaker and use **Test**, then copy the availab
 
 ## No speakers or send rejected
 
-Check the integration’s speaker selection and available allowed Alexa, DLNA, Sonos, Music Assistant, Google Cast or EchoMuse entities. DLNA requires a confirmed sound test. A custom default target cannot bypass that allowlist. An empty explicit target list leaves the action unavailable until speakers are selected.
+Check the integration’s speaker selection and available allowed Alexa, DLNA, Sonos, Music Assistant, Google Cast, EchoMuse or Voice Satellite entities. DLNA requires a confirmed sound test. A custom default target cannot bypass that allowlist. An empty explicit target list leaves the action unavailable until speakers are selected.
 
 ## Request accepted but audio did not play
 
@@ -40,6 +40,6 @@ Add the speaker in HomeCall settings through a successful sound test first. Chec
 
 ## Other local speakers
 
-Add Sonos, Music Assistant, Google Cast or EchoMuse players in the integration’s matching speaker section, select card visibility and save. Sound tests are optional. Check that the speaker, server or controller can reach Home Assistant’s local audio address. Select one route per physical speaker to avoid duplicate messages.
+Add Sonos, Music Assistant, Google Cast, EchoMuse or Voice Satellite players in the integration’s matching speaker section, select card visibility and save. Sound tests are optional. Check that the speaker, server or controller can reach Home Assistant’s local audio address. Select one route per physical speaker to avoid duplicate messages.
 
 Google Cast replaces current playback without automatic restoration. EchoMuse uses ESPHome announcement support and delegates music handling to its controller; community message playback is reported, while installed firmware/controller versions and music continuation remain unverified. See the integration’s [Google Cast guide](https://github.com/thomasgregg/homecall/blob/main/docs/google-cast.md) and [EchoMuse guide](https://github.com/thomasgregg/homecall/blob/main/docs/echomuse.md).

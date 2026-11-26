@@ -1,4 +1,4 @@
-/*! HomeCall Card v1.12.0 | MIT License | github.com/thomasgregg/homecall */
+/*! HomeCall Card v1.13.0 | MIT License | github.com/thomasgregg/homecall */
 (() => {
   // src/layout.js
   function homeCallLayout(width, height, hasSelector = true, selectorWidth = 100, footerWidths = null) {
@@ -195,10 +195,14 @@
     const card = helpers.createCardElement({ type: "entities", entities: [] });
     await card.constructor.getConfigElement();
   }
+  var HOMECALL_SPEAKER_LIST = ["ha-list-selectable", "ha-list-item-option"];
+  var HOMECALL_LEGACY_SPEAKER_LIST = ["ha-list", "ha-check-list-item"];
   async function homeCallNativeSpeakerControls(element, hass) {
     await homeCallNativeForms();
-    const names = ["ha-list", "ha-check-list-item", "ha-expansion-panel"];
-    if (names.every((name) => customElements.get(name))) return;
+    const shared = ["ha-checkbox", "ha-expansion-panel"];
+    const lists = [HOMECALL_SPEAKER_LIST, HOMECALL_LEGACY_SPEAKER_LIST];
+    if (shared.every((name) => customElements.get(name)) && lists.some((names) => names.every((name) => customElements.get(name))))
+      return;
     const helpers = await window.loadCardHelpers();
     helpers.createCardElement({
       type: "todo-list",
@@ -211,9 +215,10 @@
     form.schema = [{ name: "settings", type: "expandable", schema: [] }];
     element.shadowRoot.append(form);
     let timeout;
+    const whenDefined = (names) => Promise.all(names.map((name) => customElements.whenDefined(name)));
     try {
       await Promise.race([
-        Promise.all(names.map((name) => customElements.whenDefined(name))),
+        Promise.all([whenDefined(shared), Promise.race(lists.map(whenDefined))]),
         new Promise((_, reject) => {
           timeout = setTimeout(
             () => reject(
@@ -228,9 +233,17 @@
       form.remove();
     }
   }
+  function homeCallEntityAvailable(id, state) {
+    return state !== "unavailable" && (state !== "unknown" || !id.startsWith("media_player.") && !id.startsWith("assist_satellite."));
+  }
   function homeCallSpeakerAvailable(target, hass) {
-    const state = hass?.states?.[target.entity_id]?.state;
-    return state === void 0 ? target.available : state !== "unavailable" && (!target.entity_id.startsWith("media_player.") || state !== "unknown");
+    const states = hass?.states;
+    const state = states?.[target.entity_id]?.state;
+    if (target.transport === "voice_satellite" && states) {
+      const playerState = states[target.player]?.state;
+      return state !== void 0 && playerState !== void 0 && homeCallEntityAvailable(target.entity_id, state) && homeCallEntityAvailable(target.player, playerState);
+    }
+    return state === void 0 ? target.available : homeCallEntityAvailable(target.entity_id, state);
   }
   function homeCallSpeakerIntegration(target) {
     return {
@@ -238,7 +251,8 @@
       sonos: "Sonos",
       music_assistant: "Music Assistant",
       cast: "Google Cast",
-      echomuse: "EchoMuse"
+      echomuse: "EchoMuse",
+      voice_satellite: "Voice Satellite"
     }[target.transport] || (target.entity_id.startsWith("notify.") && target.entity_id.endsWith("_speak") ? "Alexa" : "");
   }
   function homeCallSpeakerDescription(target, language) {
@@ -254,7 +268,11 @@
     ].filter(Boolean).join(" \xB7 ");
   }
   function homeCallSpeakerList(targets, selected, language, allowUnavailable, onChange) {
-    const list = document.createElement("ha-list");
+    const modern = HOMECALL_SPEAKER_LIST.every(
+      (name) => customElements.get(name)
+    );
+    const [listTag, rowTag] = modern ? HOMECALL_SPEAKER_LIST : HOMECALL_LEGACY_SPEAKER_LIST;
+    const list = document.createElement(listTag);
     list.className = "speaker-list";
     list.multi = true;
     list.wrapFocus = true;
@@ -262,25 +280,48 @@
       "aria-label",
       language === "de" ? "Lautsprecher" : "Speakers"
     );
+    if (modern) {
+      list.controlled = true;
+      const select = (event, checked) => {
+        const row = list.children[event.detail];
+        if (event.target === list && row && !row.disabled)
+          onChange(row.value, checked);
+      };
+      list.addEventListener(
+        "ha-list-item-selected",
+        (event) => select(event, true)
+      );
+      list.addEventListener(
+        "ha-list-item-deselected",
+        (event) => select(event, false)
+      );
+    }
     for (const target of targets) {
-      const row = document.createElement("ha-check-list-item");
+      const row = document.createElement(rowTag);
       row.value = target.entity_id;
-      row.left = true;
-      row.twoline = true;
-      row.toggleAttribute("multiline-secondary", !!target.show_entity_id);
       const name = document.createElement("span");
       name.textContent = target.name;
       const description = document.createElement("span");
-      description.slot = "secondary";
+      if (modern) {
+        row.appearance = "checkbox";
+        row.toggleAttribute("wrap-supporting-text", !!target.show_entity_id);
+        name.slot = "headline";
+        description.slot = "supporting-text";
+      } else {
+        row.left = true;
+        row.twoline = true;
+        row.toggleAttribute("multiline-secondary", !!target.show_entity_id);
+        description.slot = "secondary";
+        row.addEventListener("request-selected", (event) => {
+          if (event.target === row && !row.disabled && typeof event.detail?.selected === "boolean")
+            onChange(row.value, event.detail.selected);
+        });
+      }
       description.textContent = homeCallSpeakerDescription(target, language);
       row.append(name, description);
       row.title = target.name + " \xB7 " + description.textContent;
       row.selected = selected.includes(target.entity_id);
       row.disabled = !allowUnavailable && !target.available;
-      row.addEventListener("request-selected", (event) => {
-        if (event.target === row && !row.disabled && typeof event.detail?.selected === "boolean")
-          onChange(row.value, event.detail.selected);
-      });
       list.append(row);
     }
     return list;
@@ -293,7 +334,7 @@
       row.selected = selected.includes(row.value);
       row.disabled = !allowUnavailable && !target.available;
       const description = homeCallSpeakerDescription(target, language);
-      row.querySelector('[slot="secondary"]').textContent = description;
+      row.lastElementChild.textContent = description;
       row.title = target.name + " \xB7 " + description;
     }
   }
@@ -417,11 +458,8 @@
     _availabilityState() {
       return JSON.stringify(
         Object.entries(this._hass?.states || {}).filter(
-          ([id]) => id.startsWith("notify.") && id.endsWith("_speak") || id.startsWith("media_player.")
-        ).map(([id, state]) => [
-          id,
-          state.state !== "unavailable" && (!id.startsWith("media_player.") || state.state !== "unknown")
-        ]).sort(([a], [b]) => a.localeCompare(b))
+          ([id]) => id.startsWith("notify.") && id.endsWith("_speak") || id.startsWith("media_player.") || id.startsWith("assist_satellite.")
+        ).map(([id, state]) => [id, homeCallEntityAvailable(id, state.state)]).sort(([a], [b]) => a.localeCompare(b))
       );
     }
     _retryAvailability() {
@@ -846,7 +884,14 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
         this._defaults = this._nextSelection || (Array.isArray(this.config.default_targets) ? this.config.default_targets : data.default_targets || []);
         this._defaultsAll = !this._nextSelection && !Array.isArray(this.config.default_targets) && !this._defaults.length;
         this._nextSelection = null;
-        this._fillTargets(data.targets);
+        this._fillTargets(
+          data.targets.map(
+            (target) => target.transport === "voice_satellite" && target.available ? {
+              ...target,
+              available: homeCallSpeakerAvailable(target, this._hass)
+            } : target
+          )
+        );
         this._phase = "ready";
         this._setStatus("Tippe auf das Mikrofon");
         this._button("Mikrofon starten");
@@ -959,7 +1004,7 @@ ha-card[data-short="true"]:has(.header[hidden]) .time{top:calc(50% - 7px)}
       this._recordingTargets = [...this._selection];
       this._recordingSkippedTargets = [...this._skippedTargets || []];
       this._diagnostics = {
-        card_version: false ? "development" : "1.12.0",
+        card_version: false ? "development" : "1.13.0",
         browser_timings_ms: {}
       };
       const tapped = performance.now();

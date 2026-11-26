@@ -31,6 +31,7 @@ async def test_connection_menu(flow):
         "music_assistant_setup",
         "cast_setup",
         "echomuse_setup",
+        "voice_satellite_setup",
     ]
     assert (await flow.async_step_alexa_setup())["menu_options"] == [
         "system_address",
@@ -176,4 +177,13 @@ async def test_echomuse_setup_without_public_address(flow):
     assert flow._values["public_url"] == ""
     assert flow._values["use_all"] is False
     result = await flow.async_step_echomuse_setup({})
+    assert result["type"] == "create_entry"
+
+
+async def test_voice_satellite_setup_without_public_address(flow):
+    result = await flow.async_step_voice_satellite_setup()
+    assert result["step_id"] == "voice_satellite_setup"
+    assert flow._values["public_url"] == ""
+    assert flow._values["use_all"] is False
+    result = await flow.async_step_voice_satellite_setup({})
     assert result["type"] == "create_entry"

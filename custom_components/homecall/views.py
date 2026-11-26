@@ -12,6 +12,7 @@ from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.helpers import entity_registry as er
 
+from . import voice_satellite
 from .announcement_volume import (
     preference_key,
     requested_level,
@@ -53,11 +54,16 @@ class HomeCallView(HomeAssistantView):
         user = request["hass_user"]
         if user.is_admin:
             return devices
+        # A Voice Satellite kiosk is shown as its satellite and plays through its
+        # media player, so the user needs access to both entities.
         return [
             device
             for device in devices
-            if user.permissions.check_entity(device["entity_id"], POLICY_READ)
-            and (not control or user.permissions.check_entity(device["entity_id"], POLICY_CONTROL))
+            if all(
+                user.permissions.check_entity(entity_id, POLICY_READ)
+                and (not control or user.permissions.check_entity(entity_id, POLICY_CONTROL))
+                for entity_id in filter(None, (device["entity_id"], device.get("player")))
+            )
         ]
 
     def operation_active(self, store, generation):
@@ -187,6 +193,10 @@ class SettingsView(HomeCallView):
             use_all = payload.get("use_all")
             selected = payload.get("default_targets", [])
             ids = {device["entity_id"] for device in targets(self.hass)}
+            # An existing speaker can disappear while its integration reloads.
+            # Keep saved IDs editable while still rejecting newly submitted IDs.
+            ids.update(values["default_targets"])
+            ids.update(previous_added)
             if (
                 not isinstance(use_all, bool)
                 or not isinstance(selected, list)
@@ -477,18 +487,33 @@ async def deliver(
     try:
         candidate = next((t for t in dlna_candidates(hass) if t["entity_id"] == entity_id), None)
         transport = candidate.get("transport", "dlna") if candidate else "alexa"
+        if candidate is None and not entity_id.startswith("notify."):
+            transport = (
+                voice_satellite.TRANSPORT
+                if entity_id.startswith("assist_satellite.")
+                else "unknown"
+            )
+            return {"entity_id": entity_id, "accepted": False}
         dlna = candidate is not None
         sonos = bool(candidate and candidate.get("transport") == "sonos")
         music_assistant = bool(candidate and candidate.get("transport") == "music_assistant")
+        satellite = bool(candidate and candidate.get("transport") == voice_satellite.TRANSPORT)
+        if satellite and not candidate["available"]:
+            return {"entity_id": entity_id, "accepted": False}
         if announcement_volume is not None and not (
             candidate and candidate.get("announcement_volume_supported")
         ):
             reason = "announcement_volume_unavailable"
             return {"entity_id": entity_id, "accepted": False, "reason": reason}
-        base = local_url(hass, entry) if dlna else settings(entry, hass)["public_url"]
-        if not base:
-            raise ValueError("No audio address")
-        url = base + "/api/homecall/audio/" + token + ".mp3"
+        if satellite:
+            # The kiosk browser fetches the clip from its own page address, so the
+            # path works over HTTP or HTTPS without HomeCall's local address.
+            url = voice_satellite.audio_path(token)
+        else:
+            base = local_url(hass, entry) if dlna else settings(entry, hass)["public_url"]
+            if not base:
+                raise ValueError("No audio address")
+            url = base + "/api/homecall/audio/" + token + ".mp3"
         domain, service = ("media_player", "play_media") if dlna else ("notify", "send_message")
         data = (
             {"media_content_id": url, "media_content_type": "music"}
@@ -503,6 +528,8 @@ async def deliver(
         elif candidate and candidate.get("transport") == "cast":
             data["media_content_type"] = "audio/mpeg"
         elif candidate and candidate.get("transport") == "echomuse":
+            data.update(media_content_type="audio/mpeg", announce=True)
+        elif satellite:
             data.update(media_content_type="audio/mpeg", announce=True)
         elif sonos:
             data["announce"] = True
@@ -531,7 +558,8 @@ async def deliver(
                 await hass.services.async_call(
                     domain,
                     service,
-                    {"entity_id": entity_id, **data},
+                    # A Voice Satellite kiosk plays through its media player entity.
+                    {"entity_id": candidate["player"] if satellite else entity_id, **data},
                     blocking=True,
                     context=context,
                 )
@@ -649,7 +677,7 @@ class SpeakerTestView(SettingsView):
         address = (
             local_url(self.hass, entry) if candidate.get("transport") else values["public_url"]
         )
-        if not address:
+        if not address and candidate.get("transport") != voice_satellite.TRANSPORT:
             return self.json({"error": "no_local_url"}, status_code=400)
         if store["lock"].locked():
             return self.json({"error": "test_busy"}, status_code=409)

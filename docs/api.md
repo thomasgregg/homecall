@@ -9,6 +9,7 @@
 | `audio.py`                      | WAV validation, chime and test-tone preparation, FFmpeg MP3 encoding     |
 | `announcement_volume.py`        | Validates volume preferences and checks Sonos and Music Assistant support |
 | `helpers.py`                    | Device discovery, effective settings, allowed targets                    |
+| `voice_satellite.py`            | Voice Satellite route constants and page-relative clip path              |
 | `views.py`                      | HTTP endpoints and announcement delivery                                 |
 | `resume.py`                     | Per-speaker playback snapshots, completion tracking, guarded restoration |
 | `dashboard.py`                  | Bundled card resource registration and recognized legacy URL migration   |
@@ -99,9 +100,9 @@ Music restoration is stored in `resume_dlna` (entity IDs, empty by default). The
 
 ## Local speaker discovery and delivery
 
-The legacy `dlna_candidates` response includes all local speaker routes. Its `transport` identifies `dlna`, `sonos`, `music_assistant`, `cast` or `echomuse`. Local players must be explicitly selected in `default_targets`; Alexa’s `use_all` does not include them. Only DLNA requires test confirmation.
+The legacy `dlna_candidates` response includes all local speaker routes. Its `transport` identifies `dlna`, `sonos`, `music_assistant`, `cast`, `echomuse` or `voice_satellite`. Local players must be explicitly selected in `default_targets`; Alexa’s `use_all` does not include them. Only DLNA requires test confirmation.
 
-Speaker tests return `requires_confirmation: true` for DLNA and `false` for Alexa, Sonos, Music Assistant, Google Cast and EchoMuse. Optional tests do not add or select a speaker. Settings can include `added_speakers` to preserve the administrative speaker list separately from visibility, and `removed_dlna` to revoke a tested DLNA speaker when saving pending removals.
+Speaker tests return `requires_confirmation: true` for DLNA and `false` for Alexa, Sonos, Music Assistant, Google Cast, EchoMuse and Voice Satellite. Optional tests do not add or select a speaker. Settings can include `added_speakers` to preserve the administrative speaker list separately from visibility, and `removed_dlna` to revoke a tested DLNA speaker when saving pending removals.
 
 Sonos delivery calls `media_player.play_media` with `announce: true` by default. An enabled override uses the connected Sonos S2 AudioClip client with the requested volume. Music Assistant delivery calls `music_assistant.play_announcement` with `url` and `use_pre_announce: false`, adding `announce_volume` for an enabled override. Both routes use the local audio address and delegate announcement playback and restoration to Sonos or Music Assistant. Music Assistant applies its own [strategy and limits](configuration.md#music-assistant-volume-setup).
 
@@ -116,3 +117,11 @@ Delivery uses `media_player.play_media` with the token-protected local MP3 URL a
 Discovery requires an enabled ESPHome media player attached to a device with manufacturer `EchoMuse`. Online players must support `PLAY_MEDIA` and `MEDIA_ANNOUNCE`; unavailable/unknown players remain listed but cannot receive recordings. EchoMuse requires explicit selection in `default_targets`.
 
 Delivery calls `media_player.play_media` with the local token-protected MP3 URL, `media_content_type: "audio/mpeg"` and `announce: true`. Home Assistant may proxy/transcode the audio for ESPHome. The EchoMuse controller retrieves the audio and streams it to its Dot. Music handling belongs to EchoMuse; HomeCall does not apply DLNA restoration. Tests are optional and do not select speakers. See [setup and limitations](echomuse.md).
+
+## Voice Satellite delivery
+
+Discovery lists enabled `assist_satellite` entities from the `voice_satellite` platform whose device also has an enabled `voice_satellite` media player. The target ID is the satellite entity, and its device name labels the speaker. Each candidate also includes `player`, the media player entity used for delivery. A kiosk is unavailable while either entity is unavailable or unknown, which happens while no browser has the Voice Satellite card open. An online player must support `PLAY_MEDIA`. Voice Satellite kiosks require explicit selection.
+
+Delivery calls `media_player.play_media` on `player` with `media_content_type: "audio/mpeg"`, `announce: true` and the root-relative path `/api/homecall/audio/<token>.mp3`. The Voice Satellite card signs that path over its authenticated connection and fetches it from its own page origin. HomeCall's local and public addresses are not used, so a kiosk that opens Home Assistant over HTTPS can play the clip while the internal URL is HTTP. `assist_satellite.announce` is not used. Home Assistant makes that action's media ID absolute with its internal URL, which an HTTPS page blocks as mixed content.
+
+Non-administrators need read and control permission on both the satellite and its media player. Speaker tests need no configured local address.
