@@ -16,7 +16,7 @@ While visible and ready, the card prepares a suspended audio context and loads t
 
 Capture requests 48 kHz to match HA's accepted WAV format and keep a full minute below the upload size limit. Unexpected track termination or audio-context interruption releases capture and rejects the incomplete recording. The backend rechecks recipients after encoding and uses a lifecycle generation to prevent pending uploads or tests from sending or retaining new audio across unload/reload.
 
-The backend owns encoding, allowed recipients, and delivery links for Alexa, DLNA, Sonos, Music Assistant, Google Cast and EchoMuse. The card uploads one recording with the selected entity IDs; it does not implement speaker protocols. The frontend never stores an Amazon credential or adds credentials to audio links.
+The backend owns encoding, allowed recipients, and delivery links for Alexa, DLNA, Sonos, Music Assistant, Google Cast, EchoMuse and Voice Satellite. The card uploads one recording with the selected entity IDs; it does not implement speaker protocols. The frontend never stores an Amazon credential or adds credentials to audio links.
 
 ## Test layers
 

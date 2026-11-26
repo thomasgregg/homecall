@@ -30,7 +30,7 @@ Install **HomeCall** to get the integration and dashboard card together.
 ## Why HomeCall
 
 - **Original voice:** send recorded audio rather than synthesized speech.
-- **One room or many:** announce to selected Alexa, DLNA, Sonos, Music Assistant, Google Cast or EchoMuse speakers.
+- **One room or many:** announce to selected Alexa, DLNA, Sonos, Music Assistant, Google Cast, EchoMuse or Voice Satellite speakers.
 - **Native setup:** configure the public address and speakers shown in the card through Home Assistant.
 - **Short-lived audio:** recordings are held in memory and delivery links expire after three minutes.
 - **Clear feedback:** distinguish request acceptance from audio retrieval.
@@ -48,7 +48,7 @@ The bundled [HomeCall Card](#card-screenshots) provides the recording interface,
 
 ## Speaker compatibility
 
-**HomeCall supports Alexa/Echo, compatible DLNA speakers, Music Assistant players, Google Cast devices, Sonos through Home Assistant’s Sonos integration, and EchoMuse Dots through ESPHome.** Use Alexa through Home Assistant’s Alexa Devices integration, DLNA through DLNA Digital Media Renderer, Sonos through the Sonos integration, and Music Assistant players through the Music Assistant integration. You can combine these platforms.
+**HomeCall supports Alexa/Echo, compatible DLNA speakers, Music Assistant players, Google Cast devices, Sonos through Home Assistant’s Sonos integration, EchoMuse Dots through ESPHome, and Voice Satellite browser kiosks.** Use Alexa through Home Assistant’s Alexa Devices integration, DLNA through DLNA Digital Media Renderer, Sonos through the Sonos integration, and Music Assistant players through the Music Assistant integration. You can combine these platforms.
 
 DLNA speakers must pass a sound test before they can appear in the card. JBL Charge 5 Wi-Fi has been checked for basic MP3 playback; other renderers require their own test. Optional **Resume music after announcements** can restore the interrupted media item and seek where supported. It does not restore playlists, queues, or streaming-service sessions. See [DLNA configuration and limitations](docs/configuration.md#dlna-speakers).
 
@@ -106,6 +106,14 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
     <td valign="top">User's EchoMuse Dots; installed firmware/controller versions unspecified. Music Assistant/SendSpin route not verified.</td>
   </tr>
   <tr>
+    <td valign="top">Voice Satellite</td>
+    <td valign="top">🟢 Recorded voice messages confirmed by the user on HA WinKiosk tablets over HTTPS.</td>
+    <td valign="top">🟠 Combined chime and recording implemented; hardware verification pending.</td>
+    <td valign="top">—</td>
+    <td valign="top">🔴 No automatic restoration. The message replaces media playing on the kiosk's media player.</td>
+    <td valign="top">User's HA WinKiosk tablets opening HA over HTTPS with an HTTP internal URL; installed versions unspecified. Other kiosk apps and the chime are unverified.</td>
+  </tr>
+  <tr>
     <td valign="top">Google Cast</td>
     <td valign="top">🟢 MP3 test playback verified on JBL; message playback reported by a Reddit Nest user.</td>
     <td valign="top">🟠 Skipped by default on direct Cast. Combined chime and recording available when the exception is disabled; hardware verification pending. Cast's native connection cue may still play.</td>
@@ -117,7 +125,7 @@ Ideas and contributions for other speaker platforms are welcome. [Open an issue]
 
 A dash means HomeCall uses the route’s usual volume behavior. Music Assistant applies its player settings and limits. [Volume setup and tested hardware](docs/configuration.md#custom-announcement-volume)
 
-Results apply to the tested setup, not every model or firmware version. The optional announcement chime column refers to the bundled two-tone cue combined with a recording. Custom MP3 chimes are covered by automated audio tests. The latest Music Assistant combined-audio test and Alexa optional-chime playback were confirmed by the user on 6 October 2026. The Alexa chime test does not establish music restoration. Reddit reports confirm limited EchoMuse and Nest message playback; they do not verify the new chime on those routes. The Sonos report was clarified as Sonos One SL through Music Assistant 2.10.6, with chime playback and restoration of MA-managed music at its previous volume confirmed. It does not verify the direct Sonos route; the recording was reported too loud. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
+Results apply to the tested setup, not every model or firmware version. The optional announcement chime column refers to the bundled two-tone cue combined with a recording. Custom MP3 chimes are covered by automated audio tests. Voice Satellite message playback on HA WinKiosk tablets was confirmed by the user on 25 November 2026. The latest Music Assistant combined-audio test and Alexa optional-chime playback were confirmed by the user on 6 October 2026. The Alexa chime test does not establish music restoration. Reddit reports confirm limited EchoMuse and Nest message playback; they do not verify the new chime on those routes. The Sonos report was clarified as Sonos One SL through Music Assistant 2.10.6, with chime playback and restoration of MA-managed music at its previous volume confirmed. It does not verify the direct Sonos route; the recording was reported too loud. DLNA requires a downloaded sound test and audible confirmation before adding a speaker. The other integrations offer optional sound tests.
 
 User reports: [Music Assistant Sync Group](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe579qq/), [EchoMuse cutoff fix](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe7g2wf/), [Nest playback](https://www.reddit.com/r/homeassistant/comments/1wycu0s/comment/pe3tau1/).
 
@@ -131,6 +139,7 @@ The Alexa resume test used soundbank audio through the same Speak/SSML mechanism
 | Occasional messages on Nest or another Cast speaker, with music interruption acceptable | **Google Cast**.                                                                                                                | Simple local MP3 delivery, no MA server required. Current playback is replaced and does not automatically return. Specific Nest models and Cast groups require further tests.                                                                                                  |
 | Keep casting YouTube Music directly from a phone and preserve its session               | 🔴 No verified HomeCall route for an audio-only Cast speaker. For dependable queue control, start music through **MA** instead. | Direct Cast interrupted our phone session; reopening the receiver did not restore it.                                                                                                                                                                                          |
 | Existing Echo speakers                                                                  | **Alexa Devices**.                                                                                                              | Recorded voice playback is verified; Amazon must reach the public HTTPS audio URL. TuneIn radio resumed in the Echo Show soundbank test; recorded-MP3 restoration and other sources still need verification.                                                                   |
+| Wall tablets or PC kiosks running the Voice Satellite card                              | **Voice Satellite**.                                                                                                            | The kiosk's browser plays the message through its Voice Satellite media player, over HTTP or HTTPS. Media already playing on the kiosk is replaced. Confirmed on HA WinKiosk tablets.                                                                                      |
 | EchoMuse-flashed Dots                                                                   | **EchoMuse (ESPHome)**.                                                                                                         | Local announcement delivery without Music Assistant or Amazon’s Alexa service. Requires an EchoMuse controller and compatible ESPHome firmware; community message playback is reported, while installed firmware/controller versions and music continuation need verification. |
 | Existing Sonos system without MA                                                        | **Sonos**.                                                                                                                      | Uses Sonos’s native announcement support; direct playback, optional chime and music restoration still need a hardware test. If MA manages the music, use the MA entity.                                                                                                        |
 | Basic local audio renderer without MA                                                   | **DLNA**.                                                                                                                       | Validate with the sound test. Optional resume handles a reusable current item where supported, rather than streaming-service sessions or full queues.                                                                                                                          |
@@ -152,6 +161,8 @@ For Google Cast or Nest, configure HA’s Google Cast integration and add device
 HomeCall is a community project. It is not affiliated with Amazon or Home Assistant. Account, region, and Alexa service behavior can affect delivery; validate an announcement with your own devices before relying on it.
 
 For EchoMuse, connect your Dots through Home Assistant’s ESPHome integration, then open **HomeCall → Configure → EchoMuse speakers**, add a Dot, enable visibility and play the sound test. Music Assistant and a public audio address are not required. The EchoMuse controller must reach Home Assistant’s local audio address and any ESPHome transcoding proxy URL. See [EchoMuse setup and limitations](docs/echomuse.md).
+
+For Voice Satellite, set up the [Voice Satellite integration](https://github.com/jxlarrea/voice-satellite-card-integration) and open its card on each kiosk, then open **HomeCall → Configure → Voice Satellite speakers**, add the kiosk, enable visibility and play the sound test. The kiosk's browser downloads the clip from the address it already uses to open Home Assistant; HomeCall's local address is not used. See [Voice Satellite setup and limitations](docs/voice-satellite.md).
 
 ## Install
 
@@ -183,7 +194,7 @@ Download `homecall.zip` from the [latest release](https://github.com/thomasgregg
 
 1. Restart Home Assistant.
 2. Open **Settings → Devices & services → Add integration → HomeCall** if setup has not already opened.
-3. Choose **Alexa speakers**, **DLNA speakers**, **Music Assistant**, **Google Cast speakers** or **EchoMuse speakers**. For Alexa, configure the public HTTPS address and speaker selection. For direct Sonos without Alexa, finish local-only setup through **DLNA speakers**, then add your devices under **Configure → Sonos speakers**. For DLNA, open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
+3. Choose **Alexa speakers**, **DLNA speakers**, **Music Assistant**, **Google Cast speakers**, **EchoMuse speakers** or **Voice Satellite speakers**. For Alexa, configure the public HTTPS address and speaker selection. For direct Sonos without Alexa, finish local-only setup through **DLNA speakers**, then add your devices under **Configure → Sonos speakers**. For DLNA, open **Configure → DLNA speakers → Available speakers**, press **Test** beside an online speaker, then confirm **Yes, add speaker** if you heard it.
 4. Refresh the dashboard and add **HomeCall** from the card picker. HomeCall registers UI-managed dashboard resources automatically. For YAML-managed resources, follow the [migration guide](docs/card-migration.md).
 
 ## Use
@@ -231,7 +242,7 @@ Tapping Send finishes capture and sends directly. There is no local recording-re
 | ------------------------ | ------------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `type`                   | string       | Required                                             | `custom:homecall-card`                                                                                                                                                     |
 | `show_speaker_selection` | boolean      | `true`                                               | Show the recipient picker                                                                                                                                                  |
-| `default_targets`        | string array | Integration defaults, otherwise all allowed speakers | Initial selection, using allowed Alexa `notify.*_speak` or configured DLNA, Sonos, Music Assistant, Google Cast or EchoMuse `media_player.*` entity IDs; `[]` selects none |
+| `default_targets`        | string array | Integration defaults, otherwise all allowed speakers | Initial selection, using allowed Alexa `notify.*_speak` or configured DLNA, Sonos, Music Assistant, Google Cast or EchoMuse `media_player.*` or Voice Satellite `assist_satellite.*` entity IDs; `[]` selects none |
 | `show_diagnostics`       | boolean      | `false`                                              | Optional timing details under Troubleshooting in the editor; delivery warnings and errors remain available when off                                                        |
 | `grid_options`           | object       | 6 columns × 1 row                                    | Standard Home Assistant sections sizing                                                                                                                                    |
 
@@ -304,6 +315,9 @@ flowchart TD
     EchoController -->|Fetch transcoded audio when needed| Proxy[HA ESPHome audio proxy]
     Proxy -->|Fetch source MP3| Audio
     EchoController -->|Decoded audio stream| EchoDot[EchoMuse Dot]
+    Route -->|Voice Satellite| SatService["Voice Satellite: media_player.play_media<br/>announce: true; type audio/mpeg"]
+    SatService -->|Page-relative audio path| Kiosk[Voice Satellite card in the kiosk browser]
+    Kiosk -->|Fetch MP3| Audio
     Store -.->|Clip bytes| Audio
     Audio -->|Count non-HEAD fetches across variants| Receipt[Status API: aggregate fetch count and diagnostics]
     Card -->|Authenticated receipt or diagnostic polling| Receipt
@@ -315,7 +329,7 @@ flowchart TD
 
 The voice-only MP3 is always encoded. When the optional HomeCall chime is enabled for any selected target, a second MP3 contains the chime followed by the voice; Google Cast skips this chime by default. Each variant has its own expiring token, and HomeCall selects the variant per target. Music Assistant's own pre-announcement is disabled. Both variants contribute to the same announcement's aggregate fetch count.
 
-Alexa uses the public HTTPS delivery address; DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use the local address. The audio endpoint requires possession of the random token URL rather than a Home Assistant login. Tokens expire three minutes after clip creation. The bundled card uses authenticated upload and status APIs.
+Alexa uses the public HTTPS delivery address; DLNA, Sonos, Music Assistant, Google Cast and EchoMuse use the local address. Voice Satellite kiosks fetch the clip from the address their browser already uses for Home Assistant. The audio endpoint requires possession of the random token URL rather than a Home Assistant login. Tokens expire three minutes after clip creation. The bundled card uses authenticated upload and status APIs.
 
 Sonos, Music Assistant and EchoMuse receive native announcement commands; playback continuation is delegated to their integration, provider or firmware and is not guaranteed by HomeCall. Direct Google Cast playback replaces the current media without HomeCall restoration. For EchoMuse, Home Assistant sends the URL through ESPHome to the controller, which decodes audio and streams it to the Dot. When Home Assistant uses its ESPHome transcoding proxy, the controller fetches the proxy URL and the proxy fetches HomeCall's source MP3. The controller must be able to reach the URL it receives; see [EchoMuse delivery](docs/echomuse.md#delivery) and [ESPHome audio proxy support](https://esphome.io/components/media_player/speaker/).
 
@@ -329,6 +343,7 @@ Service calls are dispatched concurrently, without synchronized playback or a co
 | ------------------------------------------ | --------------------------------------------------------------------- |
 | [Configuration](docs/configuration.md)     | Speaker setup, custom chimes, announcement volume, and playback      |
 | [EchoMuse](docs/echomuse.md)               | ESPHome setup, audio delivery and playback limitations                |
+| [Voice Satellite](docs/voice-satellite.md) | Browser kiosk setup, HTTPS audio address and playback limitations     |
 | [Google Cast / Nest](docs/google-cast.md)  | Cast setup, network requirements, test results and music continuation |
 | [API and architecture](docs/api.md)        | Endpoints, limits, audio lifecycle, and module responsibilities       |
 | [Troubleshooting](docs/troubleshooting.md) | Missing devices, microphone access, conversion, and delivery          |

@@ -53,4 +53,10 @@ The speaker test’s **Diagnostics** panel includes **Copy diagnostics** when Ho
 - **Cast music stays stopped:** current playback is replaced; HomeCall has no automatic Cast restoration. See [Google Cast / Nest](google-cast.md) for tested behavior and setup.
 - **EchoMuse is not discovered:** check the ESPHome device’s manufacturer is `EchoMuse` and its online media player exposes playback and announcement capabilities. See [EchoMuse setup](echomuse.md) for controller networking, firmware and playback limits.
 
+## Voice Satellite
+
+- **Not discovered:** check that the kiosk's Voice Satellite device has both its Assist satellite and its media player entities enabled.
+- **Listed but offline:** open a dashboard with the Voice Satellite card on that kiosk. The satellite is unavailable while no browser has the card open.
+- **Accepted but silent:** check the satellite media player's volume and mute state and the kiosk's output device. Play a `tts.speak` message to the same media player to compare. See [Voice Satellite setup](voice-satellite.md).
+
 A public HTTPS delivery address is needed for Alexa, not for local-only setups. Choose one entity per physical speaker to avoid duplicate announcements across providers.

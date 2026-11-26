@@ -54,14 +54,16 @@
           "dlna_setup": "DLNA-Lautsprecher",
           "music_assistant_setup": "Music Assistant",
           "cast_setup": "Google Cast-Lautsprecher",
-          "echomuse_setup": "EchoMuse-Lautsprecher"
+          "echomuse_setup": "EchoMuse-Lautsprecher",
+          "voice_satellite_setup": "Voice Satellite-Lautsprecher"
         },
         "menu_option_descriptions": {
           "alexa_setup": "Alexa einrichten. DLNA kann später hinzugefügt werden.",
           "dlna_setup": "Mit DLNA starten. Lautsprecher anschließend in HomeCall testen.",
           "music_assistant_setup": "Music Assistant-Player in den HomeCall-Einstellungen hinzufügen.",
           "cast_setup": "Nest und andere Cast-Geräte in HomeCall hinzufügen.",
-          "echomuse_setup": "EchoMuse-Dots direkt in den HomeCall-Einstellungen hinzufügen."
+          "echomuse_setup": "EchoMuse-Dots direkt in den HomeCall-Einstellungen hinzufügen.",
+          "voice_satellite_setup": "Voice Satellite-Kiosks und -Tablets in den HomeCall-Einstellungen hinzufügen."
         }
       },
       "dlna_setup": {
@@ -79,6 +81,10 @@
       "echomuse_setup": {
         "title": "EchoMuse-Lautsprecher",
         "description": "Die EchoMuse-Dots zuerst über ESPHome in Home Assistant verbinden. Danach HomeCall konfigurieren → EchoMuse-Lautsprecher öffnen, Dots hinzufügen und den Testton abspielen. Music Assistant ist nicht erforderlich."
+      },
+      "voice_satellite_setup": {
+        "title": "Voice Satellite-Lautsprecher",
+        "description": "Zuerst die Voice Satellite-Integration und ihre Dashboard-Karte einrichten. Danach HomeCall konfigurieren → Voice Satellite-Lautsprecher öffnen, Geräte hinzufügen und den Testton abspielen. Ein Kiosk empfängt Nachrichten, solange sein Browser die Voice Satellite-Karte anzeigt."
       }
     },
     "error": {

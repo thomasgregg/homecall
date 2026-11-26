@@ -703,6 +703,64 @@ for (const language of ['en', 'de']) {
   });
 }
 
+const KIOSK = {entity_id: 'assist_satellite.kitchen_kiosk', name: 'Kitchen Kiosk', available: true, transport: 'voice_satellite'};
+
+for (const language of ['en', 'de']) {
+  test(`Voice Satellite onboarding, testing and visibility (${language})`, async ({page}) => {
+    await fixture(page, language, 'voice_satellite', 'nested', {dlna_candidates: [KIOSK]});
+    const navigation = page.locator('[data-page="voice_satellite"]');
+    await expect(navigation).toContainText(language === 'de' ? 'Voice Satellite-Lautsprecher' : 'Voice Satellite speakers');
+    await expect(navigation.locator('ha-icon')).toHaveAttribute('icon', 'mdi:tablet-dashboard');
+    await navigation.click();
+    await page.locator(`[data-add="${KIOSK.entity_id}"]`).click();
+    await page.locator('[data-speaker-panel] button').click();
+    await page.locator(`[data-test="${KIOSK.entity_id}"]`).click();
+    await expect(page.locator('.confirm-test')).toHaveCount(0);
+    await expect(page.locator('[data-resume]')).toHaveCount(0);
+    await expect(page.locator('[data-volume-speaker]')).toHaveCount(0);
+    const test = await page.evaluate(() => window.calls.find(call => call.data?.action === 'test').data);
+    expect(test).toEqual({action: 'test', entity_id: KIOSK.entity_id});
+    await toggle(page, '[data-visible]', true);
+    await page.locator('.save').click();
+    expect(await page.evaluate(() => window.settings.default_targets)).toContain(KIOSK.entity_id);
+    expect(await page.evaluate(() => window.settings.added_speakers)).toContain(KIOSK.entity_id);
+    await expect(page.locator('[data-page="voice_satellite"] [slot="supporting-text"]')).toHaveText(/^1 /);
+    await page.locator('[data-page="devices"]').click();
+    await expect(page.locator(`[data-visible="${KIOSK.entity_id}"]`)).toHaveCount(0);
+  });
+
+  test(`Voice Satellite empty discovery (${language})`, async ({page}) => {
+    await fixture(page, language, 'voice_satellite', 'nested', {dlna_candidates: []});
+    await page.locator('[data-page="voice_satellite"]').click();
+    await expect(page.locator('ha-alert')).toContainText(language === 'de' ? 'Voice Satellite-Integration' : 'Voice Satellite integration');
+  });
+}
+
+for (const discovered of [true, false]) {
+  test(`a ${discovered ? "disconnected" : "missing"} Voice Satellite uses native controls and can be removed`, async ({page}) => {
+    await fixture(page, 'en', 'voice_satellite', 'nested', {
+      public_url: '',
+      added_speakers: [KIOSK.entity_id],
+      default_targets: [KIOSK.entity_id],
+      dlna_candidates: discovered ? [{...KIOSK, available: false}] : [],
+    });
+    await page.locator('ha-list-item-button[data-page="voice_satellite"]').click();
+    const panel = page.locator(`ha-expansion-panel[data-speaker-panel="${KIOSK.entity_id}"]`);
+    const row = panel.locator('ha-list-item-base[slot="header"]');
+    await expect(row.locator('ha-checkbox[slot="start"]')).toHaveAttribute('checked', '');
+    await expect(row.locator('[slot="supporting-text"]')).toContainText('offline');
+    await panel.locator('button').click();
+    await expect(panel.locator('ha-button[slot="end"][data-test]')).toHaveAttribute('disabled', '');
+    await panel.locator('ha-button[slot="end"][data-remove]').click();
+    await expect(panel).toHaveCount(0);
+    await page.locator('footer.card-actions ha-button.save').click();
+    await expect(page.locator('ha-list-item-button[data-page="voice_satellite"]')).toBeVisible();
+    const saved = await page.evaluate(() => window.settings);
+    expect(saved.added_speakers).toEqual([]);
+    expect(saved.default_targets).toEqual([]);
+  });
+}
+
 for (const language of ['en', 'de']) {
   test(`announcement settings defaults, discard and saved Cast exception (${language})`, async ({page}) => {
     await fixture(page, language);

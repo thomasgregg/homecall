@@ -38,23 +38,24 @@ async function setup(
   language = "en",
   editor = false,
   speakerTargets = targets,
+  legacyList = false,
 ) {
   await page.setContent(
     `<style>body{margin:8px;font:14px Arial;--ha-font-size-m:14px;--ha-font-size-s:12px;--ha-space-3:12px;--ha-space-4:16px;--primary-color:#009ac0;--primary-text-color:#222;--secondary-text-color:#666;--ha-card-background:white;--divider-color:#ddd;--ha-line-height-normal:1.5}homecall-card{display:block;width:200px;height:120px}homecall-card-editor{display:block;max-width:400px}</style><main></main>`,
   );
-  await page.evaluate(registerHomeAssistantFixtures);
+  await page.evaluate(registerHomeAssistantFixtures, legacyList);
   await page.addScriptTag({ content: script });
   await page.evaluate(
     ({ targets, language, editor }) => {
       const element = document.createElement(
         editor ? "homecall-card-editor" : "homecall-card",
       );
-      const states = Object.fromEntries(
-        targets.map((target) => [
-          target.entity_id,
-          { state: target.available ? "idle" : "unavailable" },
-        ]),
-      );
+      const states = {};
+      for (const target of targets) {
+        const state = { state: target.available ? "idle" : "unavailable" };
+        states[target.entity_id] = state;
+        if (target.player) states[target.player] = state;
+      }
       window.speakerConfigChanges = [];
       element.addEventListener("config-changed", (event) =>
         window.speakerConfigChanges.push(event.detail.config),
@@ -79,9 +80,8 @@ async function setup(
     },
     { targets: speakerTargets, language, editor },
   );
-  await expect(page.locator("ha-check-list-item")).toHaveCount(
-    speakerTargets.length,
-  );
+  const rows = legacyList ? "ha-check-list-item" : "ha-list-item-option";
+  await expect(page.locator(rows)).toHaveCount(speakerTargets.length);
   if (editor)
     await page
       .getByRole("button", {
@@ -90,7 +90,9 @@ async function setup(
       })
       .click();
   else await page.locator("homecall-card summary").click();
-  await expect(page.locator("ha-list")).toBeVisible();
+  await expect(
+    page.locator(legacyList ? "ha-list" : "ha-list-selectable"),
+  ).toBeVisible();
 }
 
 for (const editor of [false, true]) {
@@ -118,14 +120,14 @@ for (const editor of [false, true]) {
       ...target,
     }));
     await setup(page, "en", editor, speakers);
-    const rows = page.locator("ha-check-list-item");
-    await expect(rows.nth(0).locator('[slot="secondary"]')).toHaveText(
+    const rows = page.locator("ha-list-item-option");
+    await expect(rows.nth(0).locator('[slot="supporting-text"]')).toHaveText(
       "Kitchen · Available",
     );
-    await expect(rows.nth(1).locator('[slot="secondary"]')).toHaveText(
+    await expect(rows.nth(1).locator('[slot="supporting-text"]')).toHaveText(
       "Living room · media_player.window · Available",
     );
-    await expect(rows.nth(2).locator('[slot="secondary"]')).toHaveText(
+    await expect(rows.nth(2).locator('[slot="supporting-text"]')).toHaveText(
       "Living room · media_player.door · Unavailable",
     );
     await expect(rows.nth(2)).toHaveAttribute(
@@ -170,7 +172,7 @@ for (const width of [320, 360, 414])
             }),
           ).toHaveCount(0);
         }
-        const rows = page.locator("ha-check-list-item");
+        const rows = page.locator("ha-list-item-option");
         await expect(rows.nth(0)).toContainText(
           language === "de" ? "DLNA · Nicht verfügbar" : "DLNA · Unavailable",
         );
@@ -214,7 +216,7 @@ test("picker excludes unavailable routes, toggles the chosen duplicate and selec
   page,
 }) => {
   await setup(page);
-  const rows = page.locator("ha-check-list-item");
+  const rows = page.locator("ha-list-item-option");
   await expect(rows.nth(0)).toHaveAttribute("aria-disabled", "true");
   await expect(rows.nth(0)).toHaveAttribute("aria-selected", "false");
   await rows.nth(1).click();
@@ -243,7 +245,7 @@ test("defaults retain unavailable and missing routes, preserve other options and
       ],
     }),
   );
-  const rows = page.locator("ha-check-list-item");
+  const rows = page.locator("ha-list-item-option");
   await expect(rows.nth(0)).toHaveAttribute("aria-disabled", "false");
   await expect(rows.nth(0)).toHaveAttribute("aria-selected", "true");
   await rows.nth(1).click();
@@ -284,7 +286,7 @@ test("availability updates rows in place without selecting recovered routes", as
   page,
 }) => {
   await setup(page);
-  const row = page.locator("ha-check-list-item").nth(1);
+  const row = page.locator("ha-list-item-option").nth(1);
   await row.evaluate((row) => {
     window.originalSpeakerRow = row;
     row.focus();
@@ -301,11 +303,11 @@ test("availability updates rows in place without selecting recovered routes", as
   });
   await expect(row).toContainText("Music Assistant · Unavailable");
   await expect(row).toHaveAttribute("aria-selected", "false");
-  await expect(page.locator("ha-check-list-item").nth(0)).toHaveAttribute(
+  await expect(page.locator("ha-list-item-option").nth(0)).toHaveAttribute(
     "aria-disabled",
     "false",
   );
-  await expect(page.locator("ha-check-list-item").nth(0)).toHaveAttribute(
+  await expect(page.locator("ha-list-item-option").nth(0)).toHaveAttribute(
     "aria-selected",
     "false",
   );
@@ -331,7 +333,7 @@ test("availability updates rows in place without selecting recovered routes", as
     "Music Assistant",
   );
   // The originally unavailable DLNA route remains skipped until explicitly selected.
-  await page.locator("ha-check-list-item").nth(0).click();
+  await page.locator("ha-list-item-option").nth(0).click();
   await expect(page.locator("homecall-card .status-more")).toBeHidden();
   expect(await row.evaluate((row) => row === window.originalSpeakerRow)).toBe(
     true,
@@ -339,9 +341,85 @@ test("availability updates rows in place without selecting recovered routes", as
 });
 test("native list selection supports keyboard activation", async ({ page }) => {
   await setup(page);
-  const row = page.locator("ha-check-list-item").nth(1);
+  const row = page.locator("ha-list-item-option").nth(1);
   await row.press("Space");
   await expect(row).toHaveAttribute("aria-selected", "false");
   await row.press("Enter");
   await expect(row).toHaveAttribute("aria-selected", "true");
+});
+
+test("older Home Assistant can still select a speaker with its native list", async ({
+  page,
+}) => {
+  await setup(page, "en", false, targets, true);
+  const row = page.locator("ha-check-list-item").nth(1);
+  await expect(row).toHaveAttribute("aria-selected", "true");
+  await row.press("Space");
+  await expect(row).toHaveAttribute("aria-selected", "false");
+});
+
+const kiosk = {
+  entity_id: "assist_satellite.kitchen_kiosk",
+  player: "media_player.kitchen_kiosk",
+  name: "Kitchen Kiosk",
+  area_name: "Kitchen",
+  transport: "voice_satellite",
+  available: true,
+};
+
+test("Voice Satellite kiosks show their route", async ({ page }) => {
+  await setup(page, "en", false, [kiosk]);
+  await expect(
+    page
+      .locator("ha-list-item-option")
+      .first()
+      .locator('[slot="supporting-text"]'),
+  ).toHaveText("Kitchen · Voice Satellite · Available");
+});
+
+test("the card reloads when an offline Voice Satellite kiosk comes online", async ({
+  page,
+}) => {
+  await page.setContent("<main></main>");
+  await page.evaluate(registerHomeAssistantFixtures);
+  await page.addScriptTag({ content: script });
+  await page.evaluate((kiosk) => {
+    window.statusRequests = 0;
+    window.kioskAvailable = false;
+    const element = document.createElement("homecall-card");
+    element.setConfig({ type: "custom:homecall-card" });
+    element._warmRecorder = () => {};
+    const hass = (playerState) => ({
+      locale: { language: "en" },
+      states: {
+        [kiosk.entity_id]: { state: "idle" },
+        [kiosk.player]: { state: playerState },
+      },
+      fetchWithAuth: async () => {
+        window.statusRequests += 1;
+        return {
+          ok: true,
+          json: async () => ({
+            targets: [{ ...kiosk, available: window.kioskAvailable }],
+            default_targets: [],
+          }),
+        };
+      },
+    });
+    window.setKioskState = (state) => {
+      window.kioskAvailable = state !== "unavailable";
+      element.hass = hass(state);
+    };
+    element.hass = hass("unavailable");
+    document.querySelector("main").append(element);
+  }, kiosk);
+  await expect(page.locator("homecall-card")).toContainText(
+    "No speaker is available right now.",
+  );
+  const before = await page.evaluate(() => window.statusRequests);
+  await page.evaluate(() => window.setKioskState("idle"));
+  await expect
+    .poll(() => page.evaluate(() => window.statusRequests))
+    .toBeGreaterThan(before);
+  await expect(page.locator("ha-list-item-option")).toHaveCount(1);
 });

@@ -7,6 +7,7 @@ The component inventory was reviewed before implementing the shared speaker sett
 | Page and navigation | `hass-subpage` | Existing router-loaded native header and navigation. |
 | Surface | `ha-card` | Default card surface, borders, radius, and theme. |
 | Speaker rows | `ha-list-base`, `ha-list-item-base` | Native row layout, headline, supporting text, leading and trailing slots. |
+| Dashboard recipient picker and card editor | `ha-list-selectable`, `ha-list-item-option` | Native multi-select with checkbox options. Earlier HA frontend versions can load their native checklist through the built-in To-do list card. |
 | Selection | `ha-checkbox` | Native checked, disabled, indeterminate states and accessibility. |
 | Per-speaker settings and discovery | `ha-expansion-panel` | Native chevron, keyboard activation, expanded-state events, and region semantics. |
 | Custom announcement volume | `ha-switch`, `ha-slider` | The switch reveals an indented row with the native slider at its default width, its value tooltip, and a read-only percentage. |

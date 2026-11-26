@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.13.0
+
+- Send messages to browser kiosks and tablets running [Voice Satellite](https://github.com/jxlarrea/voice-satellite-card-integration). Add them under **Configure → Voice Satellite speakers**. Messages play through the kiosk's Voice Satellite media player and fetch audio from the kiosk's own Home Assistant address. See the [Voice Satellite guide](docs/voice-satellite.md) and [the proposal and patch from @JuraasicCoasterNerd](https://github.com/thomasgregg/homecall/issues/18).
+- Keep saved kiosks visible and removable when they're offline or no longer discovered. The dashboard checks both kiosk entities before offering a recipient.
+- Use Home Assistant's current native checkbox list in the dashboard picker and card editor. Earlier supported versions can use their native checklist.
+
 ## 1.12.0
 
 - Set a custom announcement volume for eligible Sonos S2 speakers and standalone Music Assistant players. The override is off by default and applies to the recording and its chime. Test the selected level before saving.
