@@ -34,7 +34,7 @@ Use Home Assistant components for controls: `ha-form` with native selectors, `ha
 
 ## Release note format
 
-Use this format for every release for HomeCall. Titles are `v<version> — <short summary>`; update `RELEASE_TITLE.txt` with that summary before tagging. Notes always contain these sections, in this order:
+Update `RELEASE_TITLE.txt` with a short summary before tagging. Use that summary as the GitHub release title. Home Assistant Marketplace and HACS already add the version from the Git tag when they display release notes. Use the following order for the notes.
 
 1. **Changes** — the version's changelog entry, describing user-visible behavior.
 2. **Installation** — HACS and manual asset instructions, including bundled-card migration and YAML-managed resources.

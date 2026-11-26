@@ -40,6 +40,6 @@ jobs:
             validation+=" See the [configuration guide](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/configuration.md#custom-announcement-volume) for verified hardware and volume limits."
           fi
           python3 scripts/release-notes.py --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" --previous-tag "$previous_tag" --validation "$validation" > release-notes.md
-          gh release create "$GITHUB_REF_NAME" homecall.zip --verify-tag --title "$GITHUB_REF_NAME — $(cat RELEASE_TITLE.txt)" --notes-file release-notes.md "${release_flags[@]}"
+          gh release create "$GITHUB_REF_NAME" homecall.zip --verify-tag --title "$(cat RELEASE_TITLE.txt)" --notes-file release-notes.md "${release_flags[@]}"
         env:
           GH_TOKEN: ${{ github.token }}
